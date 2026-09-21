@@ -10,6 +10,7 @@
 #pragma once
 
 #include "../../label/name_look_and_feel.hpp"
+#include "../../glass_tokens.hpp"
 #include "../extra_slider/snapping_slider.h"
 
 namespace zlgui::slider {
@@ -26,8 +27,7 @@ namespace zlgui::slider {
     private:
         class Background final : public juce::Component {
         public:
-            explicit Background(UIBase& base) :
-                base_(base) {
+            explicit Background(UIBase& base) : base_(base) {
                 setInterceptsMouseClicks(false, false);
                 setBufferedToImage(true);
             }
@@ -43,8 +43,7 @@ namespace zlgui::slider {
 
         class Display final : public juce::Component {
         public:
-            explicit Display(UIBase& base) :
-                base_(base) {
+            explicit Display(UIBase& base) : base_(base) {
                 setInterceptsMouseClicks(false, false);
             }
 
@@ -58,9 +57,7 @@ namespace zlgui::slider {
                 g.restoreState();
             }
 
-            void resized() override {
-                setSliderValue(value_);
-            }
+            void resized() override { setSliderValue(value_); }
 
             void setSliderValue(const float x) {
                 value_ = x;
@@ -78,8 +75,7 @@ namespace zlgui::slider {
     public:
         explicit CompactLinearSlider(const juce::String& label_text, UIBase& base,
                                      const juce::String& tooltip_text = "") :
-            base_(base), background_(base_), display_(base_),
-            slider_(base_),
+            base_(base), background_(base_), display_(base_), slider_(base_),
             name_look_and_feel_(base_), text_look_and_feel_(base_) {
             juce::ignoreUnused(base_);
 
@@ -92,12 +88,8 @@ namespace zlgui::slider {
             slider_.setInterceptsMouseClicks(false, false);
             slider_.addListener(this);
 
-            if constexpr (kUseBackground) {
-                addAndMakeVisible(background_);
-            }
-            if constexpr (kUseDisplay) {
-                addAndMakeVisible(display_);
-            }
+            if constexpr (kUseBackground) addAndMakeVisible(background_);
+            if constexpr (kUseDisplay) addAndMakeVisible(display_);
 
             text_.setText(getDisplayValue(slider_), juce::dontSendNotification);
             text_.setJustificationType(juce::Justification::centred);
@@ -108,7 +100,6 @@ namespace zlgui::slider {
             text_.addListener(this);
             addAndMakeVisible(text_);
 
-            // setup label
             if constexpr (kUseName) {
                 text_.setVisible(false);
                 label_.setText(label_text, juce::dontSendNotification);
@@ -120,88 +111,173 @@ namespace zlgui::slider {
                 addAndMakeVisible(label_);
             }
 
-            // set up tooltip
-            if (tooltip_text.length() > 0) {
-                SettableTooltipClient::setTooltip(tooltip_text);
-            }
-
+            if (tooltip_text.length() > 0) SettableTooltipClient::setTooltip(tooltip_text);
             setEditable(true);
         }
 
         ~CompactLinearSlider() override = default;
 
         void visibilityChanged() override {
-            if (isVisible()) {
-                sliderValueChanged(&slider_);
-            }
+            if (isVisible()) sliderValueChanged(&slider_);
+        }
+
+        // Contextual dynamics in the approved Glass EQ concept use compact dials rather
+        // than old ZL knobs or generic linear fields. This mode keeps the exact same
+        // Slider/attachment underneath, so automation and numeric editing remain intact.
+        void setGlassRotaryMode(const juce::String& label,
+                                const juce::Colour accent = juce::Colour(154, 199, 239)) {
+            glass_rotary_mode_ = true;
+            glass_rotary_label_ = label;
+            glass_rotary_accent_ = accent;
+            if constexpr (kUseBackground) background_.setVisible(false);
+            if constexpr (kUseDisplay) display_.setVisible(false);
+            if constexpr (kUseName) label_.setVisible(false);
+            text_.setVisible(true);
+            resized();
+            repaint();
+        }
+
+        void setGlassRotaryAccent(const juce::Colour accent) {
+            glass_rotary_accent_ = accent;
+            if (glass_rotary_mode_) repaint();
+        }
+
+        void paint(juce::Graphics& g) override {
+            if (!glass_rotary_mode_) return;
+
+            const auto font = base_.getFontSize();
+            auto bounds = getLocalBounds().toFloat();
+            if (bounds.getWidth() < 4.f || bounds.getHeight() < 4.f) return;
+
+            // Label above the optical control, matching the approved Dynamic EQ card.
+            auto label_area = bounds.removeFromTop(juce::jmax(font * .80f, bounds.getHeight() * .19f));
+            g.setColour(glass::textSecondary().withAlpha(.72f));
+            g.setFont(juce::FontOptions(font * .57f));
+            g.drawFittedText(glass_rotary_label_, label_area.toNearestInt(),
+                             juce::Justification::centred, 1);
+
+            // Reserve the lower strip for the live numeric label/editor.
+            bounds.removeFromBottom(juce::jmax(font * .98f, bounds.getHeight() * .22f));
+            const auto diameter = juce::jmin(bounds.getWidth() * .66f, bounds.getHeight() * .84f);
+            auto knob = juce::Rectangle<float>(0.f, 0.f, diameter, diameter).withCentre(bounds.getCentre());
+
+            const auto normal = static_cast<float>(slider_.getNormalisableRange().convertTo0to1(slider_.getValue()));
+            constexpr float start = juce::MathConstants<float>::pi * .72f;
+            constexpr float end = juce::MathConstants<float>::pi * 2.28f;
+            const auto value_angle = start + juce::jlimit(0.f, 1.f, normal) * (end - start);
+
+            // Restrained halo and a dark translucent lens, rather than the chunky ZL
+            // inner-shadow control that the concept explicitly moved away from.
+            juce::Path halo_path;
+            halo_path.addEllipse(knob.expanded(font * .12f));
+            juce::DropShadow halo{glass_rotary_accent_.withAlpha(.13f),
+                                  juce::jmax(2, juce::roundToInt(font * .36f)), {0, 0}};
+            halo.drawForPath(g, halo_path);
+
+            juce::ColourGradient lens(juce::Colour(246, 252, 255).withAlpha(.16f),
+                                      knob.getX() + knob.getWidth() * .28f,
+                                      knob.getY() + knob.getHeight() * .18f,
+                                      juce::Colour(5, 18, 30).withAlpha(.62f),
+                                      knob.getRight(), knob.getBottom(), false);
+            lens.addColour(.46, juce::Colour(52, 77, 96).withAlpha(.34f));
+            g.setGradientFill(lens);
+            g.fillEllipse(knob);
+            g.setColour(glass::rim().withMultipliedAlpha(.62f));
+            g.drawEllipse(knob, .85f);
+
+            auto arc_box = knob.expanded(font * .13f);
+            juce::Path track;
+            track.addCentredArc(arc_box.getCentreX(), arc_box.getCentreY(),
+                                arc_box.getWidth() * .5f, arc_box.getHeight() * .5f,
+                                0.f, start, end, true);
+            g.setColour(glass::textSecondary().withAlpha(.17f));
+            g.strokePath(track, juce::PathStrokeType(juce::jmax(1.0f, font * .10f),
+                                                     juce::PathStrokeType::curved,
+                                                     juce::PathStrokeType::rounded));
+
+            juce::Path active;
+            active.addCentredArc(arc_box.getCentreX(), arc_box.getCentreY(),
+                                 arc_box.getWidth() * .5f, arc_box.getHeight() * .5f,
+                                 0.f, start, value_angle, true);
+            g.setColour(glass_rotary_accent_.interpolatedWith(juce::Colours::white, .22f).withAlpha(.88f));
+            g.strokePath(active, juce::PathStrokeType(juce::jmax(1.25f, font * .12f),
+                                                      juce::PathStrokeType::curved,
+                                                      juce::PathStrokeType::rounded));
+
+            const auto centre = knob.getCentre();
+            const auto pointer_r = knob.getWidth() * .31f;
+            const auto px = centre.x + std::sin(value_angle) * pointer_r;
+            const auto py = centre.y - std::cos(value_angle) * pointer_r;
+            g.setColour(glass::textPrimary().withAlpha(.76f));
+            g.drawLine(centre.x, centre.y, px, py, juce::jmax(1.f, font * .075f));
+            g.fillEllipse(centre.x - font * .07f, centre.y - font * .07f,
+                          font * .14f, font * .14f);
         }
 
         void resized() override {
             const auto bound = getLocalBounds();
-            if constexpr (kUseBackground) {
-                background_.setBounds(bound);
-            }
-            if constexpr (kUseDisplay) {
-                display_.setBounds(bound);
-            }
             slider_.setBounds(bound);
-            text_.setBounds(bound);
-            if constexpr (kUseName) {
-                label_.setBounds(bound);
+
+            if (glass_rotary_mode_) {
+                if constexpr (kUseBackground) background_.setBounds({});
+                if constexpr (kUseDisplay) display_.setBounds({});
+                if constexpr (kUseName) label_.setBounds({});
+
+                auto text_bound = bound;
+                const auto text_h = juce::jmax(juce::roundToInt(base_.getFontSize() * 1.0f),
+                                               juce::roundToInt(bound.getHeight() * .22f));
+                text_.setBounds(text_bound.removeFromBottom(text_h));
+                return;
             }
+
+            if constexpr (kUseBackground) background_.setBounds(bound);
+            if constexpr (kUseDisplay) display_.setBounds(bound);
+            text_.setBounds(bound);
+            if constexpr (kUseName) label_.setBounds(bound);
         }
 
         void mouseUp(const juce::MouseEvent& event) override {
-            if (event.getNumberOfClicks() > 1 || event.mods.isCommandDown() || event.mods.isRightButtonDown()) {
-                return;
-            }
+            if (event.getNumberOfClicks() > 1 || event.mods.isCommandDown() || event.mods.isRightButtonDown()) return;
             slider_.mouseUp(event);
         }
 
         void mouseDown(const juce::MouseEvent& event) override {
-            if (event.getNumberOfClicks() > 1 || event.mods.isCommandDown() || event.mods.isRightButtonDown()) {
-                return;
-            }
+            if (event.getNumberOfClicks() > 1 || event.mods.isCommandDown() || event.mods.isRightButtonDown()) return;
             slider_.mouseDown(event);
             updateDragDistance(event.mods.isShiftDown());
         }
 
         void mouseDrag(const juce::MouseEvent& event) override {
-            if (event.mods.isRightButtonDown()) {
-                return;
-            }
+            if (event.mods.isRightButtonDown()) return;
             slider_.mouseDrag(event);
         }
 
         void mouseEnter(const juce::MouseEvent& event) override {
             slider_.mouseEnter(event);
             if constexpr (kUseName) {
-                text_.setVisible(true);
-                label_.setVisible(false);
+                if (!glass_rotary_mode_) {
+                    text_.setVisible(true);
+                    label_.setVisible(false);
+                }
             }
         }
 
         void mouseExit(const juce::MouseEvent& event) override {
             slider_.mouseExit(event);
-            if (text_.getCurrentTextEditor() != nullptr) {
-                return;
-            }
+            if (text_.getCurrentTextEditor() != nullptr) return;
             if constexpr (kUseName) {
-                text_.setVisible(false);
-                label_.setVisible(true);
+                if (!glass_rotary_mode_) {
+                    text_.setVisible(false);
+                    label_.setVisible(true);
+                }
             }
         }
 
-        void mouseMove(const juce::MouseEvent& event) override {
-            slider_.mouseMove(event);
-        }
+        void mouseMove(const juce::MouseEvent& event) override { slider_.mouseMove(event); }
 
         void mouseDoubleClick(const juce::MouseEvent& event) override {
-            if (base_.getIsSliderDoubleClickOpenEditor() != event.mods.isCommandDown()) {
-                text_.showEditor();
-            } else {
-                slider_.mouseDoubleClick(event);
-            }
+            if (base_.getIsSliderDoubleClickOpenEditor() != event.mods.isCommandDown()) text_.showEditor();
+            else slider_.mouseDoubleClick(event);
         }
 
         void mouseWheelMove(const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) override {
@@ -218,6 +294,7 @@ namespace zlgui::slider {
         void updateDisplayValue() {
             text_.setText(getDisplayValue(slider_), juce::dontSendNotification);
             text_.repaint();
+            if (glass_rotary_mode_) repaint();
         }
 
         void setFontScale(const float scale) {
@@ -226,13 +303,8 @@ namespace zlgui::slider {
             name_look_and_feel_.setFontScale(font_scale_);
         }
 
-        void setMouseDragSensitivity(const int x) {
-            drag_distance_ = x;
-        }
-
-        void setPrecision(const int x) {
-            precision_ = std::max(x, 2);
-        }
+        void setMouseDragSensitivity(const int x) { drag_distance_ = x; }
+        void setPrecision(const int x) { precision_ = std::max(x, 2); }
 
         void setJustification(const juce::Justification justification) {
             label_.setJustificationType(justification);
@@ -243,72 +315,58 @@ namespace zlgui::slider {
         UIBase& base_;
         Background background_;
         Display display_;
-
         SnappingSlider slider_;
-
         label::NameLookAndFeel name_look_and_feel_, text_look_and_feel_;
         juce::Label label_, text_;
-
         float font_scale_{1.5f};
-
         int precision_{4};
-
         int drag_distance_{10};
+
+        bool glass_rotary_mode_{false};
+        juce::String glass_rotary_label_{};
+        juce::Colour glass_rotary_accent_{154, 199, 239};
 
         juce::String getDisplayValue(const juce::Slider& s) const {
             const auto value = s.getValue();
-            if (value_formatter_) {
-                return value_formatter_(value);
-            }
+            if (value_formatter_) return value_formatter_(value);
             const bool append_k = precision_ >= 4 ? std::abs(value) >= 10000.0 : std::abs(value) >= 1000.0;
             const auto display_value = append_k ? value * 0.001 : value;
             auto actual_precision = append_k ? precision_ - 1 : precision_;
-            if (std::abs(display_value) >= 100.0) {
-                actual_precision = std::max(actual_precision, 3);
-            }
+            if (std::abs(display_value) >= 100.0) actual_precision = std::max(actual_precision, 3);
 
             char buffer[32];
-            if (std::abs(value) < 1.0) {
+            if (std::abs(value) < 1.0)
                 snprintf(buffer, sizeof(buffer), "%.*f", actual_precision - 1, display_value);
-            } else {
+            else
                 snprintf(buffer, sizeof(buffer), "%.*g", actual_precision, display_value);
-            }
             std::string str{buffer};
-            // remove trailing zeros and decimal point
             const auto last_decimal = str.find_last_of('.');
             if (last_decimal != std::string::npos) {
                 const auto last_not_zero = str.find_last_not_of('0');
-                if (last_not_zero != std::string::npos) {
-                    str.erase(last_not_zero + 1);
-                }
-                if (str.back() == '.') {
-                    str.pop_back();
-                }
+                if (last_not_zero != std::string::npos) str.erase(last_not_zero + 1);
+                if (str.back() == '.') str.pop_back();
             }
-
             return append_k ? juce::String{str + "K"} : juce::String{str};
         }
 
-        void labelTextChanged(juce::Label*) override {
-        }
+        void labelTextChanged(juce::Label*) override {}
 
         void editorShown(juce::Label*, juce::TextEditor& editor) override {
             editor.setInterceptsMouseClicks(false, false);
             editor.setInputRestrictions(0, permitted_characters_);
             text_.addMouseListener(this, true);
-
             if constexpr (kUseName) {
-                text_.setVisible(true);
-                label_.setVisible(false);
+                if (!glass_rotary_mode_) {
+                    text_.setVisible(true);
+                    label_.setVisible(false);
+                }
             }
-
             editor.setJustification(juce::Justification::centred);
             editor.setIndents(2, 0);
             editor.setBorder(juce::BorderSize<int>{0});
             editor.setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
             editor.setColour(juce::TextEditor::focusedOutlineColourId, base_.getTextColour().withAlpha(.5f));
             editor.setColour(juce::TextEditor::highlightedTextColourId, base_.getTextColour());
-
             const juce::FontOptions font_opt{base_.getFontSize() * font_scale_};
             editor.setFont(font_opt);
             editor.applyFontToAllText(font_opt);
@@ -319,20 +377,16 @@ namespace zlgui::slider {
             text_.removeMouseListener(this);
             const auto ctext = editor.getText();
             std::optional<double> format_result{std::nullopt};
-            if (string_formatter_) {
-                format_result = string_formatter_(ctext.toStdString());
-            }
+            if (string_formatter_) format_result = string_formatter_(ctext.toStdString());
             double actual_value;
-            if (format_result != std::nullopt) {
-                actual_value = format_result.value();
-            } else {
+            if (format_result != std::nullopt) actual_value = format_result.value();
+            else {
                 const auto k = ctext.contains("k") || ctext.contains("K") ? 1000.0 : 1.0;
                 actual_value = ctext.getDoubleValue() * k;
             }
-
             slider_.setValue(actual_value, juce::sendNotificationAsync);
             if constexpr (kUseName) {
-                if (!isMouseOver(true)) {
+                if (!glass_rotary_mode_ && !isMouseOver(true)) {
                     text_.setVisible(false);
                     label_.setVisible(true);
                 }
@@ -341,8 +395,9 @@ namespace zlgui::slider {
 
         void sliderValueChanged(juce::Slider*) override {
             text_.setText(getDisplayValue(slider_), juce::dontSendNotification);
-            display_.setSliderValue(
-                static_cast<float>(slider_.getNormalisableRange().convertTo0to1(slider_.getValue())));
+            display_.setSliderValue(static_cast<float>(
+                slider_.getNormalisableRange().convertTo0to1(slider_.getValue())));
+            if (glass_rotary_mode_) repaint();
         }
 
         void updateDragDistance(const bool is_shift_pressed) {
