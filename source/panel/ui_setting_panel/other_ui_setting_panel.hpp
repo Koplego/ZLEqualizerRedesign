@@ -28,6 +28,7 @@ namespace zlpanel {
         int getIdealHeight() const;
 
         void resized() override;
+        void paint(juce::Graphics& g) override;
 
         void setParentWidth(int width);
 
@@ -55,6 +56,11 @@ namespace zlpanel {
         juce::Label window_size_fix_label_;
         zlgui::combobox::CompactCombobox window_size_fix_box_;
         int parent_width_{0};
+
+        juce::Rectangle<int> performance_title_bound_{};
+        juce::Rectangle<int> appearance_title_bound_{};
+        juce::Rectangle<int> scale_title_bound_{};
+        std::vector<juce::Rectangle<int>> row_bounds_{};
 
         void comboBoxChanged(juce::ComboBox* comboBoxThatHasChanged) override;
     };
