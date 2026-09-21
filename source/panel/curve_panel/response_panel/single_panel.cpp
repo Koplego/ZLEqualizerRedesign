@@ -86,15 +86,15 @@ namespace zlpanel {
             base_fill_alpha_[band] = (is_dynamic_on ? kFillingAlpha * .30f : kFillingAlpha) * multiplier;
             target_fill_alpha_[band] = (is_dynamic_on ? kDynamicFillingAlpha : 0.f) * multiplier;
         } else {
-            base_fill_alpha_[band] = kFillingAlpha * .42f * multiplier;
+            base_fill_alpha_[band] = kFillingAlpha * .48f * multiplier;
             target_fill_alpha_[band] = (is_dynamic_on ? kDynamicFillingAlpha * .44f : 0.f) * multiplier;
             multiplier *= kNotSelectedAlphaMultiplier;
         }
         base_stroke_alpha_[band] = multiplier;
 
         const auto band_colour = base_.getColourMap1(band);
-        base_stroke_colour_[band] = band_colour.interpolatedWith(juce::Colours::white, is_selected ? .08f : .10f)
-            .withAlpha(std::clamp(multiplier * (is_selected ? .92f : .54f), .06f, .94f));
+        base_stroke_colour_[band] = band_colour.interpolatedWith(juce::Colours::white, is_selected ? .10f : .12f)
+            .withAlpha(std::clamp(multiplier * (is_selected ? .90f : .58f), .06f, .92f));
 
         is_same_stereo_[band] = is_same_stereo;
     }
@@ -181,7 +181,7 @@ namespace zlpanel {
         const auto colour = base_.getColourMap1(band);
         const auto node_x = node_x_[band].load(std::memory_order_relaxed);
         const auto node_y = node_y_[band].load(std::memory_order_relaxed);
-        const auto glow_radius = juce::jmax(base_.getFontSize() * 8.0f, 86.f);
+        const auto glow_radius = juce::jmax(base_.getFontSize() * 7.2f, 78.f);
         if (base_fill_alpha_[band] > 0.01f) {
             base_fills_[band].pull();
             const auto& fill = base_fills_[band].getReader();
@@ -189,11 +189,11 @@ namespace zlpanel {
             g.fillPath(fill);
             if constexpr (thick) {
                 juce::ColourGradient illumination(
-                    colour.interpolatedWith(juce::Colours::white, .12f).withAlpha(.14f),
+                    colour.interpolatedWith(juce::Colours::white, .10f).withAlpha(.105f),
                     node_x, node_y,
                     colour.withAlpha(0.f), node_x + glow_radius, node_y, true);
-                illumination.addColour(.34, colour.withAlpha(.085f));
-                illumination.addColour(.72, colour.withAlpha(.020f));
+                illumination.addColour(.34, colour.withAlpha(.060f));
+                illumination.addColour(.72, colour.withAlpha(.014f));
                 g.setGradientFill(illumination);
                 g.fillPath(fill);
             }
@@ -205,9 +205,9 @@ namespace zlpanel {
             g.fillPath(fill);
             if constexpr (thick) {
                 juce::ColourGradient target_light(
-                    colour.interpolatedWith(juce::Colours::white, .10f).withAlpha(.11f),
+                    colour.interpolatedWith(juce::Colours::white, .08f).withAlpha(.085f),
                     node_x, node_y,
-                    colour.withAlpha(0.f), node_x + glow_radius * .82f, node_y, true);
+                    colour.withAlpha(0.f), node_x + glow_radius * .78f, node_y, true);
                 g.setGradientFill(target_light);
                 g.fillPath(fill);
             }
@@ -218,30 +218,30 @@ namespace zlpanel {
             const auto& path = base_paths_[band].getReader();
             if constexpr (thick) {
                 juce::ColourGradient outer_light(
-                    colour.interpolatedWith(juce::Colours::white, .14f).withAlpha(.14f),
+                    colour.interpolatedWith(juce::Colours::white, .12f).withAlpha(.075f),
                     node_x, node_y,
-                    colour.withAlpha(0.f), node_x + glow_radius * 1.02f, node_y, true);
+                    colour.withAlpha(0.f), node_x + glow_radius * 1.00f, node_y, true);
                 g.setGradientFill(outer_light);
-                g.strokePath(path, juce::PathStrokeType(curve_thickness * 4.0f,
+                g.strokePath(path, juce::PathStrokeType(curve_thickness * 2.55f,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
 
                 juce::ColourGradient core_light(
-                    colour.interpolatedWith(juce::Colours::white, .24f).withAlpha(.28f),
+                    colour.interpolatedWith(juce::Colours::white, .20f).withAlpha(.16f),
                     node_x, node_y,
-                    colour.withAlpha(0.f), node_x + glow_radius * .54f, node_y, true);
+                    colour.withAlpha(0.f), node_x + glow_radius * .50f, node_y, true);
                 g.setGradientFill(core_light);
-                g.strokePath(path, juce::PathStrokeType(curve_thickness * 1.75f,
+                g.strokePath(path, juce::PathStrokeType(curve_thickness * 1.28f,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
             }
             if constexpr (thick) {
                 juce::ColourGradient lit_stroke(
-                    colour.interpolatedWith(juce::Colours::white, .32f).withAlpha(.96f),
+                    colour.interpolatedWith(juce::Colours::white, .28f).withAlpha(.94f),
                     node_x, node_y,
-                    colour.interpolatedWith(juce::Colours::white, .07f).withAlpha(.34f),
-                    node_x + glow_radius * 1.18f, node_y, true);
-                lit_stroke.addColour(.38, colour.interpolatedWith(juce::Colours::white, .18f).withAlpha(.78f));
+                    colour.interpolatedWith(juce::Colours::white, .06f).withAlpha(.39f),
+                    node_x + glow_radius * 1.15f, node_y, true);
+                lit_stroke.addColour(.38, colour.interpolatedWith(juce::Colours::white, .15f).withAlpha(.76f));
                 g.setGradientFill(lit_stroke);
             } else {
                 g.setColour(base_stroke_colour_[band]);
@@ -252,11 +252,11 @@ namespace zlpanel {
             button_lines_[band].pull();
             if (const auto line = button_lines_[band].getReader(); line.getEndX() > 0.f) {
                 if (line.getEndY() > line.getStartY()) {
-                    g.fillRect(line.getStartX() - curve_thickness * .35f, line.getStartY(),
-                               curve_thickness * .7f, line.getEndY() - line.getStartY());
+                    g.fillRect(line.getStartX() - curve_thickness * .30f, line.getStartY(),
+                               curve_thickness * .60f, line.getEndY() - line.getStartY());
                 } else {
-                    g.fillRect(line.getStartX() - curve_thickness * .35f, line.getEndY(),
-                               curve_thickness * .7f, line.getStartY() - line.getEndY());
+                    g.fillRect(line.getStartX() - curve_thickness * .30f, line.getEndY(),
+                               curve_thickness * .60f, line.getStartY() - line.getEndY());
                 }
             }
             if (thick) {
@@ -264,16 +264,16 @@ namespace zlpanel {
                 const auto ap_line = all_pass_lines_[band].getReader();
                 if (ap_line.getEndX() > 0.f || ap_line.getEndY() > 0.f) {
                     const auto center_y = center_y_.load(std::memory_order_relaxed);
-                    g.fillRect(ap_line.getStartX() - curve_thickness * .35f, center_y * .5f,
-                               curve_thickness * .7f, center_y);
-                    g.fillRect(ap_line.getEndX() - curve_thickness * .35f, center_y * .5f,
-                               curve_thickness * .7f, center_y);
+                    g.fillRect(ap_line.getStartX() - curve_thickness * .30f, center_y * .5f,
+                               curve_thickness * .60f, center_y);
+                    g.fillRect(ap_line.getEndX() - curve_thickness * .30f, center_y * .5f,
+                               curve_thickness * .60f, center_y);
                 }
             }
         }
     }
 
     void SinglePanel::lookAndFeelChanged() {
-        curve_thickness_ = base_.getFontSize() * .075f * base_.getSingleEQCurveThickness();
+        curve_thickness_ = base_.getFontSize() * .068f * base_.getSingleEQCurveThickness();
     }
 }
