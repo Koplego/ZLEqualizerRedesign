@@ -83,25 +83,18 @@ namespace zlpanel {
             multiplier *= kNoBandSelectedAlphaMultiplier;
         }
         if (is_selected) {
-            // The mockup uses a soft translucent colour wash beneath every visible EQ shape.
-            // Keep the selected band's fill clear enough to read without turning the graph into
-            // a stack of opaque coloured areas. Dynamic bands use the target fill instead.
-            base_fill_alpha_[band] = (is_dynamic_on ? kFillingAlpha * .28f : kFillingAlpha) * multiplier;
+            base_fill_alpha_[band] = (is_dynamic_on ? kFillingAlpha * .30f : kFillingAlpha) * multiplier;
             target_fill_alpha_[band] = (is_dynamic_on ? kDynamicFillingAlpha : 0.f) * multiplier;
         } else {
-            // Non-selected bands keep a quieter fill so overlapping bands naturally blend their
-            // colours, which is a major part of the reference mockup's visual language.
             base_fill_alpha_[band] = kFillingAlpha * .42f * multiplier;
-            target_fill_alpha_[band] = (is_dynamic_on ? kDynamicFillingAlpha * .48f : 0.f) * multiplier;
+            target_fill_alpha_[band] = (is_dynamic_on ? kDynamicFillingAlpha * .44f : 0.f) * multiplier;
             multiplier *= kNotSelectedAlphaMultiplier;
         }
         base_stroke_alpha_[band] = multiplier;
 
         const auto band_colour = base_.getColourMap1(band);
-        // Keep the hue itself much more visible than v1.0. The response remains pastel by
-        // mixing only a small amount of white, rather than washing every band toward cyan.
         base_stroke_colour_[band] = band_colour.interpolatedWith(juce::Colours::white, is_selected ? .08f : .10f)
-            .withAlpha(std::clamp(multiplier * (is_selected ? .94f : .56f), .06f, .96f));
+            .withAlpha(std::clamp(multiplier * (is_selected ? .92f : .54f), .06f, .94f));
 
         is_same_stereo_[band] = is_same_stereo;
     }
@@ -142,16 +135,13 @@ namespace zlpanel {
                         next_all_pass_line.setEnd(base_right_x, 0.f);
                     }
                 } else {
-                    // draw base path
                     PathMinimizer<1> minimizer{next_base_path};
                     minimizer.drawPath<true, false>(xs, std::span(temp_db_));
-                    // draw base fill
                     next_base_fill = next_base_path;
                     next_base_fill.lineTo(xs.back(), center_y);
                     next_base_fill.lineTo(xs[0], center_y);
                     next_base_fill.closeSubPath();
                 }
-                // draw button line
                 if (!is_all_pass && std::abs(center_mag - button_mag) > 1e-6f) {
                     next_button_line.setStart(center_x, center_mag);
                     next_button_line.setEnd(center_x, button_mag);
@@ -162,7 +152,6 @@ namespace zlpanel {
             next_target_fill.clear();
             if (filter_status != zlp::FilterStatus::kOff && !is_all_pass) {
                 zldsp::vector::fma(temp_db_.data(), target_mag.data(), k, b, temp_db_.size());
-                // draw target fill
                 next_target_fill = next_base_path;
                 PathMinimizer<1> minimizer{next_target_fill};
                 minimizer.drawPath<false, true>(xs, std::span(temp_db_));
@@ -192,7 +181,7 @@ namespace zlpanel {
         const auto colour = base_.getColourMap1(band);
         const auto node_x = node_x_[band].load(std::memory_order_relaxed);
         const auto node_y = node_y_[band].load(std::memory_order_relaxed);
-        const auto glow_radius = juce::jmax(base_.getFontSize() * 10.5f, 112.f);
+        const auto glow_radius = juce::jmax(base_.getFontSize() * 8.0f, 86.f);
         if (base_fill_alpha_[band] > 0.01f) {
             base_fills_[band].pull();
             const auto& fill = base_fills_[band].getReader();
@@ -200,11 +189,11 @@ namespace zlpanel {
             g.fillPath(fill);
             if constexpr (thick) {
                 juce::ColourGradient illumination(
-                    colour.interpolatedWith(juce::Colours::white, .16f).withAlpha(.22f),
+                    colour.interpolatedWith(juce::Colours::white, .12f).withAlpha(.14f),
                     node_x, node_y,
                     colour.withAlpha(0.f), node_x + glow_radius, node_y, true);
-                illumination.addColour(.32, colour.withAlpha(.14f));
-                illumination.addColour(.72, colour.withAlpha(.035f));
+                illumination.addColour(.34, colour.withAlpha(.085f));
+                illumination.addColour(.72, colour.withAlpha(.020f));
                 g.setGradientFill(illumination);
                 g.fillPath(fill);
             }
@@ -216,9 +205,9 @@ namespace zlpanel {
             g.fillPath(fill);
             if constexpr (thick) {
                 juce::ColourGradient target_light(
-                    colour.interpolatedWith(juce::Colours::white, .12f).withAlpha(.16f),
+                    colour.interpolatedWith(juce::Colours::white, .10f).withAlpha(.11f),
                     node_x, node_y,
-                    colour.withAlpha(0.f), node_x + glow_radius * .88f, node_y, true);
+                    colour.withAlpha(0.f), node_x + glow_radius * .82f, node_y, true);
                 g.setGradientFill(target_light);
                 g.fillPath(fill);
             }
@@ -229,30 +218,30 @@ namespace zlpanel {
             const auto& path = base_paths_[band].getReader();
             if constexpr (thick) {
                 juce::ColourGradient outer_light(
-                    colour.interpolatedWith(juce::Colours::white, .18f).withAlpha(.30f),
+                    colour.interpolatedWith(juce::Colours::white, .14f).withAlpha(.14f),
                     node_x, node_y,
-                    colour.withAlpha(0.f), node_x + glow_radius * 1.08f, node_y, true);
+                    colour.withAlpha(0.f), node_x + glow_radius * 1.02f, node_y, true);
                 g.setGradientFill(outer_light);
-                g.strokePath(path, juce::PathStrokeType(curve_thickness * 6.2f,
+                g.strokePath(path, juce::PathStrokeType(curve_thickness * 4.0f,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
 
                 juce::ColourGradient core_light(
-                    colour.interpolatedWith(juce::Colours::white, .30f).withAlpha(.56f),
+                    colour.interpolatedWith(juce::Colours::white, .24f).withAlpha(.28f),
                     node_x, node_y,
-                    colour.withAlpha(0.f), node_x + glow_radius * .58f, node_y, true);
+                    colour.withAlpha(0.f), node_x + glow_radius * .54f, node_y, true);
                 g.setGradientFill(core_light);
-                g.strokePath(path, juce::PathStrokeType(curve_thickness * 2.8f,
+                g.strokePath(path, juce::PathStrokeType(curve_thickness * 1.75f,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
             }
             if constexpr (thick) {
                 juce::ColourGradient lit_stroke(
-                    colour.interpolatedWith(juce::Colours::white, .38f).withAlpha(.98f),
+                    colour.interpolatedWith(juce::Colours::white, .32f).withAlpha(.96f),
                     node_x, node_y,
-                    colour.interpolatedWith(juce::Colours::white, .08f).withAlpha(.36f),
-                    node_x + glow_radius * 1.22f, node_y, true);
-                lit_stroke.addColour(.38, colour.interpolatedWith(juce::Colours::white, .22f).withAlpha(.82f));
+                    colour.interpolatedWith(juce::Colours::white, .07f).withAlpha(.34f),
+                    node_x + glow_radius * 1.18f, node_y, true);
+                lit_stroke.addColour(.38, colour.interpolatedWith(juce::Colours::white, .18f).withAlpha(.78f));
                 g.setGradientFill(lit_stroke);
             } else {
                 g.setColour(base_stroke_colour_[band]);
@@ -285,6 +274,6 @@ namespace zlpanel {
     }
 
     void SinglePanel::lookAndFeelChanged() {
-        curve_thickness_ = base_.getFontSize() * .098f * base_.getSingleEQCurveThickness();
+        curve_thickness_ = base_.getFontSize() * .075f * base_.getSingleEQCurveThickness();
     }
 }
