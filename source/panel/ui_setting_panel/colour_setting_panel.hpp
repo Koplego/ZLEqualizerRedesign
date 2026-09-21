@@ -31,6 +31,7 @@ namespace zlpanel {
         int getIdealHeight() const;
 
         void resized() override;
+        void paint(juce::Graphics& g) override;
 
     private:
         PluginProcessor &pRef;
@@ -43,6 +44,10 @@ namespace zlpanel {
 
         juce::Label c_map1_label_, c_map2_label_;
         zlgui::colour_selector::ColourMapSelector c_map1_selector_, c_map2_selector_;
+
+        juce::Rectangle<int> palette_title_bound_{};
+        juce::Rectangle<int> maps_title_bound_{};
+        std::vector<juce::Rectangle<int>> row_bounds_{};
 
         std::unique_ptr<juce::FileChooser> chooser_;
         inline auto static const kSettingDirectory =
