@@ -156,12 +156,14 @@ namespace zlpanel {
                 zlgui::glass::fillGlassSurface(g, circle, circle.getHeight() * .5f, .075f, .125f, .14f);
             }
 
-            const auto icon_stroke = juce::PathStrokeType(1.16f, juce::PathStrokeType::curved,
+            const auto icon_stroke = juce::PathStrokeType(1.22f, juce::PathStrokeType::curved,
                                                           juce::PathStrokeType::rounded);
 
+            // EQ Match and Sidechain intentionally use a larger optical footprint than
+            // before. Their circles were already the right size; only the glyphs were tiny.
             {
                 auto mr = match_button_.getBounds().toFloat();
-                auto r = mr.reduced(font * .66f);
+                auto r = mr.reduced(font * .50f);
                 juce::Path p;
                 p.startNewSubPath(r.getX(), r.getBottom() - r.getHeight() * .22f);
                 p.cubicTo(r.getX() + r.getWidth() * .22f, r.getBottom() - r.getHeight() * .22f,
@@ -170,14 +172,15 @@ namespace zlpanel {
                 p.cubicTo(r.getX() + r.getWidth() * .64f, r.getY() + r.getHeight() * .16f,
                           r.getX() + r.getWidth() * .70f, r.getBottom() - r.getHeight() * .34f,
                           r.getRight(), r.getBottom() - r.getHeight() * .34f);
-                g.setColour(zlgui::glass::textPrimary().withAlpha(match_button_.getToggleState() ? .92f : .52f));
+                g.setColour(zlgui::glass::textPrimary().withAlpha(match_button_.getToggleState() ? .92f : .58f));
                 g.strokePath(p, icon_stroke);
-                g.fillEllipse(r.getX() + r.getWidth() * .42f, r.getY() + r.getHeight() * .10f, 2.2f, 2.2f);
+                const auto dot = juce::jmax(2.4f, font * .16f);
+                g.fillEllipse(r.getX() + r.getWidth() * .42f, r.getY() + r.getHeight() * .10f, dot, dot);
             }
 
             {
-                auto er = ext_button_.getBounds().toFloat().reduced(font * .69f);
-                const auto alpha = ext_button_.getToggleState() ? .90f : .46f;
+                auto er = ext_button_.getBounds().toFloat().reduced(font * .52f);
+                const auto alpha = ext_button_.getToggleState() ? .92f : .54f;
                 g.setColour(zlgui::glass::textPrimary().withAlpha(alpha));
                 juce::Path left_link, right_link;
                 auto link = juce::Rectangle<float>(er.getCentreX() - er.getWidth() * .48f,
@@ -191,6 +194,7 @@ namespace zlpanel {
                 g.strokePath(right_link, icon_stroke, rotation);
             }
 
+            // Keep the bypass exactly as approved.
             auto pr = bypass_button_.getBounds().toFloat().reduced(font * .52f);
             g.setColour(zlgui::glass::textPrimary().withAlpha(bypass_button_.getToggleState() ? .38f : .90f));
             juce::Path power_arc;
@@ -200,17 +204,18 @@ namespace zlpanel {
                                                          juce::PathStrokeType::rounded));
             g.drawLine(pr.getCentreX(), pr.getY(), pr.getCentreX(), pr.getCentreY(), 1.35f);
 
-            auto sr = settings_button_.getBounds().toFloat().reduced(font * .70f);
-            g.setColour(zlgui::glass::textPrimary().withAlpha(.60f));
-            g.drawEllipse(sr.withSizeKeepingCentre(sr.getWidth() * .72f, sr.getHeight() * .72f), .95f);
-            g.drawEllipse(sr.withSizeKeepingCentre(sr.getWidth() * .24f, sr.getHeight() * .24f), 1.0f);
+            // Larger settings gear: the old reduction made it read like a speck inside its hit target.
+            auto sr = settings_button_.getBounds().toFloat().reduced(font * .52f);
+            g.setColour(zlgui::glass::textPrimary().withAlpha(.66f));
+            g.drawEllipse(sr.withSizeKeepingCentre(sr.getWidth() * .72f, sr.getHeight() * .72f), 1.05f);
+            g.drawEllipse(sr.withSizeKeepingCentre(sr.getWidth() * .24f, sr.getHeight() * .24f), 1.05f);
             for (int tooth = 0; tooth < 8; ++tooth) {
                 const auto angle = juce::MathConstants<float>::twoPi * static_cast<float>(tooth) / 8.f;
                 const auto inner = sr.getWidth() * .37f;
-                const auto outer = sr.getWidth() * .49f;
+                const auto outer = sr.getWidth() * .50f;
                 const auto centre = sr.getCentre();
                 g.drawLine(centre.x + std::cos(angle) * inner, centre.y + std::sin(angle) * inner,
-                           centre.x + std::cos(angle) * outer, centre.y + std::sin(angle) * outer, 1.0f);
+                           centre.x + std::cos(angle) * outer, centre.y + std::sin(angle) * outer, 1.05f);
             }
         }
     }
