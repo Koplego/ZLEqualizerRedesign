@@ -225,6 +225,9 @@ namespace zlpanel {
     void TopPanel::repaintCallbackSlow() {
         output_label_.repaintCallbackSlow();
         updater_.updateComponents();
+        match_button_.getButton().setToggleState(
+            static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel)) > .5,
+            juce::dontSendNotification);
         repaint();
     }
 
