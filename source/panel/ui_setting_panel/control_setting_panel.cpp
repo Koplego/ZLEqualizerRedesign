@@ -8,6 +8,7 @@
 // You should have received a copy of the GNU Affero General Public License along with ZLEqualizer. If not, see <https://www.gnu.org/licenses/>.
 
 #include "control_setting_panel.hpp"
+#include "../../gui/glass_tokens.hpp"
 
 namespace zlpanel {
     ControlSettingPanel::ControlSettingPanel(PluginProcessor& p, zlgui::UIBase& base) :
@@ -45,26 +46,29 @@ namespace zlpanel {
             zlgui::combobox::CompactCombobox(zlstate::PDeleteBandKey::kChoices, base)
         } {
         juce::ignoreUnused(p_ref_);
-        name_laf_.setFontScale(.88f);
+        setOpaque(false);
+        name_laf_.setFontScale(.76f);
 
-        wheel_label_.setText("Wheel Sensitivity", juce::dontSendNotification);
-        wheel_label_.setJustificationType(juce::Justification::centredRight);
-        wheel_label_.setLookAndFeel(&name_laf_);
-        addAndMakeVisible(wheel_label_);
-        slider_label_.setText("Slider Sensitivity", juce::dontSendNotification);
-        slider_label_.setJustificationType(juce::Justification::centredRight);
-        slider_label_.setLookAndFeel(&name_laf_);
-        addAndMakeVisible(slider_label_);
-        dragger_label_.setText("Dragger Sensitivity", juce::dontSendNotification);
-        dragger_label_.setJustificationType(juce::Justification::centredRight);
-        dragger_label_.setLookAndFeel(&name_laf_);
-        addAndMakeVisible(dragger_label_);
+        const auto configure_label = [this](juce::Label& label, const juce::String& text) {
+            label.setText(text, juce::dontSendNotification);
+            label.setJustificationType(juce::Justification::centredLeft);
+            label.setLookAndFeel(&name_laf_);
+            label.setAlpha(.76f);
+            addAndMakeVisible(label);
+        };
+
+        configure_label(wheel_label_, "Mouse Wheel");
+        configure_label(slider_label_, "Sliders");
+        configure_label(dragger_label_, "EQ Nodes");
+        configure_label(rotary_style_label_, "Rotary Controls");
+        configure_label(slider_double_click_label_, "Double Click");
+
         for (auto& s : sensitivity_sliders_) {
-            s.setFontScale(.76f);
+            s.setFontScale(.72f);
             s.getSlider().setRange(0.01, 1.0, 0.01);
+            s.getSlider().setSliderSnapsToMousePosition(false);
             addAndMakeVisible(s);
         }
-        addAndMakeVisible(wheel_reverse_box_);
         sensitivity_sliders_[0].getSlider().setDoubleClickReturnValue(true, 1.0);
         sensitivity_sliders_[1].getSlider().setDoubleClickReturnValue(true, 0.12);
         sensitivity_sliders_[2].getSlider().setDoubleClickReturnValue(true, 1.0);
@@ -72,19 +76,25 @@ namespace zlpanel {
         sensitivity_sliders_[4].getSlider().setDoubleClickReturnValue(true, 1.0);
         sensitivity_sliders_[5].getSlider().setDoubleClickReturnValue(true, 0.25);
         sensitivity_sliders_[6].getSlider().setDoubleClickReturnValue(true, 0.5);
-        rotary_style_label_.setText("Rotary Slider Style", juce::dontSendNotification);
-        rotary_style_label_.setJustificationType(juce::Justification::centredRight);
-        rotary_style_label_.setLookAndFeel(&name_laf_);
-        addAndMakeVisible(rotary_style_label_);
-        addAndMakeVisible(rotary_style_box_);
+
         rotary_drag_sensitivity_slider_.getSlider().setRange(2.0, 32.0, 0.01);
-        rotary_drag_sensitivity_slider_.setFontScale(.76f);
+        rotary_drag_sensitivity_slider_.setFontScale(.72f);
         rotary_drag_sensitivity_slider_.getSlider().setDoubleClickReturnValue(true, 10.0);
+        rotary_drag_sensitivity_slider_.getSlider().setSliderSnapsToMousePosition(false);
         addAndMakeVisible(rotary_drag_sensitivity_slider_);
-        slider_double_click_label_.setText("Slider Double Click", juce::dontSendNotification);
-        slider_double_click_label_.setJustificationType(juce::Justification::centredRight);
-        slider_double_click_label_.setLookAndFeel(&name_laf_);
-        addAndMakeVisible(slider_double_click_label_);
+
+        auto style_combo = [](zlgui::combobox::CompactCombobox& combo) {
+            combo.getLAF().setFontScale(.72f);
+            combo.getLAF().setBoxAlpha(.38f);
+            combo.getLAF().setLabelJustification(juce::Justification::centred);
+            combo.setBufferedToImage(true);
+        };
+
+        style_combo(wheel_reverse_box_);
+        style_combo(rotary_style_box_);
+        style_combo(slider_double_click_box_);
+        addAndMakeVisible(wheel_reverse_box_);
+        addAndMakeVisible(rotary_style_box_);
         addAndMakeVisible(slider_double_click_box_);
 
         action_labels_[0].setText("Enter Solo", juce::dontSendNotification);
@@ -95,9 +105,12 @@ namespace zlpanel {
         action_labels_[5].setText("Delete Band", juce::dontSendNotification);
 
         for (size_t i = 0; i < 6; ++i) {
-            action_labels_[i].setJustificationType(juce::Justification::centredRight);
+            action_labels_[i].setJustificationType(juce::Justification::centredLeft);
             action_labels_[i].setLookAndFeel(&name_laf_);
+            action_labels_[i].setAlpha(.76f);
             addAndMakeVisible(action_labels_[i]);
+            style_combo(action_mouse_boxes_[i]);
+            style_combo(action_key_boxes_[i]);
             addAndMakeVisible(action_mouse_boxes_[i]);
             addAndMakeVisible(action_key_boxes_[i]);
         }
@@ -167,78 +180,129 @@ namespace zlpanel {
     }
 
     int ControlSettingPanel::getIdealHeight() const {
-        const auto padding = juce::roundToInt(base_.getFontSize() * .80f);
-        const auto slider_height = juce::roundToInt(base_.getFontSize() * 2.12f);
-
-        return padding * 12 + slider_height * 11;
+        const auto font = base_.getFontSize();
+        const auto padding = juce::roundToInt(font * .62f);
+        const auto row = juce::roundToInt(font * 2.18f);
+        const auto section = juce::roundToInt(font * 1.42f);
+        return 2 * section + 11 * row + 12 * padding;
     }
 
     void ControlSettingPanel::resized() {
-        const auto padding = juce::roundToInt(base_.getFontSize() * .80f);
-        const auto slider_width = juce::roundToInt(base_.getFontSize() * 5.f);
-        const auto slider_height = juce::roundToInt(base_.getFontSize() * 2.12f);
-        static constexpr int kLabelWidth = 2;
+        const auto font = base_.getFontSize();
+        const auto padding = juce::jmax(5, juce::roundToInt(font * .62f));
+        const auto row = juce::jmax(28, juce::roundToInt(font * 2.18f));
+        const auto section = juce::jmax(18, juce::roundToInt(font * 1.42f));
+        const auto label_w = juce::jmax(126, juce::roundToInt(font * 9.6f));
+        const auto gap = juce::jmax(4, padding / 2);
 
-        auto bound = getLocalBounds();
+        row_bounds_.clear();
+        auto bound = getLocalBounds().reduced(padding, 0);
+        feel_title_bound_ = bound.removeFromTop(section);
+        bound.removeFromTop(padding / 3);
+
+        const auto add_row = [&](juce::Rectangle<int> r) {
+            row_bounds_.push_back(r);
+        };
+
+        // Wheel: Rough / Fine / Menu / direction.
         {
-            bound.removeFromTop(padding);
-            auto local_bound = bound.removeFromTop(slider_height);
-            wheel_label_.setBounds(local_bound.removeFromLeft(slider_width * kLabelWidth));
-            local_bound.removeFromLeft(padding);
-            sensitivity_sliders_[0].setBounds(local_bound.removeFromLeft(slider_width));
-            local_bound.removeFromLeft(padding);
-            sensitivity_sliders_[1].setBounds(local_bound.removeFromLeft(slider_width));
-            local_bound.removeFromLeft(padding);
-            sensitivity_sliders_[6].setBounds(local_bound.removeFromLeft(slider_width));
-            local_bound.removeFromLeft(padding);
-            wheel_reverse_box_.setBounds(
-                local_bound.removeFromLeft(juce::roundToInt(slider_width * 1.7f)).reduced(0, padding / 3));
+            auto r = bound.removeFromTop(row); add_row(r);
+            auto inner = r.reduced(padding / 2, 1);
+            wheel_label_.setBounds(inner.removeFromLeft(juce::jmin(label_w, inner.getWidth() / 3)));
+            inner.removeFromLeft(gap);
+            const auto field_w = juce::jmax(54, inner.getWidth() / 5);
+            sensitivity_sliders_[0].setBounds(inner.removeFromLeft(field_w)); inner.removeFromLeft(gap);
+            sensitivity_sliders_[1].setBounds(inner.removeFromLeft(field_w)); inner.removeFromLeft(gap);
+            sensitivity_sliders_[6].setBounds(inner.removeFromLeft(field_w)); inner.removeFromLeft(gap);
+            wheel_reverse_box_.setBounds(inner.reduced(0, padding / 5));
+            bound.removeFromTop(padding / 3);
         }
+        // Slider sensitivity.
         {
-            bound.removeFromTop(padding);
-            auto local_bound = bound.removeFromTop(slider_height);
-            slider_label_.setBounds(local_bound.removeFromLeft(slider_width * kLabelWidth));
-            local_bound.removeFromLeft(padding);
-            sensitivity_sliders_[2].setBounds(local_bound.removeFromLeft(slider_width));
-            local_bound.removeFromLeft(padding);
-            sensitivity_sliders_[3].setBounds(local_bound.removeFromLeft(slider_width));
+            auto r = bound.removeFromTop(row); add_row(r);
+            auto inner = r.reduced(padding / 2, 1);
+            slider_label_.setBounds(inner.removeFromLeft(juce::jmin(label_w, inner.getWidth() / 3)));
+            inner.removeFromLeft(gap);
+            const auto field_w = juce::jmax(62, (inner.getWidth() - gap) / 2);
+            sensitivity_sliders_[2].setBounds(inner.removeFromLeft(field_w)); inner.removeFromLeft(gap);
+            sensitivity_sliders_[3].setBounds(inner);
+            bound.removeFromTop(padding / 3);
         }
+        // EQ node sensitivity.
         {
-            bound.removeFromTop(padding);
-            auto local_bound = bound.removeFromTop(slider_height);
-            dragger_label_.setBounds(local_bound.removeFromLeft(slider_width * kLabelWidth));
-            local_bound.removeFromLeft(padding);
-            sensitivity_sliders_[4].setBounds(local_bound.removeFromLeft(slider_width));
-            local_bound.removeFromLeft(padding);
-            sensitivity_sliders_[5].setBounds(local_bound.removeFromLeft(slider_width));
+            auto r = bound.removeFromTop(row); add_row(r);
+            auto inner = r.reduced(padding / 2, 1);
+            dragger_label_.setBounds(inner.removeFromLeft(juce::jmin(label_w, inner.getWidth() / 3)));
+            inner.removeFromLeft(gap);
+            const auto field_w = juce::jmax(62, (inner.getWidth() - gap) / 2);
+            sensitivity_sliders_[4].setBounds(inner.removeFromLeft(field_w)); inner.removeFromLeft(gap);
+            sensitivity_sliders_[5].setBounds(inner);
+            bound.removeFromTop(padding / 3);
         }
+        // Rotary behavior.
         {
-            bound.removeFromTop(padding);
-            auto local_bound = bound.removeFromTop(slider_height);
-            rotary_style_label_.setBounds(local_bound.removeFromLeft(slider_width * kLabelWidth));
-            local_bound.removeFromLeft(padding);
-            rotary_style_box_.setBounds(local_bound.removeFromLeft(2 * slider_width).reduced(0, padding / 3));
-            local_bound.removeFromLeft(padding);
-            rotary_drag_sensitivity_slider_.setBounds(local_bound.removeFromLeft(slider_width));
+            auto r = bound.removeFromTop(row); add_row(r);
+            auto inner = r.reduced(padding / 2, 1);
+            rotary_style_label_.setBounds(inner.removeFromLeft(juce::jmin(label_w, inner.getWidth() / 3)));
+            inner.removeFromLeft(gap);
+            auto distance = inner.removeFromRight(juce::jmax(78, inner.getWidth() / 3));
+            inner.removeFromRight(gap);
+            rotary_style_box_.setBounds(inner.reduced(0, padding / 5));
+            rotary_drag_sensitivity_slider_.setBounds(distance);
+            bound.removeFromTop(padding / 3);
         }
+        // Double-click behavior.
         {
-            bound.removeFromTop(padding);
-            auto local_bound = bound.removeFromTop(slider_height);
-            slider_double_click_label_.setBounds(local_bound.removeFromLeft(slider_width * kLabelWidth));
-            local_bound.removeFromLeft(padding);
-            slider_double_click_box_.setBounds(local_bound.removeFromLeft(slider_width * 2).reduced(0, padding / 3));
+            auto r = bound.removeFromTop(row); add_row(r);
+            auto inner = r.reduced(padding / 2, 1);
+            slider_double_click_label_.setBounds(inner.removeFromLeft(juce::jmin(label_w, inner.getWidth() / 3)));
+            inner.removeFromLeft(gap);
+            slider_double_click_box_.setBounds(inner.reduced(0, padding / 5));
+            bound.removeFromTop(padding / 2);
         }
+
+        shortcuts_title_bound_ = bound.removeFromTop(section);
+        bound.removeFromTop(padding / 4);
+
+        // Shortcuts use a stable three-column grid: action | mouse | keyboard.
+        const auto available_w = bound.getWidth();
+        const auto action_w = juce::jmax(label_w, available_w * 38 / 100);
+        const auto field_w = juce::jmax(86, (available_w - action_w - 2 * gap) / 2);
+        mouse_column_bound_ = {bound.getX() + action_w + gap, shortcuts_title_bound_.getY(),
+                               field_w, shortcuts_title_bound_.getHeight()};
+        key_column_bound_ = {mouse_column_bound_.getRight() + gap, shortcuts_title_bound_.getY(),
+                             field_w, shortcuts_title_bound_.getHeight()};
 
         for (size_t i = 0; i < 6; ++i) {
-            bound.removeFromTop(padding);
-            auto local_bound = bound.removeFromTop(slider_height);
-            action_labels_[i].setBounds(local_bound.removeFromLeft(slider_width * kLabelWidth));
-            local_bound.removeFromLeft(padding);
-            action_mouse_boxes_[i].setBounds(
-                local_bound.removeFromLeft(static_cast<int>(slider_width * 2)).reduced(0, padding / 3));
-            local_bound.removeFromLeft(padding);
-            action_key_boxes_[i].setBounds(
-                local_bound.removeFromLeft(static_cast<int>(slider_width * 2)).reduced(0, padding / 3));
+            auto r = bound.removeFromTop(row); add_row(r);
+            auto inner = r.reduced(padding / 2, 1);
+            action_labels_[i].setBounds(inner.removeFromLeft(juce::jmin(action_w, inner.getWidth())));
+            inner.removeFromLeft(gap);
+            action_mouse_boxes_[i].setBounds(inner.removeFromLeft(juce::jmin(field_w, inner.getWidth())).reduced(0, padding / 5));
+            if (inner.getWidth() > gap) inner.removeFromLeft(gap);
+            action_key_boxes_[i].setBounds(inner.reduced(0, padding / 5));
+            bound.removeFromTop(padding / 3);
+        }
+    }
+
+    void ControlSettingPanel::paint(juce::Graphics& g) {
+        const auto font = base_.getFontSize();
+        g.setColour(zlgui::glass::textPrimary().withAlpha(.84f));
+        g.setFont(juce::FontOptions(font * .72f));
+        g.drawText("INTERACTION FEEL", feel_title_bound_, juce::Justification::centredLeft, false);
+        g.drawText("SHORTCUTS", shortcuts_title_bound_, juce::Justification::centredLeft, false);
+
+        g.setColour(zlgui::glass::textTertiary().withMultipliedAlpha(.92f));
+        g.setFont(juce::FontOptions(font * .60f));
+        g.drawText("MOUSE", mouse_column_bound_, juce::Justification::centred, false);
+        g.drawText("KEY", key_column_bound_, juce::Justification::centred, false);
+
+        for (const auto& row : row_bounds_) {
+            auto r = row.toFloat().reduced(.5f);
+            g.setColour(juce::Colour(238, 248, 255).withAlpha(.022f));
+            g.fillRoundedRectangle(r, juce::jmax(6.f, font * .55f));
+            g.setColour(zlgui::glass::rim().withMultipliedAlpha(.22f));
+            g.drawRoundedRectangle(r, juce::jmax(6.f, font * .55f), .55f);
         }
     }
 }
