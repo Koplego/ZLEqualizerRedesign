@@ -8,6 +8,7 @@
 // You should have received a copy of the GNU Affero General Public License along with ZLEqualizer. If not, see <https://www.gnu.org/licenses/>.
 
 #include "analyzer_panel.hpp"
+#include "../../../gui/glass_tokens.hpp"
 #include "BinaryData.h"
 
 namespace zlpanel {
@@ -15,91 +16,83 @@ namespace zlpanel {
                                  const multilingual::TooltipHelper& tooltip_helper) :
         base_(base),
         control_background_(base),
-        pre_button_(base, "Pre",
-                    tooltip_helper.getToolTipText(multilingual::kFFTPre)),
-        pre_attach_(pre_button_.getButton(), p.parameters_NA_,
-                    zlstate::PFFTPreON::kID, updater_),
-        post_button_(base, "Post",
-                     tooltip_helper.getToolTipText(multilingual::kFFTPost)),
-        post_attach_(post_button_.getButton(), p.parameters_NA_,
-                     zlstate::PFFTPostON::kID, updater_),
-        side_button_(base, "Side",
-                     tooltip_helper.getToolTipText(multilingual::kFFTSide)),
-        side_attach_(side_button_.getButton(), p.parameters_NA_,
-                     zlstate::PFFTSideON::kID, updater_),
-        speed_box_(zlstate::PFFTSpeed::kChoices, base,
-                   tooltip_helper.getToolTipText(multilingual::kFFTSpeed)),
-        speed_attach_(speed_box_.getBox(), p.parameters_NA_,
-                      zlstate::PFFTSpeed::kID, updater_),
-        slope_box_(zlstate::PFFTTilt::kChoices, base,
-                   tooltip_helper.getToolTipText(multilingual::kFFTSlope)),
-        slope_attach_(slope_box_.getBox(), p.parameters_NA_,
-                      zlstate::PFFTTilt::kID, updater_),
+        pre_button_(base, "Pre", tooltip_helper.getToolTipText(multilingual::kFFTPre)),
+        pre_attach_(pre_button_.getButton(), p.parameters_NA_, zlstate::PFFTPreON::kID, updater_),
+        post_button_(base, "Post", tooltip_helper.getToolTipText(multilingual::kFFTPost)),
+        post_attach_(post_button_.getButton(), p.parameters_NA_, zlstate::PFFTPostON::kID, updater_),
+        side_button_(base, "Side", tooltip_helper.getToolTipText(multilingual::kFFTSide)),
+        side_attach_(side_button_.getButton(), p.parameters_NA_, zlstate::PFFTSideON::kID, updater_),
+        speed_box_(zlstate::PFFTSpeed::kChoices, base, tooltip_helper.getToolTipText(multilingual::kFFTSpeed)),
+        speed_attach_(speed_box_.getBox(), p.parameters_NA_, zlstate::PFFTSpeed::kID, updater_),
+        slope_box_(zlstate::PFFTTilt::kChoices, base, tooltip_helper.getToolTipText(multilingual::kFFTSlope)),
+        slope_attach_(slope_box_.getBox(), p.parameters_NA_, zlstate::PFFTTilt::kID, updater_),
         smooth_oct_value_box_(zlstate::PFFTSmoothOCTValue::kChoices, base, ""),
-        smooth_oct_value_attach_(smooth_oct_value_box_.getBox(), p.parameters_NA_,
-                                 zlstate::PFFTSmoothOCTValue::kID, updater_),
+        smooth_oct_value_attach_(smooth_oct_value_box_.getBox(), p.parameters_NA_, zlstate::PFFTSmoothOCTValue::kID, updater_),
         smooth_erb_value_box_(zlstate::PFFTSmoothERBValue::kChoices, base, ""),
-        smooth_erb_value_attach_(smooth_erb_value_box_.getBox(), p.parameters_NA_,
-                                 zlstate::PFFTSmoothERBValue::kID, updater_),
+        smooth_erb_value_attach_(smooth_erb_value_box_.getBox(), p.parameters_NA_, zlstate::PFFTSmoothERBValue::kID, updater_),
         smooth_type_box_(zlstate::PFFTSmoothType::kChoices, base, ""),
-        smooth_type_attach_(smooth_type_box_.getBox(), p.parameters_NA_,
-                            zlstate::PFFTSmoothType::kID, updater_),
-        freeze_drawable_(juce::Drawable::createFromImageData(BinaryData::freeze_svg,
-                                                             BinaryData::freeze_svgSize)),
-        freeze_button_(base, freeze_drawable_.get(), freeze_drawable_.get(),
-                       tooltip_helper.getToolTipText(multilingual::kFFTFreeze)),
-        freeze_attach_(freeze_button_.getButton(), p.parameters_NA_,
-                       zlstate::PFFTFreezeON::kID, updater_),
+        smooth_type_attach_(smooth_type_box_.getBox(), p.parameters_NA_, zlstate::PFFTSmoothType::kID, updater_),
+        freeze_drawable_(juce::Drawable::createFromImageData(BinaryData::freeze_svg, BinaryData::freeze_svgSize)),
+        freeze_button_(base, freeze_drawable_.get(), freeze_drawable_.get(), tooltip_helper.getToolTipText(multilingual::kFFTFreeze)),
+        freeze_attach_(freeze_button_.getButton(), p.parameters_NA_, zlstate::PFFTFreezeON::kID, updater_),
         lr_box_([]() -> std::vector<std::unique_ptr<juce::Drawable>> {
             std::vector<std::unique_ptr<juce::Drawable>> icons;
-            icons.emplace_back(
-                juce::Drawable::createFromImageData(BinaryData::stereo_svg, BinaryData::stereo_svgSize));
-            icons.emplace_back(
-                juce::Drawable::createFromImageData(BinaryData::left_svg, BinaryData::left_svgSize));
-            icons.emplace_back(
-                juce::Drawable::createFromImageData(BinaryData::right_svg, BinaryData::right_svgSize));
-            icons.emplace_back(
-                juce::Drawable::createFromImageData(BinaryData::mid_svg, BinaryData::mid_svgSize));
-            icons.emplace_back(
-                juce::Drawable::createFromImageData(BinaryData::side_svg, BinaryData::side_svgSize));
+            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::stereo_svg, BinaryData::stereo_svgSize));
+            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::left_svg, BinaryData::left_svgSize));
+            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::right_svg, BinaryData::right_svgSize));
+            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::mid_svg, BinaryData::mid_svgSize));
+            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::side_svg, BinaryData::side_svgSize));
             return icons;
         }(), base, "", {"Stereo", "Left", "Right", "Mid", "Side"}),
-        lr_attachment_(lr_box_.getBox(), p.parameters_NA_,
-                       zlstate::PFFTStereo::kID, updater_),
-        collision_drawable_(juce::Drawable::createFromImageData(BinaryData::collision_svg,
-                                                                BinaryData::collision_svgSize)),
-        collision_button_(base, collision_drawable_.get(), collision_drawable_.get(),
-                          tooltip_helper.getToolTipText(multilingual::kFFTCollision)),
-        collision_attach_(collision_button_.getButton(), p.parameters_NA_,
-                          zlstate::PCollisionON::kID, updater_),
-        label_laf_(base),
-        strength_label_("", "Strength"),
-        strength_slider_("", base,
-                         tooltip_helper.getToolTipText(multilingual::kFFTCollisionStrength)),
-        strength_attach_(strength_slider_.getSlider(), p.parameters_NA_,
-                         zlstate::PCollisionStrength::kID, updater_) {
+        lr_attachment_(lr_box_.getBox(), p.parameters_NA_, zlstate::PFFTStereo::kID, updater_),
+        collision_drawable_(juce::Drawable::createFromImageData(BinaryData::collision_svg, BinaryData::collision_svgSize)),
+        collision_button_(base, collision_drawable_.get(), collision_drawable_.get(), tooltip_helper.getToolTipText(multilingual::kFFTCollision)),
+        collision_attach_(collision_button_.getButton(), p.parameters_NA_, zlstate::PCollisionON::kID, updater_),
+        label_laf_(base), strength_label_("", "Strength"),
+        strength_slider_("", base, tooltip_helper.getToolTipText(multilingual::kFFTCollisionStrength)),
+        strength_attach_(strength_slider_.getSlider(), p.parameters_NA_, zlstate::PCollisionStrength::kID, updater_) {
 
         control_background_.setBufferedToImage(true);
         addAndMakeVisible(control_background_);
 
-        for (auto& b : {&pre_button_, &post_button_, &side_button_}) {
-            b->getLAF().setFontScale(1.5f);
-            b->getLAF().setJustification(juce::Justification::centred);
-            b->getButton().setToggleable(true);
-            b->getButton().setClickingTogglesState(true);
-            b->setBufferedToImage(true);
-            addAndMakeVisible(b);
-        }
+        const auto style_toggle = [this](zlgui::button::ClickTextButton& button) {
+            button.getLAF().setFontScale(.76f);
+            button.getLAF().setJustification(juce::Justification::centred);
+            button.getButton().setToggleable(true);
+            button.getButton().setClickingTogglesState(true);
+            button.setBackgroundPainter([](juce::Graphics& g, juce::Button& b, const bool hover, const bool down) {
+                const auto active = b.getToggleState() || down;
+                if (!active && !hover) return;
+                auto r = b.getLocalBounds().toFloat().reduced(.6f);
+                g.setColour(juce::Colour(126, 185, 232).withAlpha(active ? .17f : .065f));
+                g.fillRoundedRectangle(r, r.getHeight() * .5f);
+                if (active) {
+                    g.setColour(zlgui::glass::rim().withMultipliedAlpha(.62f));
+                    g.drawRoundedRectangle(r, r.getHeight() * .5f, .65f);
+                }
+            });
+            button.setBufferedToImage(true);
+            addAndMakeVisible(button);
+        };
+        style_toggle(pre_button_);
+        style_toggle(post_button_);
+        style_toggle(side_button_);
 
         for (auto& c : {&speed_box_, &slope_box_, &smooth_type_box_}) {
+            c->getLAF().setFontScale(.74f);
+            c->getLAF().setBoxAlpha(.42f);
+            c->getLAF().setLabelJustification(juce::Justification::centred);
             c->setBufferedToImage(true);
             addAndMakeVisible(c);
         }
 
-        smooth_oct_value_box_.setBufferedToImage(true);
+        for (auto* c : {&smooth_oct_value_box_, &smooth_erb_value_box_}) {
+            c->getLAF().setFontScale(.72f);
+            c->getLAF().setBoxAlpha(.34f);
+            c->getLAF().setLabelJustification(juce::Justification::centred);
+            c->setBufferedToImage(true);
+        }
         addChildComponent(smooth_oct_value_box_);
-
-        smooth_erb_value_box_.setBufferedToImage(true);
         addAndMakeVisible(smooth_erb_value_box_);
 
         smooth_type_box_.getBox().onChange = [this]() {
@@ -111,18 +104,20 @@ namespace zlpanel {
         const auto popup_option = juce::PopupMenu::Options().withPreferredPopupDirection(
             juce::PopupMenu::Options::PopupDirection::downwards);
         lr_box_.getLAF().setOption(popup_option);
+        lr_box_.getLAF().setBoxAlpha(.34f);
         lr_box_.setBufferedToImage(true);
         addAndMakeVisible(lr_box_);
 
         for (auto& b : {&freeze_button_, &collision_button_}) {
-            b->setImageAlpha(.5f, .75f, 1.f, 1.f);
+            b->setImageAlpha(.38f, .60f, .94f, .94f);
             b->setBufferedToImage(true);
             addAndMakeVisible(b);
         }
 
-        label_laf_.setFontScale(1.5f);
-        strength_label_.setJustificationType(juce::Justification::centredRight);
+        label_laf_.setFontScale(.78f);
+        strength_label_.setJustificationType(juce::Justification::centredLeft);
         strength_label_.setLookAndFeel(&label_laf_);
+        strength_label_.setAlpha(.70f);
         strength_label_.setBufferedToImage(true);
         addAndMakeVisible(strength_label_);
 
@@ -139,72 +134,71 @@ namespace zlpanel {
     }
 
     int AnalyzerPanel::getIdealWidth() const {
-        const auto font_size = base_.getFontSize();
-        const auto padding = getPaddingSize(font_size);
-        const auto slider_width = getSliderWidth(font_size);
-
-        return 6 * padding + 3 * (slider_width / 2);
+        const auto font = base_.getFontSize();
+        return juce::jmax(juce::roundToInt(font * 18.5f), 3 * getSliderWidth(font));
     }
 
     int AnalyzerPanel::getIdealHeight() const {
-        const auto font_size = base_.getFontSize();
-        const auto padding = getPaddingSize(font_size);
-        const auto button_height = getButtonSize(font_size);
-
-        return 7 * padding + 6 * button_height;
+        const auto font = base_.getFontSize();
+        const auto row = juce::jmax(getButtonSize(font), juce::roundToInt(font * 1.95f));
+        const auto padding = getPaddingSize(font);
+        return 6 * row + 5 * padding;
     }
 
     void AnalyzerPanel::resized() {
-        const auto font_size = base_.getFontSize();
-        const auto button_height = getButtonSize(font_size);
-        const auto padding = getPaddingSize(font_size);
+        const auto font = base_.getFontSize();
+        const auto row = juce::jmax(getButtonSize(font), juce::roundToInt(font * 1.95f));
+        const auto padding = getPaddingSize(font);
 
         auto bound = getLocalBounds();
         control_background_.setBounds(bound);
-
         bound.reduce(2 * padding, padding);
-        {
-            auto t_bound = bound.removeFromTop(button_height);
-            const auto button_width = t_bound.getWidth() / 3;
-            pre_button_.setBounds(t_bound.removeFromLeft(button_width));
-            side_button_.setBounds(t_bound.removeFromRight(button_width));
-            post_button_.setBounds(t_bound);
-        }
-        bound.removeFromTop(padding);
-        speed_box_.setBounds(bound.removeFromTop(button_height));
 
-        bound.removeFromTop(padding);
-        slope_box_.setBounds(bound.removeFromTop(button_height));
+        {
+            auto r = bound.removeFromTop(row);
+            const auto gap = juce::jmax(2, padding / 3);
+            const auto w = (r.getWidth() - 2 * gap) / 3;
+            pre_button_.setBounds(r.removeFromLeft(w)); r.removeFromLeft(gap);
+            post_button_.setBounds(r.removeFromLeft(w)); r.removeFromLeft(gap);
+            side_button_.setBounds(r);
+        }
+        bound.removeFromTop(padding / 2);
+        speed_box_.setBounds(bound.removeFromTop(row));
+        bound.removeFromTop(padding / 2);
+        slope_box_.setBounds(bound.removeFromTop(row));
+        bound.removeFromTop(padding / 2);
 
-        bound.removeFromTop(padding);
         {
-            auto t_bound = bound.removeFromTop(button_height);
-            smooth_type_box_.setBounds(t_bound.removeFromRight(t_bound.getWidth() / 2));
-            smooth_oct_value_box_.setBounds(t_bound);
-            smooth_erb_value_box_.setBounds(t_bound);
+            auto r = bound.removeFromTop(row);
+            const auto gap = juce::jmax(2, padding / 3);
+            const auto left_w = (r.getWidth() - gap) / 2;
+            smooth_oct_value_box_.setBounds(r.removeFromLeft(left_w));
+            smooth_erb_value_box_.setBounds(smooth_oct_value_box_.getBounds());
+            r.removeFromLeft(gap);
+            smooth_type_box_.setBounds(r);
+        }
+        bound.removeFromTop(padding / 2);
+
+        {
+            auto r = bound.removeFromTop(row);
+            const auto icon_size = juce::jmin(row, juce::roundToInt(font * 2.0f));
+            const auto gap = juce::jmax(padding, (r.getWidth() - 3 * icon_size) / 4);
+            r.removeFromLeft(gap);
+            freeze_button_.setBounds(r.removeFromLeft(icon_size)); r.removeFromLeft(gap);
+            lr_box_.setBounds(r.removeFromLeft(icon_size)); r.removeFromLeft(gap);
+            collision_button_.setBounds(r.removeFromLeft(icon_size));
+        }
+        bound.removeFromTop(padding / 2);
+
+        {
+            auto r = bound.removeFromTop(row);
+            const auto label_w = juce::jmax(juce::roundToInt(font * 5.0f), r.getWidth() / 2);
+            strength_label_.setBounds(r.removeFromLeft(label_w));
+            r.removeFromLeft(padding / 2);
+            strength_slider_.setBounds(r);
         }
 
-        bound.removeFromTop(padding);
-        {
-            auto t_bound = bound.removeFromTop(button_height);
-            const auto h_padding = (t_bound.getWidth() - button_height * 3) / 3;
-            t_bound.removeFromLeft(h_padding / 2);
-            freeze_button_.setBounds(t_bound.removeFromLeft(button_height));
-            t_bound.removeFromLeft(h_padding);
-            const auto lr_box_bound = t_bound.removeFromLeft(button_height);
-            lr_box_.setBounds(lr_box_bound.reduced(static_cast<int>(std::round(base_.getFontSize() * .1f))));
-            t_bound.removeFromRight(h_padding / 2);
-            collision_button_.setBounds(t_bound.removeFromRight(button_height));
-        }
-        bound.removeFromTop(padding);
-        {
-            auto t_bound = bound.removeFromTop(button_height);
-            strength_slider_.setBounds(t_bound.removeFromRight(t_bound.getWidth() / 3));
-            t_bound.removeFromRight(padding);
-            strength_label_.setBounds(t_bound);
-        }
-        const auto dragging_distance = getSliderDraggingDistance(font_size);
-        strength_slider_.setMouseDragSensitivity(dragging_distance);
+        strength_slider_.setMouseDragSensitivity(getSliderDraggingDistance(font));
     }
 
     void AnalyzerPanel::repaintCallBackSlow() {
