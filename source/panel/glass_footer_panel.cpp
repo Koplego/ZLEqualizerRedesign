@@ -18,26 +18,38 @@ namespace zlpanel {
         post_attach_(post_button_.getButton(), p.parameters_NA_, zlstate::PFFTPostON::kID, updater_),
         speed_box_(zlstate::PFFTSpeed::kChoices, base, ""),
         speed_attach_(speed_box_.getBox(), p.parameters_NA_, zlstate::PFFTSpeed::kID, updater_),
+        output_button_(base, "Output"),
         controls_button_(base, "Controls"),
         settings_button_(base, "Settings"),
         phase_box_(zlp::PFilterStructure::kChoices, base, ""),
         phase_attach_(phase_box_.getBox(), p.parameters_, zlp::PFilterStructure::kID, updater_) {
         setOpaque(false);
-        for (auto* button : {&analyzer_button_, &pre_button_, &post_button_, &controls_button_, &settings_button_}) {
+        for (auto* button : {&analyzer_button_, &pre_button_, &post_button_, &output_button_,
+                             &controls_button_, &settings_button_}) {
             stylePill(*button);
             button->getLAF().setFontScale(.76f);
         }
 
+        analyzer_button_.getButton().setToggleable(true);
+        analyzer_button_.getButton().setClickingTogglesState(false);
+        output_button_.getButton().setToggleable(true);
+        output_button_.getButton().setClickingTogglesState(false);
         pre_button_.getButton().setToggleable(true);
         pre_button_.getButton().setClickingTogglesState(true);
         post_button_.getButton().setToggleable(true);
         post_button_.getButton().setClickingTogglesState(true);
         controls_button_.getButton().setToggleable(true);
+        controls_button_.getButton().setClickingTogglesState(false);
         settings_button_.getButton().setToggleable(true);
+        settings_button_.getButton().setClickingTogglesState(false);
 
         analyzer_button_.getButton().onClick = [this]() {
             const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel));
             base_.setPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel, open < .5 ? 1. : 0.);
+        };
+        output_button_.getButton().onClick = [this]() {
+            const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kOutputPanel));
+            base_.setPanelProperty(zlgui::PanelSettingIdx::kOutputPanel, open < .5 ? 1. : 0.);
         };
         controls_button_.getButton().onClick = [this]() {
             if (controls_callback_) controls_callback_();
@@ -58,6 +70,7 @@ namespace zlpanel {
         addAndMakeVisible(pre_button_);
         addAndMakeVisible(post_button_);
         addAndMakeVisible(speed_box_);
+        addAndMakeVisible(output_button_);
         addAndMakeVisible(controls_button_);
         addAndMakeVisible(settings_button_);
         addAndMakeVisible(phase_box_);
@@ -99,7 +112,7 @@ namespace zlpanel {
 
         g.setColour(base_.getTextColour().withAlpha(.38f));
         g.setFont(juce::FontOptions(base_.getFontSize() * .62f));
-        g.drawText("Phase", processing_label_bound_, juce::Justification::centredRight, false);
+        g.drawText("Processing", processing_label_bound_, juce::Justification::centredRight, false);
     }
 
     void GlassFooterPanel::resized() {
@@ -126,26 +139,36 @@ namespace zlpanel {
             .getUnion(speed_box_.getBounds())
             .expanded(juce::jmax(3, padding / 2), juce::jmax(2, padding / 3));
 
-        const auto tool_w = juce::jmax(74, juce::roundToInt(font * 5.2f));
-        auto tools = getLocalBounds().withSizeKeepingCentre(tool_w * 2 + padding / 3,
+        const auto tool_w = juce::jmax(70, juce::roundToInt(font * 4.9f));
+        auto tools = getLocalBounds().withSizeKeepingCentre(tool_w * 3 + 2 * (padding / 3),
                                                             getButtonSize(font) + padding / 2);
+        output_button_.setBounds(tools.removeFromLeft(tool_w));
+        tools.removeFromLeft(padding / 3);
         controls_button_.setBounds(tools.removeFromLeft(tool_w));
         tools.removeFromLeft(padding / 3);
         settings_button_.setBounds(tools.removeFromLeft(tool_w));
-        tools_group_bound_ = controls_button_.getBounds().getUnion(settings_button_.getBounds())
+        tools_group_bound_ = output_button_.getBounds()
+            .getUnion(controls_button_.getBounds())
+            .getUnion(settings_button_.getBounds())
             .expanded(juce::jmax(3, padding / 2), juce::jmax(2, padding / 3));
 
         const auto phase_w = juce::jmax(138, juce::roundToInt(font * 9.0f));
         auto phase = b.removeFromRight(phase_w);
         phase_box_.setBounds(phase);
         b.removeFromRight(padding / 3);
-        processing_label_bound_ = b.removeFromRight(juce::jmax(54, juce::roundToInt(font * 3.9f)));
+        processing_label_bound_ = b.removeFromRight(juce::jmax(72, juce::roundToInt(font * 5.35f)));
         processing_group_bound_ = processing_label_bound_.getUnion(phase_box_.getBounds())
             .expanded(juce::jmax(3, padding / 2), juce::jmax(2, padding / 3));
     }
 
     void GlassFooterPanel::repaintCallbackSlow() {
         updater_.updateComponents();
+        analyzer_button_.getButton().setToggleState(
+            static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel)) > .5,
+            juce::dontSendNotification);
+        output_button_.getButton().setToggleState(
+            static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kOutputPanel)) > .5,
+            juce::dontSendNotification);
         settings_button_.getButton().setToggleState(
             static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel)) > .5,
             juce::dontSendNotification);
