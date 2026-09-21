@@ -24,21 +24,23 @@ namespace zlpanel {
 
         juce::Path path;
         path.addRoundedRectangle(bound, corner);
-        const juce::DropShadow shadow{juce::Colours::black.withAlpha(0.22f * shadow_alpha_),
-                                      juce::jmax(padding + 2, 3), {0, juce::jmax(1, padding / 3)}};
+        const juce::DropShadow shadow{juce::Colours::black.withAlpha(0.16f * shadow_alpha_),
+                                      juce::jmax(padding + 1, 3), {0, juce::jmax(1, padding / 4)}};
         shadow.drawForPath(g, path);
 
-        // These panels live inside the editor, so the graph can remain visible through
-        // them. Keep just enough dark body for text contrast, then let the shared glass
-        // layers bend and tint the response underneath instead of hiding it.
-        g.setColour(juce::Colour(8, 23, 37).withAlpha(.44f));
+        // Secondary workflows should read as one quiet floating sheet, not as the old ZL
+        // panels with a glass coat. Keep the body translucent and let spacing do the work.
+        g.setColour(juce::Colour(8, 23, 37).withAlpha(.34f));
         g.fillRoundedRectangle(bound, corner);
-        zlgui::glass::fillGlassSurface(g, bound, corner, .14f, .20f, .28f);
+        zlgui::glass::fillGlassSurface(g, bound, corner, .10f, .16f, .22f);
 
         if (paints_surfaces_) {
-            g.setColour(juce::Colour(7, 22, 35).withAlpha(.16f));
             for (const auto& surface_bound : surface_bounds_) {
-                g.fillRoundedRectangle(surface_bound.toFloat(), static_cast<float>(padding) * .72f);
+                auto surface = surface_bound.toFloat();
+                g.setColour(juce::Colour(4, 18, 31).withAlpha(.095f));
+                g.fillRoundedRectangle(surface, static_cast<float>(padding) * .66f);
+                g.setColour(zlgui::glass::rim().withMultipliedAlpha(.34f));
+                g.drawRoundedRectangle(surface, static_cast<float>(padding) * .66f, .6f);
             }
         }
     }
