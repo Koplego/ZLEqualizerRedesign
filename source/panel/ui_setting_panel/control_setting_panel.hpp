@@ -1,7 +1,7 @@
 // Copyright (C) 2026 - zsliu98
 // This file is part of ZLEqualizer
 //
-// ZLEqualizer is free software: you can redistribute it and/or modify it under the terms of the GNU标志 General Public License Version 3 as published by the Free Software Foundation.
+// ZLEqualizer is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License Version 3 as published by the Free Software Foundation.
 //
 // ZLEqualizer is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 //
@@ -31,6 +31,7 @@ namespace zlpanel {
         int getIdealHeight() const;
 
         void resized() override;
+        void paint(juce::Graphics& g) override;
 
     private:
         PluginProcessor &p_ref_;
@@ -51,6 +52,12 @@ namespace zlpanel {
         std::array<juce::Label, 6> action_labels_;
         std::array<zlgui::combobox::CompactCombobox, 6> action_mouse_boxes_;
         std::array<zlgui::combobox::CompactCombobox, 6> action_key_boxes_;
+
+        juce::Rectangle<int> feel_title_bound_{};
+        juce::Rectangle<int> shortcuts_title_bound_{};
+        juce::Rectangle<int> mouse_column_bound_{};
+        juce::Rectangle<int> key_column_bound_{};
+        std::vector<juce::Rectangle<int>> row_bounds_{};
 
         std::unique_ptr<juce::FileChooser> chooser_;
         inline auto static const kSettingDirectory =
