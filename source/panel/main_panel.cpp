@@ -39,9 +39,12 @@ namespace zlpanel {
         startTimerHz(1);
 
         addAndMakeVisible(curve_panel_);
+        addChildComponent(overlay_scrim_);
 
-        // v1.2: the original control system is restored as an on-demand sheet. It remains
-        // hidden during normal graph work, but every original ZL control is reachable again.
+        // v1.2 system-integrity checkpoint: the complete legacy band control system is kept as
+        // an on-demand sheet while the contextual inspector is being rebuilt. This guarantees
+        // feature parity (slope, target gain, full dynamics, side-chain controls, etc.) instead
+        // of silently dropping features during the visual redesign.
         addChildComponent(control_panel_);
         control_panel_.setVisible(false);
 
@@ -52,7 +55,6 @@ namespace zlpanel {
         addChildComponent(ui_setting_panel_);
         preset_browser_.setBufferedToImage(true);
         addChildComponent(preset_browser_);
-        preset_browser_.toFront(false);
 
         updateOverlayState();
     }
@@ -89,8 +91,6 @@ namespace zlpanel {
     }
 
     void MainPanel::paintOverChildren(juce::Graphics& g) {
-        // Keep the canvas quiet when a global sheet is open, without dimming the sheet itself.
-        // The sheet components are brought to front after this component's layout updates.
         juce::ignoreUnused(g);
     }
 
@@ -123,6 +123,7 @@ namespace zlpanel {
         bound.removeFromBottom(juce::jmax(5, outer_padding / 2));
 
         curve_panel_.setBounds(bound);
+        overlay_scrim_.setBounds(curve_panel_.getBounds());
 
         const auto padding = getPaddingSize(font_size);
         const auto match_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel)) > .5;
@@ -186,6 +187,17 @@ namespace zlpanel {
         base_.setPanelProperty(zlgui::PanelSettingIdx::kOutputPanel, 0.0);
     }
 
+    void MainPanel::closeGlobalSheetsForUtility(const zlgui::PanelSettingIdx utility) {
+        control_sheet_open_ = false;
+        base_.setPanelProperty(zlgui::PanelSettingIdx::kPresetBrowser, 0.0);
+        base_.setPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel, 0.0);
+        base_.setPanelProperty(zlgui::PanelSettingIdx::kMatchPanel, 0.0);
+        if (utility != zlgui::PanelSettingIdx::kAnalyzerPanel)
+            base_.setPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel, 0.0);
+        if (utility != zlgui::PanelSettingIdx::kOutputPanel)
+            base_.setPanelProperty(zlgui::PanelSettingIdx::kOutputPanel, 0.0);
+    }
+
     void MainPanel::updateOverlayState() {
         const auto match_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel)) > .5;
         const auto settings_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel)) > .5;
@@ -193,14 +205,20 @@ namespace zlpanel {
 
         if (match_open) control_sheet_open_ = false;
 
+        const auto scrim_visible = control_sheet_open_ || settings_open || preset_open;
+        overlay_scrim_.setVisible(scrim_visible);
         control_panel_.setVisible(match_open || control_sheet_open_);
         ui_setting_panel_.setVisible(settings_open);
         preset_browser_.setVisible(preset_open);
         footer_panel_.setControlsActive(control_sheet_open_ && !match_open);
 
+        if (scrim_visible) overlay_scrim_.toFront(false);
         if (control_panel_.isVisible()) control_panel_.toFront(false);
         if (settings_open) ui_setting_panel_.toFront(false);
         if (preset_open) preset_browser_.toFront(false);
+
+        // Keep the persistent navigation islands usable above sheets. This lets the user switch
+        // between Presets / Settings / Controls without stacking panels on top of each other.
         top_panel_.toFront(false);
         footer_panel_.toFront(false);
     }
@@ -252,6 +270,16 @@ namespace zlpanel {
                 control_sheet_open_ = false;
                 closeGlobalOverlaysExcept(zlgui::PanelSettingIdx::kMatchPanel);
             }
+            updateOverlayState();
+            resized();
+        } else if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kAnalyzerPanel, property)) {
+            const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel)) > .5;
+            if (open) closeGlobalSheetsForUtility(zlgui::PanelSettingIdx::kAnalyzerPanel);
+            updateOverlayState();
+            resized();
+        } else if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kOutputPanel, property)) {
+            const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kOutputPanel)) > .5;
+            if (open) closeGlobalSheetsForUtility(zlgui::PanelSettingIdx::kOutputPanel);
             updateOverlayState();
             resized();
         }
