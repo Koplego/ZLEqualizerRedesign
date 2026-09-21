@@ -40,6 +40,26 @@ namespace zlpanel {
     private:
         static constexpr float kHoWMin = 0.33f;
 
+        class GlobalScrim final : public juce::Component {
+        public:
+            GlobalScrim() {
+                setOpaque(false);
+                setInterceptsMouseClicks(true, true);
+            }
+
+            void paint(juce::Graphics& g) override {
+                const auto b = getLocalBounds().toFloat();
+                g.setColour(juce::Colour(3, 12, 21).withAlpha(.48f));
+                g.fillRoundedRectangle(b, 12.f);
+                juce::ColourGradient vignette(juce::Colours::transparentBlack,
+                                               b.getCentreX(), b.getCentreY(),
+                                               juce::Colour(1, 7, 13).withAlpha(.30f),
+                                               b.getX(), b.getY(), true);
+                g.setGradientFill(vignette);
+                g.fillRoundedRectangle(b, 12.f);
+            }
+        };
+
         PluginProcessor& p_ref_;
         zlgui::UIBase& base_;
         multilingual::TooltipHelper tooltip_helper_;
@@ -49,6 +69,7 @@ namespace zlpanel {
         double refresh_rate_{-1.0};
 
         CurvePanel curve_panel_;
+        GlobalScrim overlay_scrim_;
         ControlPanel control_panel_;
         ExtraDynamicPanel extra_dynamic_panel_;
         TopPanel top_panel_;
@@ -66,6 +87,7 @@ namespace zlpanel {
         void toggleControlSheet();
         void toggleSettingsSheet();
         void closeGlobalOverlaysExcept(zlgui::PanelSettingIdx keep);
+        void closeGlobalSheetsForUtility(zlgui::PanelSettingIdx utility);
         void updateOverlayState();
 
         void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property) override;
