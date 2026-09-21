@@ -8,13 +8,14 @@
 // You should have received a copy of the GNU Affero General Public License along with ZLEqualizer. If not, see <https://www.gnu.org/licenses/>.
 
 #include "right_click_panel.hpp"
+#include "../../../../gui/glass_tokens.hpp"
 
 namespace zlpanel {
     RightClickPanel::RightClickPanel(PluginProcessor& p, zlgui::UIBase& base,
                                      const multilingual::TooltipHelper&) :
         p_ref_(p), base_(base),
         items_set_(base.getSelectedBandSet()),
-        control_background_(base, .25f),
+        control_background_(base, .20f),
         invert_button_(base, "Invert Gain"),
         lr_split_button_(base, "Split L/R"),
         ms_split_button_(base, "Split M/S"),
@@ -24,30 +25,27 @@ namespace zlpanel {
         addAndMakeVisible(control_background_);
         addAndMakeVisible(mouse_event_eater_);
 
-        invert_button_.getButton().onClick = [this]() {
-            invertGain();
-        };
-
+        invert_button_.getButton().onClick = [this]() { invertGain(); };
         lr_split_button_.getButton().onClick = [this]() {
             splitBand(zlp::FilterStereo::kLeft, zlp::FilterStereo::kRight);
         };
-
         ms_split_button_.getButton().onClick = [this]() {
             splitBand(zlp::FilterStereo::kMid, zlp::FilterStereo::kSide);
         };
-
-        copy_button_.getButton().onClick = [this]() {
-            copyBand();
-        };
-
-        paste_button_.getButton().onClick = [this]() {
-            pasteBand();
-        };
+        copy_button_.getButton().onClick = [this]() { copyBand(); };
+        paste_button_.getButton().onClick = [this]() { pasteBand(); };
 
         for (auto& b : {&invert_button_, &lr_split_button_, &ms_split_button_,
                         &copy_button_, &paste_button_}) {
-            b->getLAF().setFontScale(.78f);
+            b->getLAF().setFontScale(.72f);
             b->getLAF().setJustification(juce::Justification::centredLeft);
+            b->setBackgroundPainter([](juce::Graphics& g, juce::Button& button,
+                                       const bool highlighted, const bool down) {
+                if (!highlighted && !down) return;
+                auto r = button.getLocalBounds().toFloat().reduced(.75f);
+                g.setColour(juce::Colour(133, 187, 228).withAlpha(down ? .15f : .085f));
+                g.fillRoundedRectangle(r, juce::jmax(5.f, r.getHeight() * .24f));
+            });
             addAndMakeVisible(b);
         }
 
@@ -57,23 +55,20 @@ namespace zlpanel {
     int RightClickPanel::getIdealWidth() const {
         const auto font_size = base_.getFontSize();
         const auto padding = getPaddingSize(font_size);
-        const auto slider_width = getSliderWidth(font_size);
-
-        return 4 * padding + slider_width;
+        return juce::jmax(juce::roundToInt(font_size * 10.6f), 4 * padding + getSliderWidth(font_size));
     }
 
     int RightClickPanel::getIdealHeight() const {
         const auto font_size = base_.getFontSize();
         const auto padding = getPaddingSize(font_size);
-        const auto button_height = getButtonSize(font_size);
-
-        return 2 * padding + 5 * button_height;
+        const auto row_height = juce::jmax(juce::roundToInt(font_size * 1.82f), getButtonSize(font_size) * 3 / 4);
+        return 2 * padding + 5 * row_height;
     }
 
     void RightClickPanel::resized() {
         const auto font_size = base_.getFontSize();
         const auto padding = getPaddingSize(font_size);
-        const auto button_height = getButtonSize(font_size);
+        const auto row_height = juce::jmax(juce::roundToInt(font_size * 1.82f), getButtonSize(font_size) * 3 / 4);
 
         auto bound = getLocalBounds();
         control_background_.setBounds(bound);
@@ -82,22 +77,28 @@ namespace zlpanel {
 
         for (auto& b : {&invert_button_, &lr_split_button_, &ms_split_button_,
                         &copy_button_, &paste_button_}) {
-            b->setBounds(bound.removeFromTop(button_height));
+            b->setBounds(bound.removeFromTop(row_height));
         }
     }
 
     void RightClickPanel::setPosition(juce::Point<float> pos) {
-        const auto parent_width = safe_area_.getWidth();
-        const auto parent_height = safe_area_.getHeight();
-
         const auto width = static_cast<float>(getWidth());
         const auto height = static_cast<float>(getHeight());
+        const auto inset = juce::jmax(2.f, base_.getFontSize() * .25f);
 
-        if (pos.x + width > parent_width || pos.y + height > parent_height) {
-            setTransform(juce::AffineTransform::translation(pos.x - width, pos.y - height));
-        } else {
-            setTransform(juce::AffineTransform::translation(pos.x, pos.y));
-        }
+        auto x = pos.x;
+        auto y = pos.y;
+        const auto left = safe_area_.getX() + inset;
+        const auto top = safe_area_.getY() + inset;
+        const auto right = safe_area_.getRight() - inset;
+        const auto bottom = safe_area_.getBottom() - inset;
+
+        if (x + width > right) x = pos.x - width;
+        if (y + height > bottom) y = pos.y - height;
+        x = juce::jlimit(left, juce::jmax(left, right - width), x);
+        y = juce::jlimit(top, juce::jmax(top, bottom - height), y);
+
+        setTransform(juce::AffineTransform::translation(x, y));
     }
 
     void RightClickPanel::setSafeArea(juce::Rectangle<float> area) {
@@ -116,9 +117,7 @@ namespace zlpanel {
 
     void RightClickPanel::invertGain() {
         const auto band = base_.getSelectedBand();
-        if (band == zlp::kBandNum) {
-            return;
-        }
+        if (band == zlp::kBandNum) return;
         auto* para1 = p_ref_.parameters_.getParameter(zlp::PGain::kID + std::to_string(band));
         updateValue(para1, 1.f - para1->getValue());
         auto* para2 = p_ref_.parameters_.getParameter(zlp::PTargetGain::kID + std::to_string(band));
@@ -128,13 +127,9 @@ namespace zlpanel {
 
     void RightClickPanel::splitBand(zlp::FilterStereo stereo1, zlp::FilterStereo stereo2) {
         const auto band1 = base_.getSelectedBand();
-        if (band1 == zlp::kBandNum) {
-            return;
-        }
+        if (band1 == zlp::kBandNum) return;
         const auto band2 = band_helper::findOffBand(p_ref_);
-        if (band2 == zlp::kBandNum) {
-            return;
-        }
+        if (band2 == zlp::kBandNum) return;
         const auto band1_s = std::to_string(band1);
         const auto band2_s = std::to_string(band2);
         for (auto& ID : kIDs) {
@@ -159,16 +154,12 @@ namespace zlpanel {
     }
 
     void RightClickPanel::copyBand() {
-        if (base_.getSelectedBand() == zlp::kBandNum) {
-            return;
-        }
+        if (base_.getSelectedBand() == zlp::kBandNum) return;
         setVisible(false);
 
         juce::ValueTree tree{"filter_info"};
         auto selected_band = items_set_.getItemArray();
-        if (selected_band.isEmpty()) {
-            selected_band.add(base_.getSelectedBand());
-        }
+        if (selected_band.isEmpty()) selected_band.add(base_.getSelectedBand());
 
         int i = 0;
         for (const size_t band : selected_band) {
@@ -176,31 +167,26 @@ namespace zlpanel {
             tree.addChild(filter, i, nullptr);
             i += 1;
             const auto band_s = std::to_string(band);
-
             for (auto& para_ID : kIDs) {
                 const auto* para = p_ref_.parameters_.getParameter(para_ID + band_s);
-                filter.setProperty(para_ID,
-                                   para->getCurrentValueAsText(),
-                                   nullptr);
+                filter.setProperty(para_ID, para->getCurrentValueAsText(), nullptr);
             }
         }
-
         juce::SystemClipboard::copyTextToClipboard(tree.toXmlString());
     }
 
     void RightClickPanel::pasteBand() {
         const auto tree = juce::ValueTree::fromXml(juce::SystemClipboard::getTextFromClipboard());
-        if (!tree.hasType("filter_info")) { return; }
+        if (!tree.hasType("filter_info")) return;
 
         setVisible(false);
-
         base_.getSelectedBandSet().deselectAll();
         for (size_t i = 0; i < zlp::kBandNum; ++i) {
             const auto filter = tree.getChildWithName(juce::Identifier{"filter" + std::to_string(i)});
-            if (!filter.isValid()) { return; }
+            if (!filter.isValid()) return;
 
             const size_t band = band_helper::findOffBand(p_ref_);
-            if (band == zlp::kBandNum) { return; }
+            if (band == zlp::kBandNum) return;
 
             const auto band_s = std::to_string(band);
             for (auto& para_ID : kIDs) {
