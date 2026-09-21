@@ -8,6 +8,7 @@
 // You should have received a copy of the GNU Affero General Public License along with ZLEqualizer. If not, see <https://www.gnu.org/licenses/>.
 
 #include "other_ui_setting_panel.hpp"
+#include "../../gui/glass_tokens.hpp"
 
 namespace zlpanel {
     OtherUISettingPanel::OtherUISettingPanel(PluginProcessor& p, zlgui::UIBase& base) :
@@ -27,23 +28,39 @@ namespace zlpanel {
         curve_db2_slider_("Max", base),
         window_size_fix_box_(zlstate::PWindowSizeFix::kChoices, base) {
         juce::ignoreUnused(p_ref_);
-        name_laf_.setFontScale(.88f);
+        setOpaque(false);
+        name_laf_.setFontScale(.76f);
+
+        const auto configure_label = [this](juce::Label& label, const juce::String& text) {
+            label.setText(text, juce::dontSendNotification);
+            label.setJustificationType(juce::Justification::centredLeft);
+            label.setLookAndFeel(&name_laf_);
+            label.setAlpha(.76f);
+            addAndMakeVisible(label);
+        };
+
         for (auto* slider : {&fft_tilt_slider_, &fft_speed_slider_, &single_curve_slider_, &sum_curve_slider_,
                              &font_scale_slider_, &static_font_size_slider_, &curve_db0_slider_,
                              &curve_db1_slider_, &curve_db2_slider_}) {
-            slider->setFontScale(.76f);
+            slider->setFontScale(.72f);
+            slider->getSlider().setSliderSnapsToMousePosition(false);
         }
 
-        refresh_rate_label_.setText("Refresh Rate", juce::dontSendNotification);
-        refresh_rate_label_.setJustificationType(juce::Justification::centredRight);
-        refresh_rate_label_.setLookAndFeel(&name_laf_);
-        addAndMakeVisible(refresh_rate_label_);
+        auto style_combo = [](zlgui::combobox::CompactCombobox& combo) {
+            combo.getLAF().setFontScale(.72f);
+            combo.getLAF().setBoxAlpha(.38f);
+            combo.getLAF().setLabelJustification(juce::Justification::centred);
+            combo.setBufferedToImage(true);
+        };
+        style_combo(refresh_rate_box_);
+        style_combo(tooltip_box_);
+        style_combo(font_mode_box_);
+        style_combo(window_size_fix_box_);
+
+        configure_label(refresh_rate_label_, "Refresh Rate");
         addAndMakeVisible(refresh_rate_box_);
 
-        fft_label_.setText("FFT", juce::dontSendNotification);
-        fft_label_.setJustificationType(juce::Justification::centredRight);
-        fft_label_.setLookAndFeel(&name_laf_);
-        addAndMakeVisible(fft_label_);
+        configure_label(fft_label_, "Analyzer Rendering");
         fft_tilt_slider_.getSlider().setNormalisableRange(juce::NormalisableRange<double>(-4.5, 4.5, .01));
         fft_tilt_slider_.getSlider().setDoubleClickReturnValue(true, 0.);
         addAndMakeVisible(fft_tilt_slider_);
@@ -51,10 +68,7 @@ namespace zlpanel {
         fft_speed_slider_.getSlider().setDoubleClickReturnValue(true, 1.0);
         addAndMakeVisible(fft_speed_slider_);
 
-        curve_thick_label_.setText("Curve Thickness", juce::dontSendNotification);
-        curve_thick_label_.setJustificationType(juce::Justification::centredRight);
-        curve_thick_label_.setLookAndFeel(&name_laf_);
-        addAndMakeVisible(curve_thick_label_);
+        configure_label(curve_thick_label_, "Curve Weight");
         single_curve_slider_.getSlider().setNormalisableRange(juce::NormalisableRange<double>(0., 2., .01));
         single_curve_slider_.getSlider().setDoubleClickReturnValue(true, 1.0);
         addAndMakeVisible(single_curve_slider_);
@@ -62,16 +76,10 @@ namespace zlpanel {
         sum_curve_slider_.getSlider().setDoubleClickReturnValue(true, 1.0);
         addAndMakeVisible(sum_curve_slider_);
 
-        tooltip_label_.setText("Tooltip", juce::dontSendNotification);
-        tooltip_label_.setJustificationType(juce::Justification::centredRight);
-        tooltip_label_.setLookAndFeel(&name_laf_);
-        addAndMakeVisible(tooltip_label_);
+        configure_label(tooltip_label_, "Tooltips");
         addAndMakeVisible(tooltip_box_);
 
-        font_label_.setText("UI Scaling", juce::dontSendNotification);
-        font_label_.setJustificationType(juce::Justification::centredRight);
-        font_label_.setLookAndFeel(&name_laf_);
-        addAndMakeVisible(font_label_);
+        configure_label(font_label_, "Interface Scale");
         font_mode_box_.getBox().addListener(this);
         addAndMakeVisible(font_mode_box_);
         font_scale_slider_.getSlider().setNormalisableRange(juce::NormalisableRange<double>(0.5, 1.0, .01));
@@ -80,10 +88,7 @@ namespace zlpanel {
         static_font_size_slider_.setInterceptsMouseClicks(false, false);
         addAndMakeVisible(static_font_size_slider_);
 
-        curve_db_label_.setText("Curve DB Scale", juce::dontSendNotification);
-        curve_db_label_.setJustificationType(juce::Justification::centredRight);
-        curve_db_label_.setLookAndFeel(&name_laf_);
-        addAndMakeVisible(curve_db_label_);
+        configure_label(curve_db_label_, "Graph dB Range");
         curve_db0_slider_.getSlider().setNormalisableRange(juce::NormalisableRange<double>(1., 30.0, 1.));
         curve_db0_slider_.getSlider().setDoubleClickReturnValue(true, 6.0);
         addAndMakeVisible(curve_db0_slider_);
@@ -94,10 +99,7 @@ namespace zlpanel {
         curve_db2_slider_.getSlider().setDoubleClickReturnValue(true, 30.0);
         addAndMakeVisible(curve_db2_slider_);
 
-        window_size_fix_label_.setText("Window Size Fix", juce::dontSendNotification);
-        window_size_fix_label_.setJustificationType(juce::Justification::centredRight);
-        window_size_fix_label_.setLookAndFeel(&name_laf_);
-        addAndMakeVisible(window_size_fix_label_);
+        configure_label(window_size_fix_label_, "Window Size");
         addAndMakeVisible(window_size_fix_box_);
     }
 
@@ -139,90 +141,120 @@ namespace zlpanel {
     }
 
     int OtherUISettingPanel::getIdealHeight() const {
-        const auto padding = juce::roundToInt(base_.getFontSize() * .80f);
-        const auto slider_height = juce::roundToInt(base_.getFontSize() * 2.12f);
-
-        return 8 * padding + 7 * slider_height;
+        const auto font = base_.getFontSize();
+        const auto padding = juce::roundToInt(font * .62f);
+        const auto row = juce::roundToInt(font * 2.18f);
+        const auto section = juce::roundToInt(font * 1.42f);
+        return 3 * section + 7 * row + 9 * padding;
     }
 
     void OtherUISettingPanel::resized() {
-        const auto padding = juce::roundToInt(base_.getFontSize() * .80f);
-        const auto slider_width = juce::roundToInt(base_.getFontSize() * 5.f);
-        const auto slider_height = juce::roundToInt(base_.getFontSize() * 2.12f);
+        const auto font = base_.getFontSize();
+        const auto padding = juce::jmax(5, juce::roundToInt(font * .62f));
+        const auto row = juce::jmax(28, juce::roundToInt(font * 2.18f));
+        const auto section = juce::jmax(18, juce::roundToInt(font * 1.42f));
+        const auto label_w = juce::jmax(126, juce::roundToInt(font * 9.8f));
+        const auto gap = juce::jmax(4, padding / 2);
 
-        auto bound = getLocalBounds();
+        row_bounds_.clear();
+        auto bound = getLocalBounds().reduced(padding, 0);
+        const auto add_row = [&](juce::Rectangle<int> r) { row_bounds_.push_back(r); };
+        const auto split_label = [&](juce::Rectangle<int>& inner, juce::Label& label) {
+            label.setBounds(inner.removeFromLeft(juce::jmin(label_w, inner.getWidth() / 3)));
+            inner.removeFromLeft(gap);
+        };
+
+        performance_title_bound_ = bound.removeFromTop(section);
+        bound.removeFromTop(padding / 3);
         {
-            bound.removeFromTop(padding);
-            auto local_bound = bound.removeFromTop(slider_height);
-            refresh_rate_label_.setBounds(local_bound.removeFromLeft(slider_width * 2));
-            local_bound.removeFromLeft(padding);
-            refresh_rate_box_.setBounds(local_bound.removeFromLeft(slider_width).reduced(0, padding / 3));
+            auto r = bound.removeFromTop(row); add_row(r);
+            auto inner = r.reduced(padding / 2, 1); split_label(inner, refresh_rate_label_);
+            refresh_rate_box_.setBounds(inner.reduced(0, padding / 5));
+            bound.removeFromTop(padding / 3);
         }
         {
-            bound.removeFromTop(padding);
-            auto local_bound = bound.removeFromTop(slider_height);
-            fft_label_.setBounds(local_bound.removeFromLeft(slider_width * 2));
-            local_bound.removeFromLeft(padding);
-            fft_tilt_slider_.setBounds(local_bound.removeFromLeft(slider_width));
-            local_bound.removeFromLeft(padding);
-            fft_speed_slider_.setBounds(local_bound.removeFromLeft(slider_width));
+            auto r = bound.removeFromTop(row); add_row(r);
+            auto inner = r.reduced(padding / 2, 1); split_label(inner, fft_label_);
+            const auto w = (inner.getWidth() - gap) / 2;
+            fft_tilt_slider_.setBounds(inner.removeFromLeft(w)); inner.removeFromLeft(gap);
+            fft_speed_slider_.setBounds(inner);
+            bound.removeFromTop(padding / 3);
         }
         {
-            bound.removeFromTop(padding);
-            auto local_bound = bound.removeFromTop(slider_height);
-            curve_thick_label_.setBounds(local_bound.removeFromLeft(slider_width * 2));
-            local_bound.removeFromLeft(padding);
-            single_curve_slider_.setBounds(local_bound.removeFromLeft(slider_width));
-            local_bound.removeFromLeft(padding);
-            sum_curve_slider_.setBounds(local_bound.removeFromLeft(slider_width));
+            auto r = bound.removeFromTop(row); add_row(r);
+            auto inner = r.reduced(padding / 2, 1); split_label(inner, curve_thick_label_);
+            const auto w = (inner.getWidth() - gap) / 2;
+            single_curve_slider_.setBounds(inner.removeFromLeft(w)); inner.removeFromLeft(gap);
+            sum_curve_slider_.setBounds(inner);
+            bound.removeFromTop(padding / 2);
+        }
+
+        appearance_title_bound_ = bound.removeFromTop(section);
+        bound.removeFromTop(padding / 3);
+        {
+            auto r = bound.removeFromTop(row); add_row(r);
+            auto inner = r.reduced(padding / 2, 1); split_label(inner, tooltip_label_);
+            tooltip_box_.setBounds(inner.reduced(0, padding / 5));
+            bound.removeFromTop(padding / 3);
         }
         {
-            bound.removeFromTop(padding);
-            auto local_bound = bound.removeFromTop(slider_height);
-            tooltip_label_.setBounds(local_bound.removeFromLeft(slider_width * 2));
-            local_bound.removeFromLeft(padding);
-            tooltip_box_.setBounds(local_bound.removeFromLeft(slider_width).reduced(0, padding / 3));
-        }
-        {
-            bound.removeFromTop(padding);
-            auto local_bound = bound.removeFromTop(slider_height);
-            font_label_.setBounds(local_bound.removeFromLeft(slider_width * 2));
-            local_bound.removeFromLeft(padding);
-            font_mode_box_.setBounds(local_bound.removeFromLeft(slider_width).reduced(0, padding / 3));
-            local_bound.removeFromLeft(padding);
-            font_scale_slider_.setBounds(local_bound.removeFromLeft(slider_width));
-            local_bound.removeFromLeft(padding);
-            static_font_size_slider_.setBounds(local_bound.removeFromLeft(slider_width));
+            auto r = bound.removeFromTop(row); add_row(r);
+            auto inner = r.reduced(padding / 2, 1); split_label(inner, font_label_);
+            const auto mode_w = juce::jmax(86, inner.getWidth() * 34 / 100);
+            font_mode_box_.setBounds(inner.removeFromLeft(mode_w).reduced(0, padding / 5));
+            inner.removeFromLeft(gap);
+            const auto remaining_w = inner.getWidth();
+            font_scale_slider_.setBounds(inner.removeFromLeft(remaining_w / 2));
+            if (inner.getWidth() > gap) inner.removeFromLeft(gap);
+            static_font_size_slider_.setBounds(inner);
 
             if (parent_width_ < 2) {
                 static_font_size_slider_.setVisible(false);
-                return;
+            } else {
+                static_font_size_slider_.setVisible(true);
+                const auto max_font_size = std::floor(static_cast<float>(parent_width_) * kFontSizeOverWidth);
+                const auto min_font_size = std::ceil(static_cast<float>(parent_width_) * kFontSizeOverWidth * .25f);
+                static_font_size_slider_.getSlider().setNormalisableRange(juce::NormalisableRange<double>(
+                    min_font_size, max_font_size, 0.01));
+                static_font_size_slider_.getSlider().setDoubleClickReturnValue(
+                    true, .5f * (min_font_size + max_font_size));
             }
-            static_font_size_slider_.setVisible(true);
-            const auto max_font_size = std::floor(static_cast<float>(parent_width_) * kFontSizeOverWidth);
-            const auto min_font_size = std::ceil(static_cast<float>(parent_width_) * kFontSizeOverWidth * .25f);
-            static_font_size_slider_.getSlider().setNormalisableRange(juce::NormalisableRange<double>(
-                min_font_size, max_font_size, 0.01));
-            static_font_size_slider_.getSlider().setDoubleClickReturnValue(
-                true, .5f * (min_font_size + max_font_size));
+            bound.removeFromTop(padding / 3);
         }
         {
-            bound.removeFromTop(padding);
-            auto local_bound = bound.removeFromTop(slider_height);
-            curve_db_label_.setBounds(local_bound.removeFromLeft(slider_width * 2));
-            local_bound.removeFromLeft(padding);
-            curve_db0_slider_.setBounds(local_bound.removeFromLeft(slider_width));
-            local_bound.removeFromLeft(padding);
-            curve_db1_slider_.setBounds(local_bound.removeFromLeft(slider_width));
-            local_bound.removeFromLeft(padding);
-            curve_db2_slider_.setBounds(local_bound.removeFromLeft(slider_width));
+            auto r = bound.removeFromTop(row); add_row(r);
+            auto inner = r.reduced(padding / 2, 1); split_label(inner, window_size_fix_label_);
+            window_size_fix_box_.setBounds(inner.reduced(0, padding / 5));
+            bound.removeFromTop(padding / 2);
         }
+
+        scale_title_bound_ = bound.removeFromTop(section);
+        bound.removeFromTop(padding / 3);
         {
-            bound.removeFromTop(padding);
-            auto local_bound = bound.removeFromTop(slider_height);
-            window_size_fix_label_.setBounds(local_bound.removeFromLeft(slider_width * 2));
-            local_bound.removeFromLeft(padding);
-            window_size_fix_box_.setBounds(local_bound.removeFromLeft(slider_width).reduced(0, padding / 3));
+            auto r = bound.removeFromTop(row); add_row(r);
+            auto inner = r.reduced(padding / 2, 1); split_label(inner, curve_db_label_);
+            const auto w = juce::jmax(62, (inner.getWidth() - 2 * gap) / 3);
+            curve_db0_slider_.setBounds(inner.removeFromLeft(w)); inner.removeFromLeft(gap);
+            curve_db1_slider_.setBounds(inner.removeFromLeft(juce::jmin(w, inner.getWidth())));
+            if (inner.getWidth() > gap) inner.removeFromLeft(gap);
+            curve_db2_slider_.setBounds(inner);
+        }
+    }
+
+    void OtherUISettingPanel::paint(juce::Graphics& g) {
+        const auto font = base_.getFontSize();
+        g.setColour(zlgui::glass::textPrimary().withAlpha(.84f));
+        g.setFont(juce::FontOptions(font * .72f));
+        g.drawText("PERFORMANCE", performance_title_bound_, juce::Justification::centredLeft, false);
+        g.drawText("APPEARANCE", appearance_title_bound_, juce::Justification::centredLeft, false);
+        g.drawText("GRAPH SCALE", scale_title_bound_, juce::Justification::centredLeft, false);
+
+        for (const auto& row : row_bounds_) {
+            auto r = row.toFloat().reduced(.5f);
+            g.setColour(juce::Colour(238, 248, 255).withAlpha(.022f));
+            g.fillRoundedRectangle(r, juce::jmax(6.f, font * .55f));
+            g.setColour(zlgui::glass::rim().withMultipliedAlpha(.22f));
+            g.drawRoundedRectangle(r, juce::jmax(6.f, font * .55f), .55f);
         }
     }
 
@@ -235,10 +267,10 @@ namespace zlpanel {
             font_scale_slider_.setInterceptsMouseClicks(true, true);
             font_scale_slider_.setAlpha(1.f);
             static_font_size_slider_.setInterceptsMouseClicks(false, false);
-            static_font_size_slider_.setAlpha(.5f);
+            static_font_size_slider_.setAlpha(.38f);
         } else {
             font_scale_slider_.setInterceptsMouseClicks(false, false);
-            font_scale_slider_.setAlpha(.5f);
+            font_scale_slider_.setAlpha(.38f);
             static_font_size_slider_.setInterceptsMouseClicks(true, true);
             static_font_size_slider_.setAlpha(1.f);
         }
