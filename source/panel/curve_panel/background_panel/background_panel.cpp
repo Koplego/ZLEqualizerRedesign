@@ -32,73 +32,43 @@ namespace zlpanel {
             juce::Graphics::ScopedSaveState clip(g);
             g.reduceClipRegion(panel_clip);
 
-            // A darker viewport lets the colored bands and analyzer provide the light,
-            // matching the contrast hierarchy of the reference.
-            juce::ColourGradient glass(juce::Colour(39, 65, 84), panel.getCentreX(), panel.getY(),
-                                       juce::Colour(8, 25, 39), panel.getCentreX(), panel.getBottom(), false);
-            glass.addColour(.43, juce::Colour(23, 49, 67));
+            // The viewport in the concept is intentionally calmer than the shell. The
+            // analyzer and EQ curves provide the visual energy; the graph itself remains
+            // a dark, lightly illuminated pane.
+            juce::ColourGradient glass(juce::Colour(35, 60, 79), panel.getCentreX(), panel.getY(),
+                                       juce::Colour(7, 23, 37), panel.getCentreX(), panel.getBottom(), false);
+            glass.addColour(.44, juce::Colour(20, 45, 63));
             g.setGradientFill(glass);
             g.fillRect(panel.expanded(2.f));
 
-            juce::ColourGradient center_glow(juce::Colour(187, 221, 241).withAlpha(.10f),
-                                              panel.getCentreX(), panel.getY() + panel.getHeight() * .30f,
-                                              juce::Colours::transparentBlack,
-                                              panel.getCentreX(), panel.getBottom(), true);
-            g.setGradientFill(center_glow);
+            // One broad cool field and one extremely weak warm field are enough to make
+            // the graph feel optically connected to the outer shell without introducing
+            // visible decorative objects behind the data.
+            juce::ColourGradient cool_light(
+                juce::Colour(187, 221, 241).withAlpha(.070f),
+                panel.getX() + panel.getWidth() * .18f,
+                panel.getY() + panel.getHeight() * .10f,
+                juce::Colours::transparentBlack,
+                panel.getX() + panel.getWidth() * .61f,
+                panel.getY() + panel.getHeight() * .77f,
+                true);
+            g.setGradientFill(cool_light);
             g.fillRect(panel);
 
-            juce::ColourGradient left_mist(juce::Colour(174, 217, 245).withAlpha(.105f),
-                                            panel.getX() + panel.getWidth() * .13f,
-                                            panel.getY() + panel.getHeight() * .06f,
-                                            juce::Colours::transparentBlack,
-                                            panel.getX() + panel.getWidth() * .43f,
-                                            panel.getY() + panel.getHeight() * .62f, true);
-            g.setGradientFill(left_mist);
+            juce::ColourGradient warm_light(
+                juce::Colour(233, 207, 174).withAlpha(.032f),
+                panel.getX() + panel.getWidth() * .82f,
+                panel.getY() + panel.getHeight() * .24f,
+                juce::Colours::transparentBlack,
+                panel.getX() + panel.getWidth() * .55f,
+                panel.getBottom(),
+                true);
+            g.setGradientFill(warm_light);
             g.fillRect(panel);
-
-            juce::ColourGradient warm_mist(juce::Colour(233, 207, 174).withAlpha(.070f),
-                                            panel.getX() + panel.getWidth() * .76f,
-                                            panel.getY() + panel.getHeight() * .22f,
-                                            juce::Colours::transparentBlack,
-                                            panel.getX() + panel.getWidth() * .50f,
-                                            panel.getBottom(), true);
-            g.setGradientFill(warm_mist);
-            g.fillRect(panel);
-
-            // The faint displaced ribbon is the graph's refractive cue. Its broad soft
-            // edge remains behind the grid and response so it never competes with data.
-            juce::Path ribbon;
-            ribbon.startNewSubPath(panel.getX() - panel.getWidth() * .04f,
-                                   panel.getY() + panel.getHeight() * .23f);
-            ribbon.cubicTo(panel.getX() + panel.getWidth() * .18f,
-                           panel.getY() + panel.getHeight() * .06f,
-                           panel.getX() + panel.getWidth() * .29f,
-                           panel.getY() + panel.getHeight() * .37f,
-                           panel.getX() + panel.getWidth() * .48f,
-                           panel.getY() + panel.getHeight() * .22f);
-            ribbon.cubicTo(panel.getX() + panel.getWidth() * .66f,
-                           panel.getY() + panel.getHeight() * .09f,
-                           panel.getX() + panel.getWidth() * .78f,
-                           panel.getY() + panel.getHeight() * .34f,
-                           panel.getRight() + panel.getWidth() * .04f,
-                           panel.getY() + panel.getHeight() * .14f);
-            g.setColour(juce::Colour(1, 12, 23).withAlpha(.16f));
-            g.strokePath(ribbon, juce::PathStrokeType(panel.getHeight() * .13f,
-                                                      juce::PathStrokeType::curved,
-                                                      juce::PathStrokeType::rounded),
-                         juce::AffineTransform::translation(0.f, panel.getHeight() * .022f));
-            g.setColour(juce::Colour(207, 234, 250).withAlpha(.068f));
-            g.strokePath(ribbon, juce::PathStrokeType(panel.getHeight() * .105f,
-                                                      juce::PathStrokeType::curved,
-                                                      juce::PathStrokeType::rounded));
-            g.setColour(juce::Colour(250, 253, 255).withAlpha(.075f));
-            g.strokePath(ribbon, juce::PathStrokeType(1.f, juce::PathStrokeType::curved,
-                                                      juce::PathStrokeType::rounded),
-                         juce::AffineTransform::translation(0.f, -panel.getHeight() * .045f));
         }
 
-        g.setColour(zlgui::glass::rim().withMultipliedAlpha(.65f));
-        g.drawRoundedRectangle(panel, radius, .75f);
+        g.setColour(zlgui::glass::rim().withMultipliedAlpha(.62f));
+        g.drawRoundedRectangle(panel, radius, .72f);
 
         if (freq_max_ <= 10.0) {
             return;
@@ -116,7 +86,7 @@ namespace zlpanel {
         auto bound = getLocalBounds().toFloat();
         const auto full_width = bound.getWidth();
         bound.setWidth(bound.getWidth() * kFFTSizeOverWidth);
-        const auto thickness = juce::jmax(0.45f, base_.getFontSize() * 0.045f);
+        const auto thickness = juce::jmax(0.40f, base_.getFontSize() * 0.040f);
         juce::RectangleList<float> minor_rects;
         for (double decade = 10.0; decade <= freq_max_; decade *= 10.0) {
             for (int multiple = 2; multiple < 10; ++multiple) {
@@ -124,11 +94,11 @@ namespace zlpanel {
                 const auto freq = decade * static_cast<double>(multiple);
                 if (freq >= freq_max_) break;
                 const auto p = std::log(freq * .1) / std::log(freq_max_ * .1);
-                minor_rects.add(static_cast<float>(p) * bound.getWidth() - thickness * .30f,
-                                0.f, thickness * .60f, bound.getHeight());
+                minor_rects.add(static_cast<float>(p) * bound.getWidth() - thickness * .25f,
+                                0.f, thickness * .50f, bound.getHeight());
             }
         }
-        g.setColour(zlgui::glass::gridMinor().withMultipliedAlpha(1.45f));
+        g.setColour(zlgui::glass::gridMinor().withMultipliedAlpha(1.22f));
         g.fillRectList(minor_rects);
 
         juce::RectangleList<float> rect_list;
@@ -144,21 +114,20 @@ namespace zlpanel {
         g.setColour(grid_colour_);
         g.fillRectList(rect_list);
 
-        // Very subtle top/bottom falloff, replacing the old dark strips.
         juce::ColourGradient edge_fade;
         edge_fade.point1 = juce::Point<float>(bound.getX(), bound.getY());
         edge_fade.point2 = juce::Point<float>(bound.getX(), bound.getBottom());
         edge_fade.isRadial = false;
         edge_fade.clearColours();
-        edge_fade.addColour(0.0, juce::Colour(4, 16, 28).withAlpha(.13f));
+        edge_fade.addColour(0.0, juce::Colour(4, 16, 28).withAlpha(.10f));
         edge_fade.addColour(.12, juce::Colours::transparentBlack);
         edge_fade.addColour(.86, juce::Colours::transparentBlack);
-        edge_fade.addColour(1.0, juce::Colour(4, 16, 28).withAlpha(.16f));
+        edge_fade.addColour(1.0, juce::Colour(4, 16, 28).withAlpha(.13f));
         g.setGradientFill(edge_fade);
         g.fillRect(getLocalBounds());
 
-        g.setColour(zlgui::glass::textTertiary().withMultipliedAlpha(.92f));
-        g.setFont(base_.getFontSize() * 1.03f);
+        g.setColour(zlgui::glass::textTertiary().withMultipliedAlpha(.88f));
+        g.setFont(base_.getFontSize() * .98f);
         const auto label_y0 = bound.getBottom() - base_.getFontSize() * 1.15f;
         const auto label_height = base_.getFontSize() * 1.1f;
         for (const auto& freq : kFreqValues) {
@@ -178,7 +147,7 @@ namespace zlpanel {
 
     void BackgroundPanel::drawDBs(juce::Graphics& g) const {
         const auto bound = getLocalBounds().toFloat();
-        const auto thickness = juce::jmax(0.45f, base_.getFontSize() * 0.045f);
+        const auto thickness = juce::jmax(0.40f, base_.getFontSize() * 0.040f);
         auto y0 = base_.getFontSize() - thickness * .5f;
         const auto unit_height = (bound.getHeight() - 2.f * base_.getFontSize() * kDraggerScale
             - static_cast<float>(getBottomAreaHeight(base_.getFontSize()))) / 6.f;
@@ -193,6 +162,6 @@ namespace zlpanel {
     }
 
     void BackgroundPanel::lookAndFeelChanged() {
-        grid_colour_ = zlgui::glass::gridMajor().withMultipliedAlpha(1.35f);
+        grid_colour_ = zlgui::glass::gridMajor().withMultipliedAlpha(1.15f);
     }
 }
