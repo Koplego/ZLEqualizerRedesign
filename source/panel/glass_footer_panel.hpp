@@ -35,6 +35,7 @@ namespace zlpanel {
         zlgui::attachment::ComboBoxAttachment<true> phase_attach_;
 
         juce::Rectangle<int> processing_label_bound_{};
+        juce::Rectangle<int> spectrum_label_bound_{};
         juce::Rectangle<int> analyzer_group_bound_{};
         juce::Rectangle<int> tools_group_bound_{};
         juce::Rectangle<int> processing_group_bound_{};

@@ -41,6 +41,7 @@ namespace zlgui::combobox {
         if (tooltip_text.length() > 0) {
             SettableTooltipClient::setTooltip(tooltip_text);
         }
+        startTimerHz(60);
     }
 
     CompactCombobox::CompactCombobox(const std::vector<std::unique_ptr<juce::Drawable>>& icons,
@@ -78,22 +79,20 @@ namespace zlgui::combobox {
         if (tooltip_text.length() > 0) {
             SettableTooltipClient::setTooltip(tooltip_text);
         }
+        startTimerHz(60);
     }
 
     CompactCombobox::~CompactCombobox() {
+        stopTimer();
         combo_box_.setLookAndFeel(nullptr);
     }
 
     void CompactCombobox::paint(juce::Graphics& g) {
-        g.setFont(box_laf_.getFontScale() * base_.getFontSize());
-        float max_text_width = 0.f;
-        for (int i = 0; i < combo_box_.getNumItems(); ++i) {
-            const auto text = combo_box_.getItemText(i);
-            const auto text_width = juce::GlyphArrangement::getStringWidth(g.getCurrentFont(), text);
-            max_text_width = std::max(max_text_width, text_width);
-        }
-        const auto padding = (static_cast<float>(getLocalBounds().getWidth()) - max_text_width) * .5f;
-        box_laf_.setPadding(padding * .975f);
+        juce::ignoreUnused(g);
+        // A stable inset keeps the selected label aligned with popup rows. The old
+        // max-string calculation could become negative in narrow controls and push
+        // text underneath the arrow or outside the capsule.
+        box_laf_.setPadding(base_.getFontSize() * .72f);
     }
 
     void CompactCombobox::resized() {
@@ -116,14 +115,12 @@ namespace zlgui::combobox {
 
     void CompactCombobox::mouseEnter(const juce::MouseEvent& event) {
         combo_box_.mouseEnter(event);
-        box_laf_.setBoxAlpha(1.f);
-        combo_box_.repaint();
+        hover_target_ = 1.f;
     }
 
     void CompactCombobox::mouseExit(const juce::MouseEvent& event) {
         combo_box_.mouseExit(event);
-        box_laf_.setBoxAlpha(0.f);
-        combo_box_.repaint();
+        hover_target_ = 0.f;
     }
 
     void CompactCombobox::mouseMove(const juce::MouseEvent& event) {
@@ -159,5 +156,12 @@ namespace zlgui::combobox {
                 cumulative_y_ += 1.f;
             }
         }
+    }
+
+    void CompactCombobox::timerCallback() {
+        const auto next = hover_progress_ + (hover_target_ - hover_progress_) * .24f;
+        hover_progress_ = std::abs(next - hover_target_) < .002f ? hover_target_ : next;
+        box_laf_.setBoxAlpha(hover_progress_);
+        combo_box_.repaint();
     }
 }

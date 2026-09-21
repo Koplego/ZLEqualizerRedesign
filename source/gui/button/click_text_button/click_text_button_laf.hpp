@@ -42,7 +42,12 @@ namespace zlgui {
                 g.setColour(base_.getTextColour().withAlpha(.5f));
             }
             g.setFont(base_.getFontSize() * font_scale_);
-            g.drawText(button.getButtonText(), button.getBounds(), justification_);
+            // LookAndFeel painting is already in the button's local coordinate space.
+            // Using getBounds() here offset every label by its parent position, which
+            // caused the footer and inspector text to clip or overlap at real sizes.
+            auto textBounds = button.getLocalBounds().reduced(
+                juce::jmax(3, juce::roundToInt(base_.getFontSize() * .34f)), 1);
+            g.drawText(button.getButtonText(), textBounds, justification_, true);
         }
 
         void setJustification(const juce::Justification justification) {

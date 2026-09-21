@@ -54,8 +54,12 @@ namespace zlpanel {
 
             // Both the glow and the crisp response use the band's blended gradient. This keeps
             // the hue readable at a glance instead of surrounding it with a pale cyan halo.
-            g.setGradientFill(makeResponseGradient(data, .13f * alpha));
-            g.strokePath(path, juce::PathStrokeType(thickness * 2.15f,
+            g.setGradientFill(makeResponseGradient(data, .055f * alpha));
+            g.strokePath(path, juce::PathStrokeType(thickness * 5.2f,
+                                                    juce::PathStrokeType::curved,
+                                                    juce::PathStrokeType::rounded));
+            g.setGradientFill(makeResponseGradient(data, .18f * alpha));
+            g.strokePath(path, juce::PathStrokeType(thickness * 2.65f,
                                                     juce::PathStrokeType::curved,
                                                     juce::PathStrokeType::rounded));
 

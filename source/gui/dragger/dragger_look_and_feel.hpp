@@ -35,10 +35,17 @@ namespace zlgui::dragger {
             // Liquid Glass node glow. A small coloured halo makes the band handles feel
             // luminous without turning them into large neon buttons.
             if (dragger_shape_ == kRound) {
-                const juce::DropShadow halo{colour_.withAlpha(active ? .48f : .24f),
-                                            juce::jmax(2, juce::roundToInt(base_.getFontSize() * (active ? .72f : .46f))),
-                                            {0, 0}};
-                halo.drawForPath(g, inner_path_);
+                const auto phase = static_cast<float>(juce::Time::getMillisecondCounterHiRes() * .0042);
+                const auto pulse = active ? .5f + .5f * std::sin(phase) : 0.f;
+                const juce::DropShadow wideHalo{
+                    colour_.withAlpha(active ? .24f + pulse * .10f : .13f),
+                    juce::jmax(4, juce::roundToInt(base_.getFontSize() * (active ? 1.18f : .78f))), {0, 0}};
+                wideHalo.drawForPath(g, outline_path_);
+                const juce::DropShadow coreHalo{
+                    colour_.interpolatedWith(juce::Colours::white, .18f)
+                        .withAlpha(active ? .66f + pulse * .16f : .34f),
+                    juce::jmax(2, juce::roundToInt(base_.getFontSize() * (active ? .58f : .40f))), {0, 0}};
+                coreHalo.drawForPath(g, inner_path_);
             }
 
             if (active) {
@@ -52,10 +59,20 @@ namespace zlgui::dragger {
                 g.fillPath(outline_path_);
             }
 
-            // Keep the band identity in a luminous core rather than a flat coloured dot.
-            g.setColour(colour_.interpolatedWith(juce::Colours::white, active ? .16f : .08f)
-                         .withAlpha(active ? .98f : .86f));
+            // Keep the band identity in a luminous, lens-like core rather than a flat dot.
+            const auto innerBounds = inner_path_.getBounds();
+            juce::ColourGradient lens(
+                colour_.interpolatedWith(juce::Colours::white, .58f).withAlpha(.98f),
+                innerBounds.getX() + innerBounds.getWidth() * .34f,
+                innerBounds.getY() + innerBounds.getHeight() * .28f,
+                colour_.interpolatedWith(juce::Colours::black, .12f).withAlpha(active ? .98f : .88f),
+                innerBounds.getRight(), innerBounds.getBottom(), true);
+            lens.addColour(.52, colour_.interpolatedWith(juce::Colours::white, .16f)
+                                      .withAlpha(active ? .98f : .90f));
+            g.setGradientFill(lens);
             g.fillPath(inner_path_);
+            g.setColour(juce::Colours::white.withAlpha(active ? .70f : .40f));
+            g.strokePath(inner_path_, juce::PathStrokeType(juce::jmax(.8f, base_.getFontSize() * .075f)));
 
             if (label_.length() > 0) {
                 g.setColour(base_.getTextColour().withAlpha(alpha_));

@@ -13,7 +13,8 @@
 
 namespace zlgui::combobox {
     class CompactCombobox final : public juce::Component,
-                                  public juce::SettableTooltipClient {
+                                  public juce::SettableTooltipClient,
+                                  private juce::Timer {
     public:
         CompactCombobox(const juce::StringArray& choices, UIBase& base,
                         const juce::String& tooltip_text = "",
@@ -61,11 +62,15 @@ namespace zlgui::combobox {
         }
 
     private:
+        void timerCallback() override;
+
         zlgui::UIBase& base_;
         CompactComboboxLookAndFeel box_laf_;
         juce::ComboBox combo_box_;
 
         bool is_scroll_enabled_{false};
         float cumulative_y_{0.f};
+        float hover_progress_{0.f};
+        float hover_target_{0.f};
     };
 }

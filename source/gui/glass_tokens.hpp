@@ -30,13 +30,47 @@ namespace zlgui::glass {
     inline void fillGlassSurface(juce::Graphics& g, juce::Rectangle<float> bounds,
                                  const float radius, const float topAlpha = .13f,
                                  const float bottomAlpha = .22f, const float rimAlpha = .18f) {
+        // Build the material from several low-opacity optical layers. JUCE plugin
+        // windows cannot sample the host window for a real backdrop blur, but these
+        // offset highlights and colour bends reproduce the transmitted-light read of
+        // the reference instead of looking like a flat translucent rectangle.
+        {
+            juce::Path clip;
+            clip.addRoundedRectangle(bounds, radius);
+            juce::Graphics::ScopedSaveState state(g);
+            g.reduceClipRegion(clip);
+
+        g.setColour(juce::Colour(8, 24, 38).withAlpha(bottomAlpha * .72f));
+        g.fillRoundedRectangle(bounds, radius);
+
         juce::ColourGradient fill(surfaceTop(topAlpha), bounds.getCentreX(), bounds.getY(),
                                   surfaceBottom(bottomAlpha), bounds.getCentreX(), bounds.getBottom(), false);
         fill.addColour(.48, juce::Colour(127, 158, 181).withAlpha((topAlpha + bottomAlpha) * .36f));
         g.setGradientFill(fill);
         g.fillRoundedRectangle(bounds, radius);
+
+        juce::ColourGradient transmitted(
+            juce::Colour(188, 225, 248).withAlpha(topAlpha * .72f),
+            bounds.getX() + bounds.getWidth() * .08f, bounds.getY() + bounds.getHeight() * .12f,
+            juce::Colours::transparentBlack,
+            bounds.getX() + bounds.getWidth() * .70f, bounds.getY() + bounds.getHeight() * .82f, true);
+        transmitted.addColour(.46, juce::Colour(112, 170, 210).withAlpha(topAlpha * .24f));
+        g.setGradientFill(transmitted);
+        g.fillRect(bounds.expanded(radius * .35f));
+
+        auto caustic = bounds.withSizeKeepingCentre(bounds.getWidth() * .70f,
+                                                     juce::jmax(2.f, bounds.getHeight() * .16f));
+        caustic.translate(-bounds.getWidth() * .12f, -bounds.getHeight() * .25f);
+        juce::ColourGradient causticGradient(
+            juce::Colour(255, 255, 255).withAlpha(topAlpha * .52f), caustic.getCentreX(), caustic.getCentreY(),
+            juce::Colours::transparentBlack, caustic.getRight(), caustic.getCentreY(), true);
+            g.setGradientFill(causticGradient);
+            g.fillEllipse(caustic);
+        }
         g.setColour(juce::Colour(248, 252, 255).withAlpha(rimAlpha));
         g.drawRoundedRectangle(bounds, radius, .85f);
+        g.setColour(juce::Colour(8, 23, 38).withAlpha(rimAlpha * .78f));
+        g.drawRoundedRectangle(bounds.reduced(1.35f), juce::jmax(1.f, radius - 1.35f), .65f);
         auto highlight = bounds.reduced(1.1f);
         g.setColour(juce::Colour(255, 255, 255).withAlpha(rimAlpha * .58f));
         g.drawLine(highlight.getX() + radius * .62f, highlight.getY() + .5f,

@@ -20,7 +20,8 @@ namespace zlpanel {
         setOpaque(false);
         for (auto* button : {&analyzer_button_, &pre_button_, &post_button_, &output_button_}) {
             stylePill(*button);
-            button->getLAF().setFontScale(.76f);
+            button->getLAF().setFontScale(.72f);
+            button->getLAF().setJustification(juce::Justification::centred);
         }
 
         analyzer_button_.getButton().setToggleable(true);
@@ -59,78 +60,85 @@ namespace zlpanel {
     }
 
     void GlassFooterPanel::stylePill(zlgui::button::ClickTextButton& button) {
-        button.setBackgroundPainter([this](juce::Graphics& g, juce::Button& b,
+        button.setBackgroundPainter([](juce::Graphics& g, juce::Button& b,
                                            const bool highlighted, const bool down) {
             auto r = b.getLocalBounds().toFloat().reduced(.75f);
             const auto selected = b.getToggleState() || down;
-            juce::ColourGradient fill(selected
-                                          ? juce::Colour(124, 186, 255).withAlpha(.30f)
-                                          : juce::Colour(246, 252, 255).withAlpha(highlighted ? .105f : .045f),
-                                      r.getCentreX(), r.getY(),
-                                      juce::Colour(31, 54, 72).withAlpha(selected ? .22f : .10f),
-                                      r.getCentreX(), r.getBottom(), false);
-            g.setGradientFill(fill);
-            g.fillRoundedRectangle(r, r.getHeight() * .5f);
-            g.setColour(juce::Colour(247, 252, 255).withAlpha(selected ? .25f : .10f));
-            g.drawRoundedRectangle(r, r.getHeight() * .5f, .8f);
+            zlgui::glass::fillGlassSurface(g, r, r.getHeight() * .5f,
+                                           selected ? .18f : (highlighted ? .105f : .045f),
+                                           selected ? .27f : (highlighted ? .16f : .085f),
+                                           selected ? .34f : (highlighted ? .20f : .10f));
+            if (selected) {
+                auto glow = r.reduced(r.getHeight() * .15f);
+                juce::ColourGradient active(juce::Colour(124, 190, 255).withAlpha(.28f),
+                                            glow.getCentreX(), glow.getCentreY(),
+                                            juce::Colours::transparentBlack,
+                                            glow.getRight(), glow.getCentreY(), true);
+                g.setGradientFill(active);
+                g.fillRoundedRectangle(glow, glow.getHeight() * .5f);
+            }
         });
     }
 
     int GlassFooterPanel::getIdealHeight() const {
         const auto font = base_.getFontSize();
-        return getButtonSize(font) + 2 * getPaddingSize(font);
+        return getButtonSize(font) + 2 * getPaddingSize(font) + juce::roundToInt(font * .18f);
     }
 
     void GlassFooterPanel::paint(juce::Graphics& g) {
         auto strip = getLocalBounds().toFloat().reduced(.5f);
         zlgui::glass::fillGlassSurface(g, strip, juce::jmax(9.f, strip.getHeight() * .34f),
-                                      .075f, .145f, .15f);
+                                      .105f, .19f, .22f);
 
-        g.setColour(juce::Colour(244, 250, 255).withAlpha(.085f));
-        for (const auto x : {tools_group_bound_.getX() - getPaddingSize(base_.getFontSize()),
-                             processing_group_bound_.getX() - getPaddingSize(base_.getFontSize())}) {
-            if (x > 0) {
-                g.drawVerticalLine(x, strip.getY() + strip.getHeight() * .22f,
-                                   strip.getBottom() - strip.getHeight() * .22f);
+        for (const auto group : {analyzer_group_bound_, tools_group_bound_, processing_group_bound_}) {
+            if (!group.isEmpty()) {
+                auto r = group.toFloat().reduced(.5f);
+                zlgui::glass::fillGlassSurface(g, r, r.getHeight() * .5f, .035f, .075f, .085f);
             }
         }
 
-        g.setColour(base_.getTextColour().withAlpha(.38f));
-        g.setFont(juce::FontOptions(base_.getFontSize() * .62f));
+        g.setColour(base_.getTextColour().withAlpha(.52f));
+        g.setFont(juce::FontOptions(base_.getFontSize() * .68f));
+        g.drawText("Spectrum", spectrum_label_bound_, juce::Justification::centred, false);
         g.drawText("Processing", processing_label_bound_, juce::Justification::centredRight, false);
     }
 
     void GlassFooterPanel::resized() {
         const auto font = base_.getFontSize();
         const auto padding = getPaddingSize(font);
-        auto b = getLocalBounds().reduced(padding + padding / 2, padding / 2);
+        auto b = getLocalBounds().reduced(padding + padding / 2, padding / 2 + 1);
 
-        const auto analyzer_w = juce::jmax(74, juce::roundToInt(font * 5.15f));
+        const auto analyzer_w = juce::jmax(82, juce::roundToInt(font * 5.5f));
         analyzer_button_.setBounds(b.removeFromLeft(analyzer_w));
         b.removeFromLeft(padding / 3);
 
-        const auto small_w = juce::jmax(46, juce::roundToInt(font * 3.0f));
+        const auto small_w = juce::jmax(48, juce::roundToInt(font * 3.1f));
         pre_button_.setBounds(b.removeFromLeft(small_w));
         b.removeFromLeft(padding / 4);
         post_button_.setBounds(b.removeFromLeft(small_w));
         b.removeFromLeft(padding / 3);
 
-        const auto speed_w = juce::jmax(82, juce::roundToInt(font * 5.25f));
+        const auto spectrum_w = juce::jmax(76, juce::roundToInt(font * 5.0f));
+        spectrum_label_bound_ = b.removeFromLeft(spectrum_w);
+        b.removeFromLeft(padding / 4);
+
+        const auto speed_w = juce::jmax(88, juce::roundToInt(font * 5.55f));
         speed_box_.setBounds(b.removeFromLeft(speed_w));
 
         analyzer_group_bound_ = analyzer_button_.getBounds()
             .getUnion(pre_button_.getBounds())
             .getUnion(post_button_.getBounds())
+            .getUnion(spectrum_label_bound_)
             .getUnion(speed_box_.getBounds())
-            .expanded(juce::jmax(3, padding / 2), juce::jmax(2, padding / 3));
+            .expanded(juce::jmax(4, padding / 2), juce::jmax(3, padding / 3));
 
-        const auto tool_w = juce::jmax(70, juce::roundToInt(font * 4.9f));
+        const auto tool_w = juce::jmax(82, juce::roundToInt(font * 5.25f));
         auto tools = getLocalBounds().withSizeKeepingCentre(tool_w, getButtonSize(font));
         output_button_.setBounds(tools);
         tools_group_bound_ = output_button_.getBounds()
             .expanded(juce::jmax(3, padding / 2), juce::jmax(2, padding / 3));
 
-        const auto phase_w = juce::jmax(138, juce::roundToInt(font * 9.0f));
+        const auto phase_w = juce::jmax(144, juce::roundToInt(font * 9.25f));
         auto phase = b.removeFromRight(phase_w);
         phase_box_.setBounds(phase);
         b.removeFromRight(padding / 3);
