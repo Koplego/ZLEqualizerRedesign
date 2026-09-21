@@ -63,7 +63,7 @@ namespace zlpanel {
             icons.emplace_back(
                 juce::Drawable::createFromImageData(BinaryData::side_svg, BinaryData::side_svgSize));
             return icons;
-        }(), base, "", {}),
+        }(), base, "", {"Stereo", "Left", "Right", "Mid", "Side"}),
         lr_attachment_(lr_box_.getBox(), p.parameters_NA_,
                        zlstate::PFFTStereo::kID, updater_),
         collision_drawable_(juce::Drawable::createFromImageData(BinaryData::collision_svg,

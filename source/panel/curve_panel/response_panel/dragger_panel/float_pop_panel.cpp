@@ -49,7 +49,8 @@ namespace zlpanel {
             icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::allpass_svg, BinaryData::allpass_svgSize));
             icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::flatgain_svg, BinaryData::flatgain_svgSize));
             return icons;
-        }(), base, "", {}),
+        }(), base, "", {"Bell", "Low Shelf", "High Cut", "High Shelf", "Low Cut",
+                          "Notch", "Band Pass", "Tilt", "Flat Tilt", "All Pass", "Gain"}),
         lr_box_([]() -> std::vector<std::unique_ptr<juce::Drawable>> {
             std::vector<std::unique_ptr<juce::Drawable>> icons;
             icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::stereo_svg, BinaryData::stereo_svgSize));
@@ -58,7 +59,8 @@ namespace zlpanel {
             icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::mid_svg, BinaryData::mid_svgSize));
             icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::side_svg, BinaryData::side_svgSize));
             return icons;
-        }(), base, "", {}),
+        }(), base, "", {"Stereo", "Left", "Right", "Mid", "Side"}),
+        slope_box_(zlp::POrder::kChoices, base, ""),
         freq_slider_("", base),
         gain_slider_("", base),
         q_slider_("", base),
@@ -168,19 +170,27 @@ namespace zlpanel {
         addAndMakeVisible(side_order_box_);
 
         const auto popup_option1 = juce::PopupMenu::Options().withPreferredPopupDirection(
-            juce::PopupMenu::Options::PopupDirection::upwards).withMinimumNumColumns(9);
+            juce::PopupMenu::Options::PopupDirection::upwards).withMinimumNumColumns(1);
         ftype_box_.getLAF().setOption(popup_option1);
         ftype_box_.setBufferedToImage(true);
         ftype_box_.setAlpha(.01f); // invisible hit target; the parent paints the Liquid Glass selector
         addAndMakeVisible(ftype_box_);
 
         const auto popup_option2 = juce::PopupMenu::Options().withPreferredPopupDirection(
-            juce::PopupMenu::Options::PopupDirection::upwards).withMinimumNumColumns(5);
+            juce::PopupMenu::Options::PopupDirection::upwards).withMinimumNumColumns(1);
         lr_box_.setScrollEnabled(true);
         lr_box_.getLAF().setOption(popup_option2);
         lr_box_.setBufferedToImage(true);
         lr_box_.setAlpha(.01f); // keep the combobox clickable while the parent paints the clean text pill
         addAndMakeVisible(lr_box_);
+
+        slope_box_.setScrollEnabled(true);
+        slope_box_.getLAF().setOption(popup_option2);
+        slope_box_.getLAF().setFontScale(.66f);
+        slope_box_.getLAF().setBoxAlpha(.70f);
+        slope_box_.getLAF().setLabelJustification(juce::Justification::centred);
+        slope_box_.setBufferedToImage(true);
+        addAndMakeVisible(slope_box_);
 
         auto setup_plain_slider = [this](auto& slider) {
             slider.setFontScale(1.10f);
@@ -513,9 +523,20 @@ namespace zlpanel {
 
         bound.removeFromTop(padding / 5);
         auto lower = bound.removeFromTop(button_size);
-        const auto q_w = juce::jmax(button_size * 2, lower.getWidth() / 2);
+        const auto has_slope = slope_box_.isVisible();
+        const auto q_w = has_slope
+            ? juce::jmax(button_size * 2, juce::roundToInt(lower.getWidth() * .39f))
+            : juce::jmax(button_size * 2, lower.getWidth() / 2);
         q_slider_.setBounds(lower.removeFromLeft(q_w));
         lower.removeFromLeft(padding / 2);
+        if (has_slope) {
+            const auto slope_w = juce::jmax(button_size * 2,
+                                             juce::roundToInt(base_.getFontSize() * 5.35f));
+            slope_box_.setBounds(lower.removeFromLeft(juce::jmin(slope_w, lower.getWidth())));
+            lower.removeFromLeft(padding / 2);
+        } else {
+            slope_box_.setBounds({});
+        }
         const auto mode_text_w = juce::jmax(button_size * 2, juce::roundToInt(base_.getFontSize() * 4.1f));
         mode_name_bound_ = lower.removeFromRight(mode_text_w);
         lr_box_.setBounds(mode_name_bound_);
@@ -588,6 +609,14 @@ namespace zlpanel {
         ideal_width_ = static_cast<float>(getIdealWidth());
     }
 
+    void FloatPopPanel::mouseUp(const juce::MouseEvent& event) {
+        // The Liquid Glass filter selector is painted by this component, while the
+        // compact combobox occupies the icon. Make its visible text part interactive.
+        if (filter_name_bound_.contains(event.getPosition())) {
+            ftype_box_.getBox().showPopup();
+        }
+    }
+
     void FloatPopPanel::updateBand() {
         if (base_.getSelectedBand() < zlp::kBandNum) {
             const auto band_s = std::to_string(base_.getSelectedBand());
@@ -595,6 +624,8 @@ namespace zlpanel {
                 ftype_box_.getBox(), p_ref_.parameters_, zlp::PFilterType::kID + band_s, updater_);
             lr_attachment_ = std::make_unique<zlgui::attachment::ComboBoxAttachment<true>>(
                 lr_box_.getBox(), p_ref_.parameters_, zlp::PLRMode::kID + band_s, updater_);
+            slope_attachment_ = std::make_unique<zlgui::attachment::ComboBoxAttachment<true>>(
+                slope_box_.getBox(), p_ref_.parameters_, zlp::POrder::kID + band_s, updater_);
             freq_attachment_ = std::make_unique<zlgui::attachment::SliderAttachment<true>>(
                 freq_slider_.getSlider(), p_ref_.parameters_, zlp::PFreq::kID + band_s, updater_);
             gain_attachment_ = std::make_unique<zlgui::attachment::SliderAttachment<true>>(
@@ -645,6 +676,7 @@ namespace zlpanel {
             freq_attachment_->updateComponent();
             gain_attachment_->updateComponent();
             q_attachment_->updateComponent();
+            slope_attachment_->updateComponent();
             range_attachment_->updateComponent();
             threshold_attachment_->updateComponent();
             attack_attachment_->updateComponent();
@@ -658,6 +690,11 @@ namespace zlpanel {
 
             filter_status_ptr_ = p_ref_.parameters_.getRawParameterValue(zlp::PFilterStatus::kID + band_s);
             dynamic_on_ptr_ = p_ref_.parameters_.getRawParameterValue(zlp::PDynamicON::kID + band_s);
+            filter_type_ptr_ = p_ref_.parameters_.getRawParameterValue(zlp::PFilterType::kID + band_s);
+            slope_ptr_ = p_ref_.parameters_.getRawParameterValue(zlp::POrder::kID + band_s);
+            current_filter_type_ = -1;
+            current_slope_ = -1;
+            updateFilterCapabilities();
             const auto next_dynamic = dynamic_on_ptr_ != nullptr
                 && dynamic_on_ptr_->load(std::memory_order::relaxed) > .5f;
             updateDynamicVisibility(next_dynamic, true);
@@ -665,6 +702,7 @@ namespace zlpanel {
         } else {
             ftype_attachment_.reset();
             lr_attachment_.reset();
+            slope_attachment_.reset();
             freq_attachment_.reset();
             gain_attachment_.reset();
             q_attachment_.reset();
@@ -688,6 +726,10 @@ namespace zlpanel {
             side_swap_attachment_.reset();
             filter_status_ptr_ = nullptr;
             dynamic_on_ptr_ = nullptr;
+            filter_type_ptr_ = nullptr;
+            slope_ptr_ = nullptr;
+            current_filter_type_ = -1;
+            current_slope_ = -1;
             updateDynamicVisibility(false, true);
         }
         setVisible(base_.getSelectedBand() < zlp::kBandNum);
@@ -721,8 +763,49 @@ namespace zlpanel {
                     updateDynamicVisibility(next_dynamic, true);
                 }
             }
+            updateFilterCapabilities();
             repaint();
         }
+    }
+
+    void FloatPopPanel::updateFilterCapabilities() {
+        if (filter_type_ptr_ == nullptr || slope_ptr_ == nullptr) return;
+
+        const auto filter_type = static_cast<int>(std::round(
+            filter_type_ptr_->load(std::memory_order::relaxed)));
+        const auto slope = static_cast<int>(std::round(slope_ptr_->load(std::memory_order::relaxed)));
+        if (filter_type == current_filter_type_ && slope == current_slope_) return;
+
+        current_filter_type_ = filter_type;
+        current_slope_ = slope;
+
+        const auto slope_enabled = filter_type != static_cast<int>(zldsp::filter::kFlatTilt)
+            && filter_type != static_cast<int>(zldsp::filter::kFlatGain);
+        const auto slope_6_allowed = filter_type != static_cast<int>(zldsp::filter::kPeak)
+            && filter_type != static_cast<int>(zldsp::filter::kBandPass)
+            && filter_type != static_cast<int>(zldsp::filter::kNotch);
+        if (!slope_6_allowed && slope_box_.getBox().getSelectedId() == 1) {
+            slope_box_.getBox().setSelectedId(2, juce::sendNotificationSync);
+        }
+        slope_box_.getBox().setItemEnabled(1, slope_6_allowed);
+        slope_box_.setEditable(slope_enabled);
+        slope_box_.setVisible(slope_enabled);
+
+        const auto gain_enabled = filter_type == static_cast<int>(zldsp::filter::kPeak)
+            || filter_type == static_cast<int>(zldsp::filter::kLowShelf)
+            || filter_type == static_cast<int>(zldsp::filter::kHighShelf)
+            || filter_type == static_cast<int>(zldsp::filter::kTiltShelf)
+            || filter_type == static_cast<int>(zldsp::filter::kFlatTilt)
+            || filter_type == static_cast<int>(zldsp::filter::kFlatGain);
+        if (!gain_enabled && dynamic_button_.getToggleState()) {
+            dynamic_button_.getButton().setToggleState(false, juce::sendNotificationSync);
+        }
+        gain_slider_.setEditable(gain_enabled);
+        dynamic_button_.setAlpha(gain_enabled ? 1.f : .38f);
+        dynamic_button_.setInterceptsMouseClicks(false, gain_enabled);
+        q_slider_.setEditable(slope_enabled && slope != 0);
+        resized();
+        repaint();
     }
 
     int FloatPopPanel::getIdealWidth() const {
@@ -768,9 +851,11 @@ namespace zlpanel {
         updateDetailVisibility();
         if (request_parent_resize) {
             if (auto* parent = getParentComponent()) parent->resized();
-        } else {
-            resized();
         }
+        // Detector and Sidechain have the same ideal height, so the parent may keep
+        // our bounds unchanged and JUCE will not call resized(). Relayout explicitly
+        // so controls made visible on the new page never retain empty bounds.
+        resized();
         repaint();
     }
 

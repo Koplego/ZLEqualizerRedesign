@@ -29,6 +29,8 @@ namespace zlpanel {
 
         void resized() override;
 
+        void mouseUp(const juce::MouseEvent& event) override;
+
         void repaintCallBackSlow();
 
         void updateBand();
@@ -92,6 +94,13 @@ namespace zlpanel {
         zlgui::combobox::CompactCombobox lr_box_;
         std::unique_ptr<zlgui::attachment::ComboBoxAttachment<true>> lr_attachment_;
 
+        zlgui::combobox::CompactCombobox slope_box_;
+        std::unique_ptr<zlgui::attachment::ComboBoxAttachment<true>> slope_attachment_;
+        std::atomic<float>* filter_type_ptr_{nullptr};
+        std::atomic<float>* slope_ptr_{nullptr};
+        int current_filter_type_{-1};
+        int current_slope_{-1};
+
         zlgui::slider::CompactLinearSlider<false, false, false> freq_slider_;
         std::unique_ptr<zlgui::attachment::SliderAttachment<true>> freq_attachment_;
 
@@ -150,6 +159,7 @@ namespace zlpanel {
         void updateDynamicVisibility(bool dynamic_on, bool request_parent_resize);
         void updateDetailPage(DetailPage page, bool request_parent_resize);
         void updateDetailVisibility();
+        void updateFilterCapabilities();
         void styleDetailButton(zlgui::button::ClickTextButton& button);
 
         void updateTransformation();

@@ -19,7 +19,7 @@ namespace zlgui::combobox {
     public:
         explicit CompactComboboxLookAndFeel(UIBase& base, bool align_label = true) :
             base_(base), align_label_(align_label) {
-            setColour(juce::PopupMenu::backgroundColourId, juce::Colours::transparentBlack);
+            setColour(juce::PopupMenu::backgroundColourId, glass::canvasBottom());
         }
 
         void drawComboBox(juce::Graphics& g, int width, int height, bool isButtonDown, int, int, int, int,
@@ -48,6 +48,9 @@ namespace zlgui::combobox {
         }
 
         void drawLabel(juce::Graphics& g, juce::Label& label) override {
+            // Icon-backed comboboxes use text in their popup for accessibility and
+            // clarity, while their collapsed control remains the compact icon.
+            if (!icons_.empty()) return;
             g.setColour(glass::textPrimary().withAlpha(.92f));
             g.setFont(base_.getFontSize() * font_scale_);
             const auto bound = label.getLocalBounds().toFloat().reduced(
@@ -58,11 +61,13 @@ namespace zlgui::combobox {
         void drawPopupMenuBackground(juce::Graphics& g, const int width, const int height) override {
             const auto box_bound = juce::Rectangle<float>(0, 0, static_cast<float>(width),
                                                           static_cast<float>(height));
-            if (popup_uses_opaque_fallback_) {
-                g.fillAll(glass::canvasBottom());
-            }
+            // JUCE popups are separate windows in plugin hosts. A translucent window
+            // cannot sample or blur the editor beneath it, so it only causes labels
+            // and response curves to bleed through. Use a solid canvas under the
+            // glass treatment to keep every menu legible.
+            g.fillAll(juce::Colour(7, 20, 32));
             const auto corner_size = juce::jmax(base_.getFontSize() * .72f, 8.f);
-            glass::fillGlassSurface(g, box_bound.reduced(.75f), corner_size, .16f, .31f, .25f);
+            glass::fillGlassSurface(g, box_bound.reduced(.75f), corner_size, .12f, .22f, .28f);
         }
 
         void getIdealPopupMenuItemSize(const juce::String& text, const bool isSeparator, int standardMenuItemHeight,
@@ -159,8 +164,8 @@ namespace zlgui::combobox {
         }
 
         void preparePopupMenuWindow(juce::Component& new_window) override {
-            if (new_window.getParentComponent() != nullptr) new_window.setOpaque(false);
-            popup_uses_opaque_fallback_ = new_window.isOpaque();
+            new_window.setOpaque(true);
+            popup_uses_opaque_fallback_ = true;
 
             if (popup_target_ == nullptr) return;
 

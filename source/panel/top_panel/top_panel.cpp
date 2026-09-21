@@ -119,7 +119,7 @@ namespace zlpanel {
         version.setWidth(juce::roundToInt(base_.getFontSize() * 2.1f));
         g.setColour(juce::Colour(232, 244, 252).withAlpha(.36f));
         g.setFont(juce::FontOptions(base_.getFontSize() * .55f));
-        g.drawText("1.2", version, juce::Justification::centredLeft, false);
+        g.drawText("1.3", version, juce::Justification::centredLeft, false);
 
         if (!preset_pill_bound_.isEmpty()) {
             auto pill = preset_pill_bound_.toFloat().reduced(.5f);

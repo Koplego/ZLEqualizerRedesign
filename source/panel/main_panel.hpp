@@ -49,11 +49,11 @@ namespace zlpanel {
 
             void paint(juce::Graphics& g) override {
                 const auto b = getLocalBounds().toFloat();
-                g.setColour(juce::Colour(3, 12, 21).withAlpha(.48f));
+                g.setColour(juce::Colour(3, 12, 21).withAlpha(.78f));
                 g.fillRoundedRectangle(b, 12.f);
                 juce::ColourGradient vignette(juce::Colours::transparentBlack,
                                                b.getCentreX(), b.getCentreY(),
-                                               juce::Colour(1, 7, 13).withAlpha(.30f),
+                                               juce::Colour(1, 7, 13).withAlpha(.48f),
                                                b.getX(), b.getY(), true);
                 g.setGradientFill(vignette);
                 g.fillRoundedRectangle(b, 12.f);
@@ -82,9 +82,6 @@ namespace zlpanel {
 
         size_t c_band_{zlp::kBandNum};
         double c_sample_rate_{0.};
-        bool control_sheet_open_{false};
-
-        void toggleControlSheet();
         void toggleSettingsSheet();
         void closeGlobalOverlaysExcept(zlgui::PanelSettingIdx keep);
         void closeGlobalSheetsForUtility(zlgui::PanelSettingIdx utility);

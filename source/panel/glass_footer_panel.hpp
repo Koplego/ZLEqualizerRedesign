@@ -12,7 +12,6 @@ namespace zlpanel {
     class GlassFooterPanel final : public juce::Component {
     public:
         GlassFooterPanel(PluginProcessor& p, zlgui::UIBase& base,
-                         std::function<void()> controls_callback,
                          std::function<void()> settings_callback);
 
         void paint(juce::Graphics& g) override;
@@ -20,13 +19,10 @@ namespace zlpanel {
         int getIdealHeight() const;
         void repaintCallbackSlow();
 
-        void setControlsActive(bool active);
-
     private:
         zlgui::UIBase& base_;
         zlgui::attachment::ComponentUpdater updater_{};
 
-        std::function<void()> controls_callback_;
         std::function<void()> settings_callback_;
 
         zlgui::button::ClickTextButton analyzer_button_;
@@ -39,7 +35,6 @@ namespace zlpanel {
         zlgui::attachment::ComboBoxAttachment<true> speed_attach_;
 
         zlgui::button::ClickTextButton output_button_;
-        zlgui::button::ClickTextButton controls_button_;
         zlgui::button::ClickTextButton settings_button_;
 
         zlgui::combobox::CompactCombobox phase_box_;

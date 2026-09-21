@@ -6,10 +6,8 @@
 
 namespace zlpanel {
     GlassFooterPanel::GlassFooterPanel(PluginProcessor& p, zlgui::UIBase& base,
-                                       std::function<void()> controls_callback,
                                        std::function<void()> settings_callback) :
         base_(base),
-        controls_callback_(std::move(controls_callback)),
         settings_callback_(std::move(settings_callback)),
         analyzer_button_(base, "Analyzer"),
         pre_button_(base, "Pre"),
@@ -19,13 +17,12 @@ namespace zlpanel {
         speed_box_(zlstate::PFFTSpeed::kChoices, base, ""),
         speed_attach_(speed_box_.getBox(), p.parameters_NA_, zlstate::PFFTSpeed::kID, updater_),
         output_button_(base, "Output"),
-        controls_button_(base, "Controls"),
         settings_button_(base, "Settings"),
         phase_box_(zlp::PFilterStructure::kChoices, base, ""),
         phase_attach_(phase_box_.getBox(), p.parameters_, zlp::PFilterStructure::kID, updater_) {
         setOpaque(false);
         for (auto* button : {&analyzer_button_, &pre_button_, &post_button_, &output_button_,
-                             &controls_button_, &settings_button_}) {
+                             &settings_button_}) {
             stylePill(*button);
             button->getLAF().setFontScale(.76f);
         }
@@ -38,8 +35,6 @@ namespace zlpanel {
         pre_button_.getButton().setClickingTogglesState(true);
         post_button_.getButton().setToggleable(true);
         post_button_.getButton().setClickingTogglesState(true);
-        controls_button_.getButton().setToggleable(true);
-        controls_button_.getButton().setClickingTogglesState(false);
         settings_button_.getButton().setToggleable(true);
         settings_button_.getButton().setClickingTogglesState(false);
 
@@ -50,9 +45,6 @@ namespace zlpanel {
         output_button_.getButton().onClick = [this]() {
             const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kOutputPanel));
             base_.setPanelProperty(zlgui::PanelSettingIdx::kOutputPanel, open < .5 ? 1. : 0.);
-        };
-        controls_button_.getButton().onClick = [this]() {
-            if (controls_callback_) controls_callback_();
         };
         settings_button_.getButton().onClick = [this]() {
             if (settings_callback_) settings_callback_();
@@ -71,7 +63,6 @@ namespace zlpanel {
         addAndMakeVisible(post_button_);
         addAndMakeVisible(speed_box_);
         addAndMakeVisible(output_button_);
-        addAndMakeVisible(controls_button_);
         addAndMakeVisible(settings_button_);
         addAndMakeVisible(phase_box_);
         setInterceptsMouseClicks(false, true);
@@ -140,15 +131,12 @@ namespace zlpanel {
             .expanded(juce::jmax(3, padding / 2), juce::jmax(2, padding / 3));
 
         const auto tool_w = juce::jmax(70, juce::roundToInt(font * 4.9f));
-        auto tools = getLocalBounds().withSizeKeepingCentre(tool_w * 3 + 2 * (padding / 3),
+        auto tools = getLocalBounds().withSizeKeepingCentre(tool_w * 2 + padding / 3,
                                                             getButtonSize(font) + padding / 2);
         output_button_.setBounds(tools.removeFromLeft(tool_w));
         tools.removeFromLeft(padding / 3);
-        controls_button_.setBounds(tools.removeFromLeft(tool_w));
-        tools.removeFromLeft(padding / 3);
         settings_button_.setBounds(tools.removeFromLeft(tool_w));
         tools_group_bound_ = output_button_.getBounds()
-            .getUnion(controls_button_.getBounds())
             .getUnion(settings_button_.getBounds())
             .expanded(juce::jmax(3, padding / 2), juce::jmax(2, padding / 3));
 
@@ -175,8 +163,4 @@ namespace zlpanel {
         repaint();
     }
 
-    void GlassFooterPanel::setControlsActive(const bool active) {
-        controls_button_.getButton().setToggleState(active, juce::dontSendNotification);
-        controls_button_.repaint();
-    }
 }

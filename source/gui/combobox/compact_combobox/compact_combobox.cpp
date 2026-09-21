@@ -53,9 +53,11 @@ namespace zlgui::combobox {
         for (size_t i = 0; i < icons.size(); ++i) {
             juce::PopupMenu::Item item;
             item.itemID = static_cast<int>(i + 1);
-            item.text = "";
             if (i < item_labels.size()) {
+                item.text = item_labels[i];
                 item.tooltipText = item_labels[i];
+            } else {
+                item.text = "";
             }
             item.isEnabled = true;
             item.isTicked = false;

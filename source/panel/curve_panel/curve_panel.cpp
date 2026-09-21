@@ -69,11 +69,14 @@ namespace zlpanel {
         const auto padding = getPaddingSize(font_size);
         const auto output_width = output_panel_.getIdealWidth();
         const auto output_height = output_panel_.getIdealHeight();
-        output_panel_.setBounds(bound.getWidth() - output_width - 2 * padding, 0, output_width, output_height);
+        output_panel_.setBounds(bound.getWidth() - output_width - 2 * padding,
+                                juce::jmax(0, bound.getHeight() - output_height - padding),
+                                output_width, output_height);
 
         const auto analyzer_width = analyzer_panel_.getIdealWidth();
         const auto analyzer_height = analyzer_panel_.getIdealHeight();
-        analyzer_panel_.setBounds(getButtonSize(font_size) + 2 * padding, 0,
+        analyzer_panel_.setBounds(getButtonSize(font_size) + 2 * padding,
+                                  juce::jmax(0, bound.getHeight() - analyzer_height - padding),
                                   analyzer_width, analyzer_height);
 
         scale_panel_.setBounds(bound.withLeft(bound.getWidth() - scale_panel_.getIdealWidth()));
