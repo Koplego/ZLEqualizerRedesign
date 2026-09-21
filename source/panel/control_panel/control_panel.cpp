@@ -32,7 +32,6 @@ namespace zlpanel {
         addChildComponent(match_control_panel_);
 
         setInterceptsMouseClicks(false, true);
-
         base_.getPanelValueTree().addListener(this);
     }
 
@@ -49,8 +48,19 @@ namespace zlpanel {
         const auto box_height = getBoxHeight(font_size);
         const auto button_height = getButtonSize(font_size);
         const auto padding = getPaddingSize(font_size);
-
         return 3 * box_height + button_height + 5 * padding;
+    }
+
+    int ControlPanel::getActiveIdealWidth() const {
+        const auto match = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel));
+        if (match > .5) return match_control_panel_.getIdealWidth();
+        return getIdealWidth();
+    }
+
+    int ControlPanel::getActiveIdealHeight() const {
+        const auto match = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel));
+        if (match > .5) return match_control_panel_.getIdealHeight();
+        return getIdealHeight();
     }
 
     void ControlPanel::resized() {
@@ -59,9 +69,10 @@ namespace zlpanel {
         const auto padding = getPaddingSize(font_size);
 
         match_control_panel_.setBounds(bound.withSizeKeepingCentre(
-            match_control_panel_.getIdealWidth(), match_control_panel_.getIdealHeight()));
+            juce::jmin(match_control_panel_.getIdealWidth(), bound.getWidth()),
+            juce::jmin(match_control_panel_.getIdealHeight(), bound.getHeight())));
 
-        const auto left_width = left_control_panel_.getIdealWidth();
+        const auto left_width = juce::jmin(left_control_panel_.getIdealWidth(), bound.getWidth());
         center_bound_ = bound.withSizeKeepingCentre(left_width, bound.getHeight());
         mouse_center_bound_ = center_bound_.reduced(padding);
         mouse_full_bound_ = bound.reduced(padding);
@@ -73,10 +84,14 @@ namespace zlpanel {
         const auto slider_width = getSliderWidth(font_size);
         bound.reduce(padding + padding / 2, padding);
         bound.removeFromTop(button_height);
-        const auto h_padding = (bound.getHeight() - 2 * slider_height) / 4;
-        bound = bound.removeFromLeft(slider_width);
-        bound.removeFromBottom(3 * h_padding + slider_height);
-        side_loudness_display_panel_.setBounds(bound.removeFromBottom(slider_height / 4));
+        const auto h_padding = juce::jmax(0, (bound.getHeight() - 2 * slider_height) / 4);
+        bound = bound.removeFromLeft(juce::jmin(slider_width, bound.getWidth()));
+        if (bound.getHeight() > 3 * h_padding + slider_height) {
+            bound.removeFromBottom(3 * h_padding + slider_height);
+            side_loudness_display_panel_.setBounds(bound.removeFromBottom(slider_height / 4));
+        } else {
+            side_loudness_display_panel_.setBounds({});
+        }
 
         if (dynamic_on_ptr_ != nullptr) {
             changeLeftRightBound(c_dynamic_on_);
@@ -141,6 +156,7 @@ namespace zlpanel {
             const auto f = static_cast<int>(std::round(
                 static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel))));
             match_control_panel_.setVisible(f > 0);
+            resized();
         }
     }
 }
