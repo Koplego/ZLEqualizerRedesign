@@ -41,29 +41,29 @@ namespace zlpanel {
             if (path.isEmpty()) return;
 
             if (!data.valid || data.xs.back() <= data.xs.front() + 1.f) {
-                g.setColour(zlgui::glass::neutralResponse().withAlpha(.055f * alpha));
-                g.strokePath(path, juce::PathStrokeType(thickness * 1.9f,
+                g.setColour(zlgui::glass::neutralResponse().withAlpha(.035f * alpha));
+                g.strokePath(path, juce::PathStrokeType(thickness * 1.65f,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
-                g.setColour(zlgui::glass::neutralResponse().withAlpha(.82f * alpha));
+                g.setColour(zlgui::glass::neutralResponse().withAlpha(.84f * alpha));
                 g.strokePath(path, juce::PathStrokeType(thickness,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
                 return;
             }
 
-            // Keep the summed response crisp. The mockup reads the colour primarily from
-            // the line itself and the band fills, with only a very small optical halo.
-            g.setGradientFill(makeResponseGradient(data, .035f * alpha));
-            g.strokePath(path, juce::PathStrokeType(thickness * 3.6f,
+            // The sum line is the sharpest graph element in the concept. Its colour
+            // should read directly from the response, not from a large neon halo.
+            g.setGradientFill(makeResponseGradient(data, .022f * alpha));
+            g.strokePath(path, juce::PathStrokeType(thickness * 2.75f,
                                                     juce::PathStrokeType::curved,
                                                     juce::PathStrokeType::rounded));
-            g.setGradientFill(makeResponseGradient(data, .10f * alpha));
-            g.strokePath(path, juce::PathStrokeType(thickness * 1.8f,
+            g.setGradientFill(makeResponseGradient(data, .070f * alpha));
+            g.strokePath(path, juce::PathStrokeType(thickness * 1.45f,
                                                     juce::PathStrokeType::curved,
                                                     juce::PathStrokeType::rounded));
 
-            g.setGradientFill(makeResponseGradient(data, .96f * alpha));
+            g.setGradientFill(makeResponseGradient(data, .97f * alpha));
             g.strokePath(path, juce::PathStrokeType(thickness,
                                                     juce::PathStrokeType::curved,
                                                     juce::PathStrokeType::rounded));
@@ -148,8 +148,8 @@ namespace zlpanel {
         }
 
         // Build the response colour field from each band's actual local contribution.
-        // More stops and less neutral mixing make overlapping hues read like the mockup
-        // without introducing hard colour boundaries.
+        // The neutral base keeps low-contribution regions calm while overlapping active
+        // bands mix continuously into the same pastel language used by the mockup.
         auto& gradient = gradients_[lr].getWriter();
         gradient.valid = !on_indices.empty() && xs.size() >= kGradientStops;
         if (gradient.valid) {
@@ -173,11 +173,11 @@ namespace zlpanel {
                 juce::Colour mixed = neutral;
                 if (total > 1.0e-4f) {
                     mixed = juce::Colour::fromFloatRGBA(rr / total, gg / total, bb / total, 1.f)
-                                .interpolatedWith(juce::Colours::white, .065f);
-                    const auto tint = juce::jlimit(.78f, .985f, .82f + total * .050f);
+                                .interpolatedWith(juce::Colours::white, .055f);
+                    const auto tint = juce::jlimit(.80f, .99f, .84f + total * .048f);
                     mixed = neutral.interpolatedWith(mixed, tint);
                 }
-                gradient.colours[stop] = mixed.withAlpha(.98f);
+                gradient.colours[stop] = mixed.withAlpha(.99f);
             }
         }
         gradients_[lr].publish();
@@ -192,6 +192,6 @@ namespace zlpanel {
     }
 
     void SumPanel::lookAndFeelChanged() {
-        curve_thickness_ = base_.getFontSize() * .105f * base_.getSumEQCurveThickness();
+        curve_thickness_ = base_.getFontSize() * .092f * base_.getSumEQCurveThickness();
     }
 }
