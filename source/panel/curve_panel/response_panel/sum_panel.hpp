@@ -33,7 +33,7 @@ namespace zlpanel {
                  std::array<zldsp::vector::aligned_vector<float>, zlp::kBandNum>& dynamic_mags);
 
     public:
-        static constexpr size_t kGradientStops = 29;
+        static constexpr size_t kGradientStops = 41;
         struct GradientData {
             std::array<float, kGradientStops> xs{};
             std::array<juce::Colour, kGradientStops> colours{};
