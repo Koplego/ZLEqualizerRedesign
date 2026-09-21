@@ -25,6 +25,8 @@ namespace zlpanel {
 
         ~FloatPopPanel() override;
 
+        void paintOverChildren(juce::Graphics& g) override;
+
         void resized() override;
 
         void repaintCallBackSlow();
@@ -50,6 +52,9 @@ namespace zlpanel {
         PanelBackground control_background_;
 
         bool is_target_visible_{false};
+        bool dynamic_on_{false};
+        enum class DetailPage { dynamics, detector, sidechain };
+        DetailPage detail_page_{DetailPage::dynamics};
         juce::Point<float> position_{};
         juce::Point<float> target_position_{};
         juce::Point<float> upper_center_{};
@@ -72,6 +77,15 @@ namespace zlpanel {
         const std::unique_ptr<juce::Drawable> close_drawable_;
         zlgui::button::ClickButton close_button_;
 
+        const std::unique_ptr<juce::Drawable> dynamic_drawable_;
+        zlgui::button::ClickButton dynamic_button_;
+        std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> dynamic_attachment_;
+        std::atomic<float>* dynamic_on_ptr_{nullptr};
+
+        zlgui::button::ClickTextButton dynamics_page_button_;
+        zlgui::button::ClickTextButton detector_page_button_;
+        zlgui::button::ClickTextButton sidechain_page_button_;
+
         zlgui::combobox::CompactCombobox ftype_box_;
         std::unique_ptr<zlgui::attachment::ComboBoxAttachment<true>> ftype_attachment_;
 
@@ -80,6 +94,63 @@ namespace zlpanel {
 
         zlgui::slider::CompactLinearSlider<false, false, false> freq_slider_;
         std::unique_ptr<zlgui::attachment::SliderAttachment<true>> freq_attachment_;
+
+        zlgui::slider::CompactLinearSlider<false, false, false> gain_slider_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> gain_attachment_;
+
+        zlgui::slider::CompactLinearSlider<false, false, false> q_slider_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> q_attachment_;
+
+        zlgui::slider::CompactLinearSlider<false, false, false> range_slider_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> range_attachment_;
+
+        zlgui::slider::CompactLinearSlider<false, false, false> threshold_slider_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> threshold_attachment_;
+
+        zlgui::slider::CompactLinearSlider<false, false, false> attack_slider_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> attack_attachment_;
+
+        zlgui::slider::CompactLinearSlider<false, false, false> release_slider_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> release_attachment_;
+
+        zlgui::slider::CompactLinearSlider<false, false, false> knee_slider_;
+        zlgui::slider::CompactLinearSlider<false, false, false> rms_length_slider_;
+        zlgui::slider::CompactLinearSlider<false, false, false> rms_mix_slider_;
+        zlgui::slider::CompactLinearSlider<false, false, false> smooth_slider_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> knee_attachment_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> rms_length_attachment_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> rms_mix_attachment_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> smooth_attachment_;
+
+        zlgui::button::ClickTextButton learn_button_;
+        zlgui::button::ClickTextButton relative_button_;
+        zlgui::button::ClickTextButton dyn_bypass_button_;
+        std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> learn_attachment_;
+        std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> relative_attachment_;
+        std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> dyn_bypass_attachment_;
+
+        zlgui::combobox::CompactCombobox side_type_box_;
+        zlgui::combobox::CompactCombobox side_order_box_;
+        zlgui::slider::CompactLinearSlider<false, false, false> side_freq_slider_;
+        zlgui::slider::CompactLinearSlider<false, false, false> side_q_slider_;
+        std::unique_ptr<zlgui::attachment::ComboBoxAttachment<true>> side_type_attachment_;
+        std::unique_ptr<zlgui::attachment::ComboBoxAttachment<true>> side_order_attachment_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> side_freq_attachment_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> side_q_attachment_;
+        zlgui::button::ClickTextButton side_link_button_;
+        zlgui::button::ClickTextButton side_swap_button_;
+        std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> side_link_attachment_;
+        std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> side_swap_attachment_;
+
+        juce::Rectangle<int> filter_name_bound_, mode_name_bound_;
+        juce::Rectangle<int> freq_label_bound_, gain_label_bound_, q_label_bound_;
+        juce::Rectangle<int> range_label_bound_, threshold_label_bound_, attack_label_bound_, release_label_bound_;
+        std::array<juce::Rectangle<int>, 4> detail_label_bounds_{};
+
+        void updateDynamicVisibility(bool dynamic_on, bool request_parent_resize);
+        void updateDetailPage(DetailPage page, bool request_parent_resize);
+        void updateDetailVisibility();
+        void styleDetailButton(zlgui::button::ClickTextButton& button);
 
         void updateTransformation();
 

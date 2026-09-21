@@ -12,6 +12,7 @@
 #include "control_panel/control_panel.hpp"
 #include "control_panel/extra_dynamic_panel.hpp"
 #include "curve_panel/curve_panel.hpp"
+#include "glass_footer_panel.hpp"
 #include "preset_browser/preset_browser.hpp"
 #include "top_panel/top_panel.hpp"
 #include "ui_setting_panel/ui_setting_panel.hpp"
@@ -24,6 +25,8 @@ namespace zlpanel {
         explicit MainPanel(PluginProcessor& p, zlgui::UIBase& base, multilingual::TooltipLanguage language);
 
         ~MainPanel() override;
+
+        void paint(juce::Graphics& g) override;
 
         void resized() override;
 
@@ -56,6 +59,7 @@ namespace zlpanel {
         ControlPanel control_panel_;
         ExtraDynamicPanel extra_dynamic_panel_;
         TopPanel top_panel_;
+        GlassFooterPanel footer_panel_;
         PresetBrowser preset_browser_;
         UISettingPanel ui_setting_panel_;
 

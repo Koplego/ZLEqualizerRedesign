@@ -2,12 +2,9 @@
 // This file is part of ZLEqualizer
 //
 // ZLEqualizer is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License Version 3 as published by the Free Software Foundation.
-//
-// ZLEqualizer is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License along with ZLEqualizer. If not, see <https://www.gnu.org/licenses/>.
 
 #include "top_panel.hpp"
+#include "../../gui/glass_tokens.hpp"
 #include "BinaryData.h"
 
 namespace zlpanel {
@@ -43,30 +40,19 @@ namespace zlpanel {
                                                             BinaryData::match_svgSize)),
         match_button_(base, match_drawable_.get(), match_drawable_.get(),
                       tooltip_helper.getToolTipText(multilingual::kEQMatch)) {
-        logo_panel_.setBufferedToImage(true);
-        addAndMakeVisible(logo_panel_);
+        setOpaque(false);
+
+        // The legacy components stay alive as interaction/attachment plumbing, but their
+        // original ZL artwork is hidden. This panel paints a new visual language itself.
+        logo_panel_.setVisible(false);
+        analyzer_label_.setVisible(false);
+        fstruct_box_.setVisible(false);
+        preset_button_.setVisible(false);
 
         output_label_.setBufferedToImage(true);
         addAndMakeVisible(output_label_);
 
-        analyzer_label_.setBufferedToImage(true);
-        addAndMakeVisible(analyzer_label_);
-
-        fstruct_box_.setScrollEnabled(true);
-        fstruct_box_.setAlpha(.5f);
-        fstruct_box_.setBufferedToImage(true);
-        addAndMakeVisible(fstruct_box_);
-
-        preset_button_.getButton().onClick = [this]() {
-            const auto panel_open = static_cast<float>(
-                base_.getPanelProperty(zlgui::PanelSettingIdx::kPresetBrowser));
-            base_.setPanelProperty(zlgui::PanelSettingIdx::kPresetBrowser, panel_open < .5f ? 1.f : 0.f);
-        };
-        preset_button_.setImageAlpha(.5f, .75f, 1.f, 1.f);
-        preset_button_.setBufferedToImage(true);
-        addAndMakeVisible(preset_button_);
-
-        bypass_button_.setImageAlpha(1.f, 1.f, .5f, .75f);
+        bypass_button_.setImageAlpha(0.f, 0.f, 0.f, 0.f);
         bypass_button_.setBufferedToImage(true);
         addAndMakeVisible(bypass_button_);
 
@@ -76,65 +62,178 @@ namespace zlpanel {
                 updateValue(para, 1.f);
             }
         };
-        ext_button_.setImageAlpha(.5f, .75f, 1.f, 1.f);
+        ext_button_.setImageAlpha(0.f, 0.f, 0.f, 0.f);
         ext_button_.setBufferedToImage(true);
         addAndMakeVisible(ext_button_);
 
         match_button_.getButton().onClick = [this]() {
-            base_.setPanelProperty(zlgui::PanelSettingIdx::kMatchPanel, static_cast<double>(match_button_.getToggleState()));
+            base_.setPanelProperty(zlgui::PanelSettingIdx::kMatchPanel,
+                                   static_cast<double>(match_button_.getToggleState()));
         };
-        match_button_.setImageAlpha(.5f, .75f, 1.f, 1.f);
+        match_button_.setImageAlpha(0.f, 0.f, 0.f, 0.f);
         match_button_.setBufferedToImage(true);
         addAndMakeVisible(match_button_);
 
-        setInterceptsMouseClicks(false, true);
+        setInterceptsMouseClicks(true, true);
     }
 
     void TopPanel::paint(juce::Graphics& g) {
-        g.fillAll(base_.getBackgroundColour());
+        auto bounds = getLocalBounds().toFloat();
+        const auto padding = static_cast<float>(getPaddingSize(base_.getFontSize()));
+        const auto radius = juce::jmax(14.f, base_.getFontSize() * 1.18f);
+
+        // No traditional full-width toolbar. Instead, the title, preset selector and utilities
+        // sit as three independent pieces of glass on the same optical plane.
+        auto title_capsule = bounds.removeFromLeft(juce::jmax(190.f, base_.getFontSize() * 12.8f)).reduced(.5f);
+        auto title_fill = title_capsule;
+        zlgui::glass::fillGlassSurface(g, title_fill, radius, .085f, .14f, .14f);
+
+        const auto orb_size = juce::jmax(24.f, base_.getFontSize() * 1.9f);
+        auto orb = juce::Rectangle<float>(title_capsule.getX() + padding,
+                                          title_capsule.getCentreY() - orb_size * .5f,
+                                          orb_size, orb_size);
+        juce::ColourGradient orb_gradient(juce::Colour(245, 252, 255).withAlpha(.55f),
+                                          orb.getX(), orb.getY(),
+                                          juce::Colour(87, 140, 185).withAlpha(.24f),
+                                          orb.getRight(), orb.getBottom(), false);
+        g.setGradientFill(orb_gradient);
+        g.fillEllipse(orb);
+        g.setColour(juce::Colour(255, 255, 255).withAlpha(.42f));
+        g.drawEllipse(orb, 1.f);
+        // Small crescent highlight gives the orb a lens-like volume.
+        auto crescent = orb.reduced(orb_size * .20f);
+        crescent.translate(-orb_size * .10f, -orb_size * .10f);
+        g.setColour(juce::Colour(255, 255, 255).withAlpha(.20f));
+        juce::Path crescent_path;
+        crescent_path.addCentredArc(crescent.getCentreX(), crescent.getCentreY(),
+                                    crescent.getWidth() * .5f, crescent.getHeight() * .5f,
+                                    0.f, .25f, 2.35f, true);
+        g.strokePath(crescent_path, juce::PathStrokeType(1.2f, juce::PathStrokeType::curved,
+                                                         juce::PathStrokeType::rounded));
+
+        auto title_area = title_capsule.toNearestInt();
+        title_area.setX(juce::roundToInt(orb.getRight() + padding * .9f));
+        title_area.setWidth(juce::jmax(105, juce::roundToInt(base_.getFontSize() * 7.1f)));
+        g.setColour(juce::Colour(248, 252, 255).withAlpha(.95f));
+        g.setFont(juce::FontOptions(base_.getFontSize() * 1.02f));
+        g.drawText("Glass EQ", title_area, juce::Justification::centredLeft, false);
+
+        auto version = title_area;
+        version.setX(title_area.getRight());
+        version.setWidth(juce::roundToInt(base_.getFontSize() * 2.1f));
+        g.setColour(juce::Colour(232, 244, 252).withAlpha(.36f));
+        g.setFont(juce::FontOptions(base_.getFontSize() * .55f));
+        g.drawText("1.1", version, juce::Justification::centredLeft, false);
+
+        if (!preset_pill_bound_.isEmpty()) {
+            auto pill = preset_pill_bound_.toFloat().reduced(.5f);
+            zlgui::glass::fillGlassSurface(g, pill, pill.getHeight() * .5f, .12f, .17f, .18f);
+            g.setColour(base_.getTextColour().withAlpha(.80f));
+            g.setFont(juce::FontOptions(base_.getFontSize() * .78f));
+            g.drawText("Presets", preset_pill_bound_.reduced(18, 0), juce::Justification::centred, false);
+            const auto cx = pill.getRight() - pill.getHeight() * .52f;
+            const auto cy = pill.getCentreY();
+            juce::Path chevron;
+            chevron.startNewSubPath(cx - 3.f, cy - 1.f);
+            chevron.lineTo(cx, cy + 2.f);
+            chevron.lineTo(cx + 3.f, cy - 1.f);
+            g.setColour(juce::Colour(244, 251, 255).withAlpha(.48f));
+            g.strokePath(chevron, juce::PathStrokeType(1.f, juce::PathStrokeType::curved,
+                                                       juce::PathStrokeType::rounded));
+        }
+
+        if (!utility_cluster_bound_.isEmpty()) {
+            auto utility = utility_cluster_bound_.toFloat().reduced(.5f);
+            zlgui::glass::fillGlassSurface(g, utility, utility.getHeight() * .5f, .09f, .16f, .15f);
+
+            // Draw our own minimal glyphs over transparent legacy hit targets.
+            const auto draw_wave = [&g, this](const juce::Rectangle<int>& ib, const bool active) {
+                auto r = ib.toFloat().reduced(base_.getFontSize() * .52f);
+                juce::Path p;
+                p.startNewSubPath(r.getX(), r.getCentreY());
+                p.cubicTo(r.getX() + r.getWidth() * .22f, r.getY(),
+                          r.getX() + r.getWidth() * .28f, r.getBottom(),
+                          r.getX() + r.getWidth() * .50f, r.getCentreY());
+                p.cubicTo(r.getX() + r.getWidth() * .72f, r.getY(),
+                          r.getX() + r.getWidth() * .78f, r.getBottom(),
+                          r.getRight(), r.getCentreY());
+                g.setColour(juce::Colour(243, 250, 255).withAlpha(active ? .90f : .46f));
+                g.strokePath(p, juce::PathStrokeType(1.35f, juce::PathStrokeType::curved,
+                                                     juce::PathStrokeType::rounded));
+            };
+            draw_wave(match_button_.getBounds(), match_button_.getToggleState());
+
+            // External-side-chain symbol: two glass dots linked by a short bridge.
+            auto er = ext_button_.getBounds().toFloat().reduced(base_.getFontSize() * .58f);
+            const auto dot = juce::jmax(3.f, er.getHeight() * .24f);
+            g.setColour(juce::Colour(243, 250, 255).withAlpha(ext_button_.getToggleState() ? .90f : .45f));
+            g.drawEllipse(er.getX(), er.getCentreY() - dot * .5f, dot, dot, 1.2f);
+            g.drawEllipse(er.getRight() - dot, er.getCentreY() - dot * .5f, dot, dot, 1.2f);
+            g.drawLine(er.getX() + dot, er.getCentreY(), er.getRight() - dot, er.getCentreY(), 1.2f);
+
+            // Power glyph.
+            auto pr = bypass_button_.getBounds().toFloat().reduced(base_.getFontSize() * .50f);
+            g.setColour(juce::Colour(248, 252, 255).withAlpha(bypass_button_.getToggleState() ? .42f : .92f));
+            juce::Path power_arc;
+            power_arc.addCentredArc(pr.getCentreX(), pr.getCentreY(), pr.getWidth() * .5f,
+                                    pr.getHeight() * .5f, 0.f, .72f, 5.56f, true);
+            g.strokePath(power_arc, juce::PathStrokeType(1.5f, juce::PathStrokeType::curved,
+                                                         juce::PathStrokeType::rounded));
+            g.drawLine(pr.getCentreX(), pr.getY(), pr.getCentreX(), pr.getCentreY(), 1.5f);
+        }
     }
 
     int TopPanel::getIdealHeight() const {
         const auto font_size = base_.getFontSize();
-        return 2 * (getPaddingSize(font_size) / 2) + getButtonSize(font_size);
+        return getButtonSize(font_size) + 3 * getPaddingSize(font_size);
     }
 
     void TopPanel::resized() {
         const auto font_size = base_.getFontSize();
         const auto padding = getPaddingSize(font_size);
-        const auto slider_width = getSliderWidth(font_size);
-        const auto small_slider_width = getSmallSliderWidth(font_size);
-        auto bound = getLocalBounds();
-        bound.reduce(padding / 2, padding / 2);
+        const auto button = getButtonSize(font_size);
+        auto bound = getLocalBounds().reduced(padding, padding);
 
-        logo_panel_.setBounds(bound.removeFromLeft(bound.getHeight() * 2 + padding));
-        bound.removeFromLeft(padding);
+        logo_panel_.setBounds({});
+        analyzer_label_.setBounds({});
+        fstruct_box_.setBounds({});
+        preset_button_.setBounds({});
 
-        bypass_button_.setBounds(bound.removeFromRight(bound.getHeight()));
-        bound.removeFromRight(padding);
-        ext_button_.setBounds(bound.removeFromRight(bound.getHeight()));
-        {
-            const auto left_pad = bound.getX();
-            const auto t_width = 6 * padding + 3 * (slider_width / 2) - left_pad;
-            bound.removeFromLeft(padding);
-            preset_button_.setBounds(bound.removeFromLeft(bound.getHeight()));
-            preset_button_.getButton().setEdgeIndent(static_cast<int>(std::round(font_size * .15f)));
-            bound.removeFromLeft(padding);
-            analyzer_label_.setBounds(bound.getX(), 0, t_width, getHeight());
-            bound.removeFromLeft(t_width);
-        }
-        match_button_.setBounds(bound.removeFromLeft(bound.getHeight()));
-        {
-            const auto right_pad = getWidth() - bound.getRight();
-            const auto t_width = 5 * padding + 2 * slider_width - right_pad + 2 * padding;
-            output_label_.setBounds(bound.getRight() - t_width, 0, t_width, getHeight());
-        }
-        bound = getLocalBounds().reduced(0, padding / 2);
-        fstruct_box_.setBounds(bound.withSizeKeepingCentre(small_slider_width * 2, bound.getHeight()));
+        const auto left_reserved = juce::jmax(195, juce::roundToInt(font_size * 13.1f));
+        bound.removeFromLeft(left_reserved);
+
+        const auto preset_w = juce::jmax(132, juce::roundToInt(font_size * 8.9f));
+        preset_pill_bound_ = getLocalBounds().withSizeKeepingCentre(preset_w, button + padding / 2);
+
+        bypass_button_.setBounds(bound.removeFromRight(button));
+        bound.removeFromRight(padding / 4);
+        ext_button_.setBounds(bound.removeFromRight(button));
+        bound.removeFromRight(padding / 4);
+        match_button_.setBounds(bound.removeFromRight(button));
+        bound.removeFromRight(padding / 3);
+        const auto output_width = juce::jmax(72, juce::roundToInt(font_size * 5.0f));
+        output_label_.setBounds(bound.removeFromRight(output_width));
+
+        utility_cluster_bound_ = output_label_.getBounds()
+            .getUnion(match_button_.getBounds())
+            .getUnion(ext_button_.getBounds())
+            .getUnion(bypass_button_.getBounds())
+            .expanded(juce::jmax(3, padding / 2), juce::jmax(2, padding / 3));
+
+        repaint();
     }
 
     void TopPanel::repaintCallbackSlow() {
         output_label_.repaintCallbackSlow();
         updater_.updateComponents();
+        repaint();
+    }
+
+    void TopPanel::mouseDown(const juce::MouseEvent& event) {
+        if (preset_pill_bound_.contains(event.getPosition())) {
+            const auto panel_open = static_cast<float>(
+                base_.getPanelProperty(zlgui::PanelSettingIdx::kPresetBrowser));
+            base_.setPanelProperty(zlgui::PanelSettingIdx::kPresetBrowser, panel_open < .5f ? 1.f : 0.f);
+        }
     }
 }

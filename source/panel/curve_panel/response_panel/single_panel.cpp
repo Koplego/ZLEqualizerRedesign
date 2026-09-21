@@ -83,17 +83,25 @@ namespace zlpanel {
             multiplier *= kNoBandSelectedAlphaMultiplier;
         }
         if (is_selected) {
-            base_fill_alpha_[band] = (is_dynamic_on ? 0.f : kFillingAlpha) * multiplier;
+            // The mockup uses a soft translucent colour wash beneath every visible EQ shape.
+            // Keep the selected band's fill clear enough to read without turning the graph into
+            // a stack of opaque coloured areas. Dynamic bands use the target fill instead.
+            base_fill_alpha_[band] = (is_dynamic_on ? kFillingAlpha * .28f : kFillingAlpha) * multiplier;
             target_fill_alpha_[band] = (is_dynamic_on ? kDynamicFillingAlpha : 0.f) * multiplier;
         } else {
-            target_fill_alpha_[band] = (is_dynamic_on ? kDynamicFillingAlpha * .9f : 0.f) * multiplier;
+            // Non-selected bands keep a quieter fill so overlapping bands naturally blend their
+            // colours, which is a major part of the reference mockup's visual language.
+            base_fill_alpha_[band] = kFillingAlpha * .42f * multiplier;
+            target_fill_alpha_[band] = (is_dynamic_on ? kDynamicFillingAlpha * .48f : 0.f) * multiplier;
             multiplier *= kNotSelectedAlphaMultiplier;
-            base_fill_alpha_[band] = 0.f;
         }
         base_stroke_alpha_[band] = multiplier;
 
         const auto band_colour = base_.getColourMap1(band);
-        base_stroke_colour_[band] = base_.getColourBlendedWithBackground(band_colour, multiplier);
+        // Keep the hue itself much more visible than v1.0. The response remains pastel by
+        // mixing only a small amount of white, rather than washing every band toward cyan.
+        base_stroke_colour_[band] = band_colour.interpolatedWith(juce::Colours::white, is_selected ? .08f : .10f)
+            .withAlpha(std::clamp(multiplier * (is_selected ? .94f : .56f), .06f, .96f));
 
         is_same_stereo_[band] = is_same_stereo;
     }
@@ -196,7 +204,7 @@ namespace zlpanel {
             base_paths_[band].pull();
             g.strokePath(base_paths_[band].getReader(), juce::PathStrokeType(curve_thickness,
                                                                              juce::PathStrokeType::curved,
-                                                                             juce::PathStrokeType::square));
+                                                                             juce::PathStrokeType::rounded));
             button_lines_[band].pull();
             if (const auto line = button_lines_[band].getReader(); line.getEndX() > 0.f) {
                 if (line.getEndY() > line.getStartY()) {
@@ -222,6 +230,6 @@ namespace zlpanel {
     }
 
     void SinglePanel::lookAndFeelChanged() {
-        curve_thickness_ = base_.getFontSize() * .175f * base_.getSingleEQCurveThickness();
+        curve_thickness_ = base_.getFontSize() * .098f * base_.getSingleEQCurveThickness();
     }
 }

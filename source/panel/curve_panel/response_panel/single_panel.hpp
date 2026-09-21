@@ -45,13 +45,13 @@ namespace zlpanel {
 
     private:
         static constexpr size_t kNumPoints = 400;
-        static constexpr float kFillingAlpha = .125f;
-        static constexpr float kDynamicFillingAlpha = .33333f;
-        static constexpr float kNotSelectedAlphaMultiplier = .75f;
+        static constexpr float kFillingAlpha = .082f;
+        static constexpr float kDynamicFillingAlpha = .135f;
+        static constexpr float kNotSelectedAlphaMultiplier = .42f;
         static constexpr float kBypassAlphaMultiplier = .75f;
         static constexpr float kDiffStereoAlphaMultiplier = .33333f;
-        static constexpr float kNoBandSelectedAlphaMultiplier = .75f;
-        static constexpr float kThickMultiplier = 1.15f;
+        static constexpr float kNoBandSelectedAlphaMultiplier = .58f;
+        static constexpr float kThickMultiplier = 1.16f;
 
         PluginProcessor& p_ref_;
         zlgui::UIBase& base_;

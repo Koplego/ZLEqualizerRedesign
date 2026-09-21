@@ -21,6 +21,10 @@ PluginEditor::PluginEditor(PluginProcessor& p) :
     base_(state_),
     main_panel_(p, base_, static_cast<zlpanel::multilingual::TooltipLanguage>(std::round(
                     zlpanel::getValue(state_, zlstate::PTooltipLang::kID)))) {
+    // Keep the editor opaque and render the material deliberately. This avoids host-specific
+    // transparency artefacts while preserving the Liquid Glass depth inside the plugin.
+    setOpaque(true);
+
     // set font
 #if defined(JUCE_WINDOWS)
     base_.font_ = juce::Typeface::createSystemTypefaceFor(
@@ -30,6 +34,20 @@ PluginEditor::PluginEditor(PluginProcessor& p) :
         BinaryData::InterSubsetMedium_ttf, BinaryData::InterSubsetMedium_ttfSize);
 #endif
     juce::LookAndFeel::getDefaultLookAndFeel().setDefaultSansSerifTypeface(base_.font_);
+
+    // Liquid Glass personal theme. UIBase normally loads the user's persisted ZL theme,
+    // which is why changing defaults alone does not affect an existing installation.
+    // Override the live colours here so the redesigned editor is deterministic.
+    base_.setColourByIdx(zlgui::kTextColour,       juce::Colour(238, 245, 252));
+    base_.setColourByIdx(zlgui::kBackgroundColour, juce::Colour(18, 37, 55));
+    base_.setColourByIdx(zlgui::kShadowColour,     juce::Colour(3, 10, 18));
+    base_.setColourByIdx(zlgui::kGlowColour,       juce::Colour(166, 210, 246).withAlpha(0.30f));
+    base_.setColourByIdx(zlgui::kGridColour,       juce::Colour(218, 237, 250).withAlpha(0.06f));
+    base_.setColourByIdx(zlgui::kPreColour,        juce::Colour(200, 220, 234).withAlpha(0.16f));
+    base_.setColourByIdx(zlgui::kPostColour,       juce::Colour(235, 245, 251).withAlpha(0.22f));
+    base_.setColourByIdx(zlgui::kSideColour,       juce::Colour(195, 185, 231).withAlpha(0.13f));
+    base_.setColourByIdx(zlgui::kCollisionColour,  juce::Colour(255, 132, 153));
+
     // add the main panel
     addAndMakeVisible(main_panel_);
     main_panel_.getControlPanel().addMouseListener(this, true);

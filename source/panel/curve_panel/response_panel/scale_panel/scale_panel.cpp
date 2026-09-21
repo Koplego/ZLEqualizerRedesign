@@ -71,29 +71,19 @@ namespace zlpanel {
 
         const auto bound = getLocalBounds().toFloat();
         const auto layout = scale_panel_layout::getMetrics(
-            bound.getWidth(), base_.getFontSize(), use_wide_layout_);
+            bound.getWidth(), base_.getFontSize(), false);
         const auto content_bound = bound.withLeft(bound.getRight() - layout.content_width);
         const auto box_height = static_cast<int>(std::round(base_.getFontSize() * 1.3f));
         const auto eq_box_width = static_cast<int>(layout.eq_column_width);
-        const auto fft_top_box_width = static_cast<int>(std::floor(layout.fft_column_width));
-        const auto fft_min_box_width = static_cast<int>(std::floor(layout.floor_control_width));
-        fft_top_box_.setBounds(0, 0, fft_top_box_width, box_height);
-        fft_min_box_.setBounds(0, 0, fft_min_box_width, box_height);
-        const auto eq_box_bound = juce::Rectangle<int>(0, 0,
-                                                       eq_box_width,
-                                                       box_height);
-        eq_max_box_.setBounds(eq_box_bound);
 
-        const auto unit_height = getUnitHeight();
+        // Keep only the EQ range selector visible on the graph. Analyzer top/floor
+        // remain functional in the Analyzer panel and via their parameter attachments.
+        fft_top_box_.setBounds({});
+        fft_min_box_.setBounds({});
+        eq_max_box_.setBounds(0, 0, eq_box_width, box_height);
         eq_max_box_.setTransform(juce::AffineTransform::translation(
-            content_bound.getX(),
+            content_bound.getRight() - static_cast<float>(eq_box_width),
             base_.getFontSize() * kDraggerScale - .5f * static_cast<float>(box_height)));
-        fft_top_box_.setTransform(juce::AffineTransform::translation(
-            content_bound.getRight() - static_cast<float>(fft_top_box_width) - layout.right_padding,
-            base_.getFontSize() * kDraggerScale - .5f * static_cast<float>(box_height)));
-        fft_min_box_.setTransform(juce::AffineTransform::translation(
-            content_bound.getRight() - static_cast<float>(fft_min_box_width) - layout.right_padding,
-            6.f * unit_height + base_.getFontSize() * kDraggerScale - .5f * static_cast<float>(box_height)));
     }
 
     void ScalePanel::repaintCallBackSlow() {

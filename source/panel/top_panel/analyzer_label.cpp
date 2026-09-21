@@ -17,7 +17,7 @@ namespace zlpanel {
         control_background_.setInterceptsMouseClicks(false, false);
         addChildComponent(control_background_);
 
-        label_laf_.setFontScale(1.5f);
+        label_laf_.setFontScale(1.0f);
 
         analyzer_label_.setText("Analyzer", juce::dontSendNotification);
         for (auto& l : {&analyzer_label_}) {

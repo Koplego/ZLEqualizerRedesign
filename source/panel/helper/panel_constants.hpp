@@ -60,9 +60,9 @@ namespace zlpanel {
     }
 
     inline int getBottomAreaHeight(const float font_size) {
-        const auto box_height = getBoxHeight(font_size);
-        const auto button_height = getButtonSize(font_size);
-        const auto padding = getPaddingSize(font_size);
-        return 3 * box_height + button_height + 5 * padding + getBottomPadding(font_size);
+        // Glass EQ no longer uses the legacy multi-row control strip inside the graph.
+        // Reserve only enough room for frequency labels and a small breathing margin so
+        // the EQ/analyzer can use the full vertical canvas like Pro-Q.
+        return getBoxHeight(font_size) + getBottomPadding(font_size);
     }
 }

@@ -15,8 +15,8 @@ include(PamplejuceMacOS)
 # This is the internal name of the project and the name of JUCE's shared code "target"
 # Note: This cannot have spaces (it may be 2023, but you can't have it all!)
 # Worry not, JUCE's PRODUCT_NAME can have spaces (and is DAWs display)
-set(PROJECT_NAME "ZLEqualizer")
-set(PLUGIN_CODE "Equ2")
+set(PROJECT_NAME "GlassEQ")
+set(PLUGIN_CODE "GlE2")
 
 # Worry not, JUCE's PRODUCT_NAME can have spaces (and is what DAWs will display)
 # You can also just have it be the same thing as PROJECT_NAME
@@ -24,16 +24,16 @@ set(PLUGIN_CODE "Equ2")
 # #  set(PROJECT_NAME "MyPlugin_v${MAJOR_VERSION}")
 # Doing so enables major versions to show up in IDEs and DAWs as separate plugins
 # allowing you to change parameters and behavior without breaking existing user projects
-set(PRODUCT_NAME "ZL Equalizer 2")
+set(PRODUCT_NAME "Glass EQ")
 
 # Change me! Used for the MacOS bundle name and Installers
-set(COMPANY_NAME "ZL")
-set(PLUGIN_MANUFACTURER_CODE "Zliu")
+set(COMPANY_NAME "Havard")
+set(PLUGIN_MANUFACTURER_CODE "Hvrd")
 
 # Change me! Used for the MacOS bundle identifier (and signing)
-set(BUNDLE_ID "com.zlaudio.plugins")
+set(BUNDLE_ID "no.havard.glasseq")
 
-set(LV2URI "https://github.com/ZL-Audio/ZLEqualizer2")
+set(LV2URI "https://local.invalid/glasseq")
 
 # For simplicity, the name of the CMake project is also the name of the target
 project(${PROJECT_NAME} VERSION ${CURRENT_VERSION})

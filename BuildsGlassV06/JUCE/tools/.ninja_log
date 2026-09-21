@@ -1,0 +1,17 @@
+# ninja log v7
+1	29	1789947523382142242	/Users/koplego/GitHub/ZLEqualizerRedesign/BuildsGlassV06/JUCE/tools/CMakeFiles/cmake.verify_globs	e1b8524cb6e0697f
+31	78	1789947523412294734	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_core/juce_core_CompilationTime.cpp.o	92f44678897b42a7
+30	148	1789947523410989691	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_graphics/juce_graphics_Sheenbidi.c.o	45babfb1d2556ed3
+30	148	1789947523411358483	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_graphics/juce_graphics_libjpg_3.c.o	76456fc3403c30f9
+30	151	1789947523411228233	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_graphics/juce_graphics_libjpg_2.c.o	c423a87b6c4d621b
+31	165	1789947523412477568	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_core/juce_core_zlib.c.o	61efc3419992fb83
+30	199	1789947523411098358	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_graphics/juce_graphics_libjpg_1.c.o	bc66bbc84d1fa7ba
+30	270	1789947523411631733	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_graphics/juce_graphics_lunasvg.c.o	99a5842be80ad517
+30	315	1789947523411498566	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_graphics/juce_graphics_libpng.c.o	b32ec9ea30ea485
+30	737	1789947523410756191	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/juce_build_tools/juce_build_tools.cpp.o	7941160e34a4acad
+29	773	1789947523410567857	extras/Build/juceaide/CMakeFiles/juceaide.dir/Main.cpp.o	23a2f2c41f26e675
+31	1069	1789947523412111067	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_events/juce_events.mm.o	10ae99ca5714a3ab
+31	1635	1789947523412653901	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_core/juce_core.mm.o	2fdaf527eaea20f6
+30	3065	1789947523410875566	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_graphics/juce_graphics_Harfbuzz.cpp.o	2e8049bac9aedeef
+31	3572	1789947523411877108	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_graphics/juce_graphics.mm.o	208d60dc12f17e62
+3572	3671	1789947526953479551	extras/Build/juceaide/juceaide_artefacts/Custom/juceaide	81a4c39ea4808d9d

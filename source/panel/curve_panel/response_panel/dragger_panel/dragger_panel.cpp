@@ -41,15 +41,15 @@ namespace zlpanel {
         side_dragger_.getButton().setToggleState(true, juce::sendNotificationSync);
         side_dragger_.getButton().addMouseListener(this, false);
         side_dragger_.setXYEnabled(true, false);
-        side_dragger_.getLAF().setDraggerShape(zlgui::dragger::DraggerLookAndFeel::kRectangle);
-        addChildComponent(side_dragger_);
+        side_dragger_.getLAF().setDraggerShape(zlgui::dragger::DraggerLookAndFeel::kRound);
+        addChildComponent(side_dragger_); // retained for parameter plumbing; not shown in the main graph
 
-        target_dragger_.setScale(kDraggerScale * kDraggerSizeMultiplier,
+        target_dragger_.setScale(kDraggerScale * kDraggerSizeMultiplier * .82f,
                                  kDraggerScale * kDraggerPaddingMultiplier);
         target_dragger_.getButton().setToggleState(true, juce::sendNotificationSync);
         target_dragger_.getButton().addMouseListener(this, false);
         target_dragger_.setXYEnabled(false, true);
-        target_dragger_.getLAF().setDraggerShape(zlgui::dragger::DraggerLookAndFeel::kUpDownArrow);
+        target_dragger_.getLAF().setDraggerShape(zlgui::dragger::DraggerLookAndFeel::kRound);
         addChildComponent(target_dragger_);
 
         for (size_t band = 0; band < zlp::kBandNum; ++band) {
@@ -157,7 +157,7 @@ namespace zlpanel {
         if (const auto band = base_.getSelectedBand(); band < zlp::kBandNum) {
             draggers_[band].toFront(true);
             target_dragger_.setVisible(is_dynamic_on_[band]);
-            side_dragger_.setVisible(is_dynamic_on_[band]);
+            side_dragger_.setVisible(false);
 
             target_dragger_.getLAF().setColour(base_.getColourMap1(band));
             side_dragger_.getLAF().setColour(base_.getColourMap1(band));
@@ -219,7 +219,7 @@ namespace zlpanel {
         draggers_[band].setVisible(filter_status != zlp::FilterStatus::kOff);
         if (band == base_.getSelectedBand()) {
             target_dragger_.setVisible(is_dynamic_on);
-            side_dragger_.setVisible(is_dynamic_on);
+            side_dragger_.setVisible(false);
             float_pop_panel_.setTargetVisible(is_dynamic_on);
         }
         is_dynamic_on_[band] = is_dynamic_on;

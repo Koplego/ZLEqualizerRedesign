@@ -27,6 +27,8 @@ namespace zlpanel {
 
         void repaintCallbackSlow();
 
+        void mouseDown(const juce::MouseEvent& event) override;
+
     private:
         PluginProcessor& p_ref_;
         zlgui::UIBase &base_;
@@ -48,6 +50,9 @@ namespace zlpanel {
         const std::unique_ptr<juce::Drawable> ext_drawable_;
         zlgui::button::ClickButton ext_button_;
         zlgui::attachment::ButtonAttachment<true> ext_attach_;
+
+        juce::Rectangle<int> preset_pill_bound_{};
+        juce::Rectangle<int> utility_cluster_bound_{};
 
         const std::unique_ptr<juce::Drawable> match_drawable_;
         zlgui::button::ClickButton match_button_;

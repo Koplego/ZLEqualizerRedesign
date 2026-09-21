@@ -32,6 +32,14 @@ namespace zlpanel {
                  std::span<float> xs, float k, float b,
                  std::array<zldsp::vector::aligned_vector<float>, zlp::kBandNum>& dynamic_mags);
 
+    public:
+        static constexpr size_t kGradientStops = 29;
+        struct GradientData {
+            std::array<float, kGradientStops> xs{};
+            std::array<juce::Colour, kGradientStops> colours{};
+            bool valid{false};
+        };
+
     private:
         static constexpr size_t kNumPoints = 400;
         static constexpr float kDiffStereoAlphaMultiplier = .25f;
@@ -40,6 +48,7 @@ namespace zlpanel {
         zlgui::UIBase& base_;
 
         std::array<TriBuffer<juce::Path>, 5> paths_{};
+        std::array<TriBuffer<GradientData>, 5> gradients_{};
 
         std::array<bool, zlp::kBandNum> is_same_stereo_{};
 

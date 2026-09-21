@@ -27,10 +27,10 @@ namespace zlpanel {
         control_background_.setBufferedToImage(true);
         addChildComponent(control_background_);
 
-        label_laf_.setFontScale(1.5f);
+        label_laf_.setFontScale(1.0f);
 
         scale_label_.setJustificationType(juce::Justification::centred);
-        gain_label_.setJustificationType(juce::Justification::centredLeft);
+        gain_label_.setJustificationType(juce::Justification::centred);
         for (auto& l : {&gain_label_, &scale_label_}) {
             l->setInterceptsMouseClicks(false, false);
             l->setLookAndFeel(&label_laf_);
@@ -56,7 +56,9 @@ namespace zlpanel {
         const auto padding = 2 * getPaddingSize(font_size);
         auto bound = getLocalBounds();
         control_background_.setBounds(0, -padding, bound.getWidth(), bound.getHeight() + padding + padding / 4);
-        scale_label_.setBounds(bound.removeFromLeft(bound.getWidth() / 2));
+        // Keep the top bar quiet: show only output gain. Gain Scale remains fully
+        // available in the existing Output panel (click this label) and via Cmd+wheel.
+        scale_label_.setBounds({});
         gain_label_.setBounds(bound);
 
         gain_slider_.setBounds(getLocalBounds());

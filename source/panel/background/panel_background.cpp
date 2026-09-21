@@ -2,46 +2,38 @@
 // This file is part of ZLSpectrumEqualizer
 //
 // ZLSpectrumEqualizer is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License Version 3 as published by the Free Software Foundation.
-//
-// ZLSpectrumEqualizer is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License along with ZLSpectrumEqualizer. If not, see <https://www.gnu.org/licenses/>.
 
 #include "panel_background.hpp"
+#include "../../gui/glass_tokens.hpp"
 
 #include <utility>
 
 #include "../helper/panel_constants.hpp"
 
 namespace zlpanel {
-    namespace {
-        constexpr auto kSurfaceTint = .05f;
-    }
-
     PanelBackground::PanelBackground(zlgui::UIBase& base, const float shadow_alpha) :
         base_(base), shadow_alpha_(shadow_alpha) {
         setInterceptsMouseClicks(false, false);
-        setAlpha(.9f);
+        setOpaque(false);
     }
 
     void PanelBackground::paint(juce::Graphics& g) {
         const auto padding = getPaddingSize(base_.getFontSize());
-        const auto bound = getLocalBounds().reduced(padding);
-        juce::Path path;
-        path.addRoundedRectangle(bound.toFloat(), static_cast<float>(padding));
+        const auto bound = getLocalBounds().reduced(juce::jmax(2, padding / 2)).toFloat();
+        const auto corner = zlgui::glass::surfaceRadius(base_.getFontSize());
 
-        const juce::DropShadow shadow{base_.getTextColour().withAlpha(shadow_alpha_), padding, {0, 0}};
+        juce::Path path;
+        path.addRoundedRectangle(bound, corner);
+        const juce::DropShadow shadow{juce::Colours::black.withAlpha(0.22f * shadow_alpha_),
+                                      juce::jmax(padding + 2, 3), {0, juce::jmax(1, padding / 3)}};
         shadow.drawForPath(g, path);
-        const auto background = base_.getBackgroundColour();
-        g.setColour(paints_surfaces_
-                        ? background.interpolatedWith(base_.getTextColour(), kSurfaceTint)
-                        : background);
-        g.fillPath(path);
+
+        zlgui::glass::fillGlassSurface(g, bound, corner, .15f, .25f, .18f);
 
         if (paints_surfaces_) {
-            g.setColour(background);
+            g.setColour(juce::Colour(7, 22, 35).withAlpha(.16f));
             for (const auto& surface_bound : surface_bounds_) {
-                g.fillRoundedRectangle(surface_bound.toFloat(), static_cast<float>(padding) * .75f);
+                g.fillRoundedRectangle(surface_bound.toFloat(), static_cast<float>(padding) * .72f);
             }
         }
     }

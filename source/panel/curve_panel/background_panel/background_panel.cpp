@@ -8,6 +8,7 @@
 // You should have received a copy of the GNU Affero General Public License along with ZLEqualizer. If not, see <https://www.gnu.org/licenses/>.
 
 #include "background_panel.hpp"
+#include "../../../gui/glass_tokens.hpp"
 
 namespace zlpanel {
     BackgroundPanel::BackgroundPanel(PluginProcessor& p,
@@ -16,11 +17,33 @@ namespace zlpanel {
         base_(base) {
         juce::ignoreUnused(p, tooltip_helper);
         setInterceptsMouseClicks(false, false);
+        setOpaque(false);
         lookAndFeelChanged();
     }
 
     void BackgroundPanel::paint(juce::Graphics& g) {
-        g.fillAll(base_.getBackgroundColour());
+        const auto bounds = getLocalBounds().toFloat();
+        auto panel = bounds.reduced(.5f);
+        const auto radius = zlgui::glass::surfaceRadius(base_.getFontSize()) * 1.25f;
+
+        // The graph is a calm optical viewport, not a decorative glass object.
+        juce::ColourGradient glass(zlgui::glass::canvasTop(), panel.getCentreX(), panel.getY(),
+                                   zlgui::glass::canvasBottom(), panel.getCentreX(), panel.getBottom(), false);
+        glass.addColour(.48, zlgui::glass::canvasMid());
+        g.setGradientFill(glass);
+        g.fillRoundedRectangle(panel, radius);
+
+        // Subtle center luminance keeps the response readable and gives the viewport depth.
+        juce::ColourGradient centerGlow(juce::Colour(128, 176, 210).withAlpha(.055f),
+                                        panel.getCentreX(), panel.getY() + panel.getHeight() * .32f,
+                                        juce::Colours::transparentBlack,
+                                        panel.getCentreX(), panel.getBottom(), true);
+        g.setGradientFill(centerGlow);
+        g.fillRoundedRectangle(panel, radius);
+
+        g.setColour(zlgui::glass::rim().withMultipliedAlpha(.65f));
+        g.drawRoundedRectangle(panel, radius, .75f);
+
         if (freq_max_ <= 10.0) {
             return;
         }
@@ -37,8 +60,7 @@ namespace zlpanel {
         auto bound = getLocalBounds().toFloat();
         const auto full_width = bound.getWidth();
         bound.setWidth(bound.getWidth() * kFFTSizeOverWidth);
-        // draw freq grid
-        const auto thickness = base_.getFontSize() * 0.1f;
+        const auto thickness = juce::jmax(0.45f, base_.getFontSize() * 0.045f);
         juce::RectangleList<float> rect_list;
         for (const auto& freq : kFreqValues) {
             const auto p = std::log(static_cast<double>(freq) * .1) / std::log(freq_max_ * .1);
@@ -51,25 +73,22 @@ namespace zlpanel {
         }
         g.setColour(grid_colour_);
         g.fillRectList(rect_list);
-        // draw top and bottom gradient
-        juce::ColourGradient gradient;
-        gradient.point1 = juce::Point<float>(bound.getX(), bound.getY());
-        gradient.point2 = juce::Point<float>(bound.getX(), bound.getBottom());
-        gradient.isRadial = false;
-        gradient.clearColours();
-        gradient.addColour(0.0, base_.getBackgroundColour().withAlpha(1.f));
-        gradient.addColour(base_.getFontSize() / bound.getHeight(),
-                           base_.getBackgroundColour().withAlpha(0.f));
-        gradient.addColour(1.f - 2.f * base_.getFontSize() / bound.getHeight(),
-                           base_.getBackgroundColour().withAlpha(0.f));
-        gradient.addColour(1.f - base_.getFontSize() / bound.getHeight(),
-                           base_.getBackgroundColour().withAlpha(1.f));
-        gradient.addColour(1.0, base_.getBackgroundColour().withAlpha(1.f));
-        g.setGradientFill(gradient);
+
+        // Very subtle top/bottom falloff, replacing the old dark strips.
+        juce::ColourGradient edge_fade;
+        edge_fade.point1 = juce::Point<float>(bound.getX(), bound.getY());
+        edge_fade.point2 = juce::Point<float>(bound.getX(), bound.getBottom());
+        edge_fade.isRadial = false;
+        edge_fade.clearColours();
+        edge_fade.addColour(0.0, juce::Colour(4, 16, 28).withAlpha(.13f));
+        edge_fade.addColour(.12, juce::Colours::transparentBlack);
+        edge_fade.addColour(.86, juce::Colours::transparentBlack);
+        edge_fade.addColour(1.0, juce::Colour(4, 16, 28).withAlpha(.16f));
+        g.setGradientFill(edge_fade);
         g.fillRect(getLocalBounds());
-        // draw freq labels
-        g.setColour(base_.getTextColour().withAlpha(.5f));
-        g.setFont(base_.getFontSize() * 1.25f);
+
+        g.setColour(zlgui::glass::textTertiary().withMultipliedAlpha(.92f));
+        g.setFont(base_.getFontSize() * 1.03f);
         const auto label_y0 = bound.getBottom() - base_.getFontSize() * 1.15f;
         const auto label_height = base_.getFontSize() * 1.1f;
         for (const auto& freq : kFreqValues) {
@@ -83,14 +102,13 @@ namespace zlpanel {
             if (rect.getRight() > full_width) {
                 break;
             }
-            g.drawText(freq < 1000.f ? juce::String(freq) : juce::String(std::round(freq * 0.001f)) + "K",
-                       rect, juce::Justification::centredBottom, false);
+            g.drawText(label, rect, juce::Justification::centredBottom, false);
         }
     }
 
     void BackgroundPanel::drawDBs(juce::Graphics& g) const {
         const auto bound = getLocalBounds().toFloat();
-        const auto thickness = base_.getFontSize() * 0.1f;
+        const auto thickness = juce::jmax(0.45f, base_.getFontSize() * 0.045f);
         auto y0 = base_.getFontSize() - thickness * .5f;
         const auto unit_height = (bound.getHeight() - 2.f * base_.getFontSize() * kDraggerScale
             - static_cast<float>(getBottomAreaHeight(base_.getFontSize()))) / 6.f;
@@ -105,13 +123,6 @@ namespace zlpanel {
     }
 
     void BackgroundPanel::lookAndFeelChanged() {
-        const auto grid_colour = base_.getColourByIdx(zlgui::ColourIdx::kGridColour);
-        const auto background_colour = base_.getBackgroundColour();
-        const auto alpha = grid_colour.getFloatAlpha();
-        grid_colour_ = juce::Colour::fromFloatRGBA(
-            grid_colour.getFloatRed() * alpha + background_colour.getFloatRed() * (1.f - alpha),
-            grid_colour.getFloatGreen() * alpha + background_colour.getFloatGreen() * (1.f - alpha),
-            grid_colour.getFloatBlue() * alpha + background_colour.getFloatBlue() * (1.f - alpha),
-            1.f);
+        grid_colour_ = zlgui::glass::gridMajor();
     }
 }

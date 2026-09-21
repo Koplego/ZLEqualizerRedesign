@@ -30,15 +30,31 @@ namespace zlgui::dragger {
         void drawToggleButton(juce::Graphics& g, juce::ToggleButton& button,
                               bool should_draw_button_as_highlighted,
                               bool should_draw_button_as_down) override {
-            if (should_draw_button_as_down || button.getToggleState()) {
-                g.setColour(base_.getTextColour());
+            const auto active = should_draw_button_as_down || button.getToggleState() || is_selected_;
+
+            // Liquid Glass node glow. A small coloured halo makes the band handles feel
+            // luminous without turning them into large neon buttons.
+            if (dragger_shape_ == kRound) {
+                const juce::DropShadow halo{colour_.withAlpha(active ? .48f : .24f),
+                                            juce::jmax(2, juce::roundToInt(base_.getFontSize() * (active ? .72f : .46f))),
+                                            {0, 0}};
+                halo.drawForPath(g, inner_path_);
+            }
+
+            if (active) {
+                g.setColour(juce::Colour(249, 253, 255).withAlpha(.96f));
                 g.fillPath(outline_path_);
-            } else if (should_draw_button_as_highlighted || is_selected_) {
-                g.setColour(base_.getTextColour().withAlpha(0.5f));
+            } else if (should_draw_button_as_highlighted) {
+                g.setColour(juce::Colour(246, 252, 255).withAlpha(.72f));
+                g.fillPath(outline_path_);
+            } else {
+                g.setColour(juce::Colour(240, 249, 255).withAlpha(.48f));
                 g.fillPath(outline_path_);
             }
 
-            g.setColour(filling_colour_);
+            // Keep the band identity in a luminous core rather than a flat coloured dot.
+            g.setColour(colour_.interpolatedWith(juce::Colours::white, active ? .16f : .08f)
+                         .withAlpha(active ? .98f : .86f));
             g.fillPath(inner_path_);
 
             if (label_.length() > 0) {

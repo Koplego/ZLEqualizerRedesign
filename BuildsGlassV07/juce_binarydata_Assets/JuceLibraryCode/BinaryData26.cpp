@@ -1,0 +1,20 @@
+/* ==================================== JUCER_BINARY_RESOURCE ====================================
+
+   This is an auto-generated file: Any edits you make may be overwritten!
+
+*/
+
+#include <cstring>
+
+namespace BinaryData
+{
+
+//================== notch.svg ==================
+static const unsigned char temp_binary_data_25[] =
+"<svg width=\"256\" height=\"256\" viewBox=\"0 0 256 256\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n"
+"<rect x=\"0\" y=\"0\" width=\"100%\" height=\"100%\" fill=\"none\" />\n"
+"<path d=\"M53.5576 57L57.9131 64.3672L124.413 176.867L98.5869 192.133L36.4414 87H10V57H53.5576ZM245.5 87H219.059L156.913 192.133L131.087 176.867L197.587 64.3672L201.942 57H245.5V87Z\" fill=\"#000000\"/>\n"
+"</svg>\n";
+
+const char* notch_svg = (const char*) temp_binary_data_25;
+}

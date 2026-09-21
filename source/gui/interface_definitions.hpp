@@ -277,11 +277,25 @@ namespace zlgui {
         }
 
         juce::Colour getColourMap1(const size_t idx) const {
-            return kColourMaps[colour_map1_idx_][idx % kColourMaps[colour_map1_idx_].size()];
+            // Liquid Glass band colours: bright enough to read over the analyzer while
+            // remaining softer than the stock saturated palette.
+            static const std::array<juce::Colour, 10> colours{
+                juce::Colour(116, 190, 255), juce::Colour(118, 224, 190),
+                juce::Colour(255, 201, 111), juce::Colour(190, 151, 255),
+                juce::Colour(255, 137, 165), juce::Colour(112, 218, 235),
+                juce::Colour(174, 226, 116), juce::Colour(255, 170, 113),
+                juce::Colour(137, 164, 255), juce::Colour(232, 145, 228)
+            };
+            return colours[idx % colours.size()];
         }
 
         juce::Colour getColourMap2(const size_t idx) const {
-            return kColourMaps[colour_map2_idx_][idx % kColourMaps[colour_map2_idx_].size()];
+            static const std::array<juce::Colour, 6> colours{
+                juce::Colour(151, 211, 255), juce::Colour(143, 235, 204),
+                juce::Colour(255, 216, 144), juce::Colour(207, 177, 255),
+                juce::Colour(255, 169, 188), juce::Colour(154, 224, 238)
+            };
+            return colours[idx % colours.size()];
         }
 
         static juce::Rectangle<float> getRoundedShadowRectangleArea(juce::Rectangle<float> box_bounds,
