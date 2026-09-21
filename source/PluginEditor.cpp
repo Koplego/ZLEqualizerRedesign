@@ -53,11 +53,14 @@ PluginEditor::PluginEditor(PluginProcessor& p) :
     main_panel_.getControlPanel().addMouseListener(this, true);
     main_panel_.getOutputPanel().addMouseListener(this, true);
 
-    // set size & size listener
-    setResizeLimits(static_cast<int>(zlstate::PWindowW::kMinV - 1),
+    // The mockup is a wide, focused instrument panel. Keep that silhouette across hosts
+    // instead of allowing the editor to drift into the tall legacy ZL layout.
+    constexpr double glass_aspect = 2.05;
+    setResizeLimits(708,
                     static_cast<int>(zlstate::PWindowH::kMinV - 1),
                     static_cast<int>(zlstate::PWindowW::kMaxV + 1),
                     static_cast<int>(zlstate::PWindowH::kMaxV + 1));
+    getConstrainer()->setFixedAspectRatio(glass_aspect);
     setResizable(true, p.wrapperType != PluginProcessor::wrapperType_AudioUnitv3);
 
     this->resizableCorner = std::make_unique<zlgui::ResizeCorner>(base_, this, getConstrainer(),
@@ -68,7 +71,8 @@ PluginEditor::PluginEditor(PluginProcessor& p) :
 
     last_ui_width_.referTo(state_.getParameterAsValue(zlstate::PWindowW::kID));
     last_ui_height_.referTo(state_.getParameterAsValue(zlstate::PWindowH::kID));
-    setSize(last_ui_width_.getValue(), last_ui_height_.getValue());
+    const auto initial_width = juce::jmax(840, static_cast<int>(last_ui_width_.getValue()));
+    setSize(initial_width, juce::roundToInt(static_cast<double>(initial_width) / glass_aspect));
 
     startTimer(kVisibilityTimer, 1000);
     updateIsShowing();

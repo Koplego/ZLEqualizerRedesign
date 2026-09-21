@@ -76,6 +76,10 @@ public:
         return sample_rate_.load(std::memory_order::relaxed);
     }
 
+    float getOutputPeak(const size_t channel) const {
+        return output_peak_[juce::jmin(channel, output_peak_.size() - 1)].load(std::memory_order::relaxed);
+    }
+
 private:
     std::array<std::vector<double>, 2> main_buffer_, side_buffer_;
     std::array<double*, 2> main_pointers_{}, side_pointers_{};
@@ -95,6 +99,7 @@ private:
     ChannelLayout channel_layout_{kInvalid};
 
     std::atomic<double> sample_rate_{48000.0};
+    std::array<std::atomic<float>, 2> output_peak_{{0.f, 0.f}};
 
     bool update_channel_layout_per_call_{false};
 

@@ -8,13 +8,73 @@
 // You should have received a copy of the GNU Affero General Public License along with ZLEqualizer. If not, see <https://www.gnu.org/licenses/>.
 
 #include "curve_panel.hpp"
+#include "../../gui/glass_tokens.hpp"
 
 namespace zlpanel {
+    void GlassOutputMeter::timerCallback() {
+        for (size_t channel = 0; channel < level_db_.size(); ++channel) {
+            const auto incoming = juce::Decibels::gainToDecibels(p_ref_.getOutputPeak(channel), -60.f);
+            level_db_[channel] = incoming > level_db_[channel]
+                ? incoming
+                : juce::jmax(-60.f, level_db_[channel] - 1.25f);
+            peak_db_[channel] = incoming > peak_db_[channel]
+                ? incoming
+                : juce::jmax(level_db_[channel], peak_db_[channel] - .42f);
+        }
+        repaint();
+    }
+
+    void GlassOutputMeter::paint(juce::Graphics& g) {
+        auto bounds = getLocalBounds().toFloat().reduced(.5f);
+        const auto radius = juce::jmax(6.f, base_.getFontSize() * .52f);
+        zlgui::glass::fillGlassSurface(g, bounds, radius, .055f, .13f, .12f);
+
+        const auto label_w = juce::jmax(18.f, base_.getFontSize() * 1.55f);
+        auto meter_area = bounds.reduced(base_.getFontSize() * .45f, base_.getFontSize() * .52f);
+        auto labels = meter_area.removeFromRight(label_w);
+        meter_area.removeFromRight(base_.getFontSize() * .20f);
+
+        const auto gap = juce::jmax(2.f, base_.getFontSize() * .22f);
+        const auto bar_w = (meter_area.getWidth() - gap) * .5f;
+        const std::array<float, 6> marks{{0.f, -6.f, -12.f, -24.f, -36.f, -60.f}};
+        g.setFont(juce::FontOptions(base_.getFontSize() * .55f));
+        g.setColour(zlgui::glass::textSecondary().withMultipliedAlpha(.88f));
+        for (const auto mark : marks) {
+            const auto norm = juce::jlimit(0.f, 1.f, (mark + 60.f) / 60.f);
+            const auto y = meter_area.getBottom() - norm * meter_area.getHeight();
+            g.drawText(juce::String(static_cast<int>(mark)),
+                       labels.withY(y - base_.getFontSize() * .38f)
+                             .withHeight(base_.getFontSize() * .76f).toNearestInt(),
+                       juce::Justification::centredRight, false);
+        }
+
+        for (size_t channel = 0; channel < 2; ++channel) {
+            auto track = juce::Rectangle<float>(meter_area.getX() + static_cast<float>(channel) * (bar_w + gap),
+                                                 meter_area.getY(), bar_w, meter_area.getHeight());
+            g.setColour(juce::Colour(5, 16, 24).withAlpha(.58f));
+            g.fillRoundedRectangle(track, bar_w * .42f);
+
+            const auto norm = juce::jlimit(0.f, 1.f, (level_db_[channel] + 60.f) / 60.f);
+            auto active = track.withTop(track.getBottom() - norm * track.getHeight());
+            juce::ColourGradient meter(juce::Colour(111, 238, 187), active.getCentreX(), active.getBottom(),
+                                       juce::Colour(255, 197, 96), active.getCentreX(), active.getY(), false);
+            meter.addColour(.72, juce::Colour(137, 224, 164));
+            g.setGradientFill(meter);
+            g.fillRoundedRectangle(active, bar_w * .42f);
+
+            const auto peak_norm = juce::jlimit(0.f, 1.f, (peak_db_[channel] + 60.f) / 60.f);
+            const auto peak_y = track.getBottom() - peak_norm * track.getHeight();
+            g.setColour(juce::Colour(255, 224, 154).withAlpha(.88f));
+            g.fillRect(track.getX(), peak_y, track.getWidth(), juce::jmax(1.f, base_.getFontSize() * .08f));
+        }
+    }
+
     CurvePanel::CurvePanel(PluginProcessor& p,
                            zlgui::UIBase& base,
                            multilingual::TooltipHelper& tooltip_helper) :
         Thread("curve_panel"),
         base_(base),
+        output_meter_(p, base),
         background_panel_(p, base, tooltip_helper),
         fft_panel_(p, base),
         response_panel_(p, base, tooltip_helper),
@@ -24,6 +84,7 @@ namespace zlpanel {
         analyzer_panel_(p, base, tooltip_helper) {
         background_panel_.setBufferedToImage(true);
         addAndMakeVisible(background_panel_);
+        addAndMakeVisible(output_meter_);
         addAndMakeVisible(fft_panel_);
         addChildComponent(match_fft_panel_);
         addAndMakeVisible(response_panel_);
@@ -59,14 +120,19 @@ namespace zlpanel {
     }
 
     void CurvePanel::resized() {
-        const auto bound = getLocalBounds();
+        auto bound = getLocalBounds();
+        const auto font_size = base_.getFontSize();
+        const auto padding = getPaddingSize(font_size);
+        const auto meter_width = juce::jmax(48, juce::roundToInt(font_size * 4.2f));
+        auto meter_bound = bound.removeFromRight(meter_width);
+        bound.removeFromRight(juce::jmax(3, padding / 2));
+        output_meter_.setBounds(meter_bound.reduced(0, juce::jmax(2, padding / 3)));
+
         background_panel_.setBounds(bound);
         fft_panel_.setBounds(bound);
         response_panel_.setBounds(bound);
         match_fft_panel_.setBounds(bound);
 
-        const auto font_size = base_.getFontSize();
-        const auto padding = getPaddingSize(font_size);
         const auto output_width = output_panel_.getIdealWidth();
         const auto output_height = output_panel_.getIdealHeight();
         output_panel_.setBounds(bound.getWidth() - output_width - 2 * padding,

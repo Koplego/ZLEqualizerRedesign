@@ -18,8 +18,8 @@ namespace zlpanel {
         curve_panel_(p, base, tooltip_helper_),
         control_panel_(p, base, curve_panel_.getMatchFFTPanel(), tooltip_helper_),
         extra_dynamic_panel_(p, base, tooltip_helper_),
-        top_panel_(p, base, tooltip_helper_),
-        footer_panel_(p, base, [this]() { toggleSettingsSheet(); }),
+        top_panel_(p, base, tooltip_helper_, [this]() { toggleSettingsSheet(); }),
+        footer_panel_(p, base),
         preset_browser_(p, base),
         ui_setting_panel_(p, base_),
         tooltip_laf_(base_) {
@@ -65,18 +65,25 @@ namespace zlpanel {
         const auto shell = bounds.reduced(3.0f);
         const auto radius = zlgui::glass::shellRadius(base_.getFontSize());
 
-        juce::ColourGradient body(zlgui::glass::shellTop(), shell.getCentreX(), shell.getY(),
-                                  zlgui::glass::shellBottom(), shell.getCentreX(), shell.getBottom(), false);
-        body.addColour(.42, juce::Colour(34, 57, 76));
-        body.addColour(.76, juce::Colour(20, 40, 58));
+        juce::ColourGradient body(juce::Colour(66, 88, 106), shell.getCentreX(), shell.getY(),
+                                  juce::Colour(18, 37, 53), shell.getCentreX(), shell.getBottom(), false);
+        body.addColour(.42, juce::Colour(42, 66, 84));
+        body.addColour(.76, juce::Colour(24, 46, 63));
         g.setGradientFill(body);
         g.fillRoundedRectangle(shell, radius);
 
-        juce::ColourGradient bloom(juce::Colour(159, 199, 226).withAlpha(.075f),
+        juce::ColourGradient bloom(juce::Colour(196, 224, 241).withAlpha(.15f),
                                    shell.getCentreX(), shell.getY() + shell.getHeight() * .20f,
                                    juce::Colours::transparentBlack,
                                    shell.getCentreX(), shell.getBottom(), true);
         g.setGradientFill(bloom);
+        g.fillRoundedRectangle(shell, radius);
+
+        juce::ColourGradient edgeGlow(juce::Colour(155, 201, 235).withAlpha(.10f),
+                                      shell.getX() + shell.getWidth() * .16f, shell.getY(),
+                                      juce::Colours::transparentBlack,
+                                      shell.getX() + shell.getWidth() * .52f, shell.getBottom(), true);
+        g.setGradientFill(edgeGlow);
         g.fillRoundedRectangle(shell, radius);
 
         g.setColour(zlgui::glass::rimStrong());

@@ -31,9 +31,9 @@ namespace zlpanel {
         // JUCE does not provide live backdrop blur for hosted plugin panels. Give
         // the surface enough body that graph lines do not compete with its controls,
         // then retain the lighter glass gradient and rim above it.
-        g.setColour(juce::Colour(7, 21, 34).withAlpha(.82f));
+        g.setColour(juce::Colour(8, 23, 37).withAlpha(.72f));
         g.fillRoundedRectangle(bound, corner);
-        zlgui::glass::fillGlassSurface(g, bound, corner, .10f, .17f, .22f);
+        zlgui::glass::fillGlassSurface(g, bound, corner, .14f, .20f, .28f);
 
         if (paints_surfaces_) {
             g.setColour(juce::Colour(7, 22, 35).withAlpha(.16f));

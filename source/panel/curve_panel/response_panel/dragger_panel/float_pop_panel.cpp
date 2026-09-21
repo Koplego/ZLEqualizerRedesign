@@ -35,6 +35,7 @@ namespace zlpanel {
         dynamics_page_button_(base, "Dynamic"),
         detector_page_button_(base, "Detector"),
         sidechain_page_button_(base, "Sidechain"),
+        more_button_(base, "..."),
         ftype_box_([]() -> std::vector<std::unique_ptr<juce::Drawable>> {
             std::vector<std::unique_ptr<juce::Drawable>> icons;
             icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::peak_svg, BinaryData::peak_svgSize));
@@ -150,6 +151,16 @@ namespace zlpanel {
         dynamics_page_button_.getButton().onClick = [this]() { updateDetailPage(DetailPage::dynamics, true); };
         detector_page_button_.getButton().onClick = [this]() { updateDetailPage(DetailPage::detector, true); };
         sidechain_page_button_.getButton().onClick = [this]() { updateDetailPage(DetailPage::sidechain, true); };
+
+        styleDetailButton(more_button_);
+        more_button_.getLAF().setFontScale(.72f);
+        more_button_.getButton().onClick = [this]() {
+            advanced_open_ = !advanced_open_;
+            if (auto* parent = getParentComponent()) parent->resized();
+            resized();
+            repaint();
+        };
+        addAndMakeVisible(more_button_);
 
         for (auto* b : {&learn_button_, &relative_button_, &dyn_bypass_button_, &side_link_button_, &side_swap_button_}) {
             styleDetailButton(*b);
@@ -503,43 +514,52 @@ namespace zlpanel {
         // Primary row: filter identity + quiet utility actions.
         auto header = bound.removeFromTop(button_size);
         ftype_box_.setBounds(header.removeFromLeft(button_size));
-        filter_name_bound_ = header.removeFromLeft(juce::jmax(button_size * 2, juce::roundToInt(base_.getFontSize() * 4.7f)));
+        filter_name_bound_ = header.removeFromLeft(juce::jmax(button_size * 2, juce::roundToInt(base_.getFontSize() * 4.35f)));
 
-        close_button_.setBounds(header.removeFromRight(button_size));
-        header.removeFromRight(padding / 6);
-        solo_button_.setBounds(header.removeFromRight(button_size));
-        header.removeFromRight(padding / 6);
+        more_button_.setBounds(header.removeFromRight(button_size));
+        header.removeFromRight(padding / 5);
         bypass_button_.setBounds(header.removeFromRight(button_size));
-        header.removeFromRight(padding / 6);
-        dynamic_button_.setBounds(header.removeFromRight(button_size));
 
         bound.removeFromTop(padding / 3);
         auto values = bound.removeFromTop(button_size);
-        const auto value_gap = padding;
-        const auto value_w = (values.getWidth() - value_gap) / 2;
+        const auto value_gap = juce::jmax(2, padding / 2);
+        const auto value_w = (values.getWidth() - 2 * value_gap) / 3;
         freq_slider_.setBounds(values.removeFromLeft(value_w));
         values.removeFromLeft(value_gap);
-        gain_slider_.setBounds(values);
+        gain_slider_.setBounds(values.removeFromLeft(value_w));
+        values.removeFromLeft(value_gap);
+        q_slider_.setBounds(values);
 
-        bound.removeFromTop(padding / 5);
-        auto lower = bound.removeFromTop(button_size);
-        const auto has_slope = slope_box_.isVisible();
-        const auto q_w = has_slope
-            ? juce::jmax(button_size * 2, juce::roundToInt(lower.getWidth() * .39f))
-            : juce::jmax(button_size * 2, lower.getWidth() / 2);
-        q_slider_.setBounds(lower.removeFromLeft(q_w));
-        lower.removeFromLeft(padding / 2);
-        if (has_slope) {
-            const auto slope_w = juce::jmax(button_size * 2,
-                                             juce::roundToInt(base_.getFontSize() * 5.35f));
-            slope_box_.setBounds(lower.removeFromLeft(juce::jmin(slope_w, lower.getWidth())));
-            lower.removeFromLeft(padding / 2);
+        const auto show_advanced = advanced_open_;
+        dynamic_button_.setVisible(show_advanced);
+        solo_button_.setVisible(show_advanced);
+        close_button_.setVisible(show_advanced);
+        lr_box_.setVisible(show_advanced);
+        slope_box_.setVisible(show_advanced && slope_supported_);
+        mode_name_bound_ = {};
+        if (show_advanced) {
+            bound.removeFromTop(padding / 3);
+            auto advanced = bound.removeFromTop(button_size);
+            close_button_.setBounds(advanced.removeFromRight(button_size));
+            advanced.removeFromRight(padding / 6);
+            solo_button_.setBounds(advanced.removeFromRight(button_size));
+            advanced.removeFromRight(padding / 6);
+            dynamic_button_.setBounds(advanced.removeFromRight(button_size));
+            advanced.removeFromRight(padding / 2);
+
+            const auto mode_w = juce::jmax(button_size * 2, juce::roundToInt(base_.getFontSize() * 3.6f));
+            mode_name_bound_ = advanced.removeFromRight(juce::jmin(mode_w, advanced.getWidth()));
+            lr_box_.setBounds(mode_name_bound_);
+            advanced.removeFromRight(padding / 2);
+            if (slope_supported_) {
+                slope_box_.setBounds(advanced);
+            } else {
+                slope_box_.setBounds({});
+            }
         } else {
-            slope_box_.setBounds({});
+            dynamic_button_.setBounds({}); solo_button_.setBounds({}); close_button_.setBounds({});
+            slope_box_.setBounds({}); lr_box_.setBounds({});
         }
-        const auto mode_text_w = juce::jmax(button_size * 2, juce::roundToInt(base_.getFontSize() * 4.1f));
-        mode_name_bound_ = lower.removeFromRight(mode_text_w);
-        lr_box_.setBounds(mode_name_bound_);
 
         freq_label_bound_ = {};
         gain_label_bound_ = {};
@@ -788,8 +808,8 @@ namespace zlpanel {
             slope_box_.getBox().setSelectedId(2, juce::sendNotificationSync);
         }
         slope_box_.getBox().setItemEnabled(1, slope_6_allowed);
+        slope_supported_ = slope_enabled;
         slope_box_.setEditable(slope_enabled);
-        slope_box_.setVisible(slope_enabled);
 
         const auto gain_enabled = filter_type == static_cast<int>(zldsp::filter::kPeak)
             || filter_type == static_cast<int>(zldsp::filter::kLowShelf)
@@ -811,13 +831,14 @@ namespace zlpanel {
     int FloatPopPanel::getIdealWidth() const {
         const auto padding = getPaddingSize(base_.getFontSize());
         const auto button_size = getButtonSize(base_.getFontSize());
-        return juce::roundToInt(9.15f * static_cast<float>(button_size) + 6.0f * static_cast<float>(padding));
+        return juce::roundToInt(6.35f * static_cast<float>(button_size) + 4.5f * static_cast<float>(padding));
     }
 
     int FloatPopPanel::getIdealHeight() const {
         const auto padding = getPaddingSize(base_.getFontSize());
         const auto button_size = getButtonSize(base_.getFontSize());
-        const auto base_height = 3 * button_size + 4 * padding;
+        const auto base_height = 2 * button_size + 3 * padding
+            + (advanced_open_ ? button_size + padding / 2 : 0);
         if (!dynamic_on_) return base_height;
 
         const auto tabs_h = juce::jmax(button_size * 3 / 4, juce::roundToInt(base_.getFontSize() * 1.25f));

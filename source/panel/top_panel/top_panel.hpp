@@ -12,12 +12,14 @@
 #include "logo_panel.hpp"
 #include "output_label.hpp"
 #include "analyzer_label.hpp"
+#include <functional>
 
 namespace zlpanel {
     class TopPanel final : public juce::Component {
     public:
         explicit TopPanel(PluginProcessor& p, zlgui::UIBase& base,
-                          multilingual::TooltipHelper& tooltip_helper);
+                          multilingual::TooltipHelper& tooltip_helper,
+                          std::function<void()> settings_callback);
 
         void paint(juce::Graphics& g) override;
 
@@ -33,6 +35,8 @@ namespace zlpanel {
         PluginProcessor& p_ref_;
         zlgui::UIBase &base_;
         zlgui::attachment::ComponentUpdater updater_;
+        std::function<void()> settings_callback_;
+        zlgui::button::ClickTextButton settings_button_;
         LogoPanel logo_panel_;
         OutputLabel output_label_;
         AnalyzerLabel analyzer_label_;

@@ -87,6 +87,9 @@ namespace zlpanel {
         zlgui::button::ClickTextButton dynamics_page_button_;
         zlgui::button::ClickTextButton detector_page_button_;
         zlgui::button::ClickTextButton sidechain_page_button_;
+        zlgui::button::ClickTextButton more_button_;
+        bool advanced_open_{false};
+        bool slope_supported_{true};
 
         zlgui::combobox::CompactCombobox ftype_box_;
         std::unique_ptr<zlgui::attachment::ComboBoxAttachment<true>> ftype_attachment_;

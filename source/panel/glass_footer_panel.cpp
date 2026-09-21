@@ -5,10 +5,8 @@
 #include "../gui/glass_tokens.hpp"
 
 namespace zlpanel {
-    GlassFooterPanel::GlassFooterPanel(PluginProcessor& p, zlgui::UIBase& base,
-                                       std::function<void()> settings_callback) :
+    GlassFooterPanel::GlassFooterPanel(PluginProcessor& p, zlgui::UIBase& base) :
         base_(base),
-        settings_callback_(std::move(settings_callback)),
         analyzer_button_(base, "Analyzer"),
         pre_button_(base, "Pre"),
         post_button_(base, "Post"),
@@ -17,12 +15,10 @@ namespace zlpanel {
         speed_box_(zlstate::PFFTSpeed::kChoices, base, ""),
         speed_attach_(speed_box_.getBox(), p.parameters_NA_, zlstate::PFFTSpeed::kID, updater_),
         output_button_(base, "Output"),
-        settings_button_(base, "Settings"),
         phase_box_(zlp::PFilterStructure::kChoices, base, ""),
         phase_attach_(phase_box_.getBox(), p.parameters_, zlp::PFilterStructure::kID, updater_) {
         setOpaque(false);
-        for (auto* button : {&analyzer_button_, &pre_button_, &post_button_, &output_button_,
-                             &settings_button_}) {
+        for (auto* button : {&analyzer_button_, &pre_button_, &post_button_, &output_button_}) {
             stylePill(*button);
             button->getLAF().setFontScale(.76f);
         }
@@ -35,8 +31,6 @@ namespace zlpanel {
         pre_button_.getButton().setClickingTogglesState(true);
         post_button_.getButton().setToggleable(true);
         post_button_.getButton().setClickingTogglesState(true);
-        settings_button_.getButton().setToggleable(true);
-        settings_button_.getButton().setClickingTogglesState(false);
 
         analyzer_button_.getButton().onClick = [this]() {
             const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel));
@@ -45,9 +39,6 @@ namespace zlpanel {
         output_button_.getButton().onClick = [this]() {
             const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kOutputPanel));
             base_.setPanelProperty(zlgui::PanelSettingIdx::kOutputPanel, open < .5 ? 1. : 0.);
-        };
-        settings_button_.getButton().onClick = [this]() {
-            if (settings_callback_) settings_callback_();
         };
 
         speed_box_.getLAF().setFontScale(.80f);
@@ -63,7 +54,6 @@ namespace zlpanel {
         addAndMakeVisible(post_button_);
         addAndMakeVisible(speed_box_);
         addAndMakeVisible(output_button_);
-        addAndMakeVisible(settings_button_);
         addAndMakeVisible(phase_box_);
         setInterceptsMouseClicks(false, true);
     }
@@ -88,18 +78,22 @@ namespace zlpanel {
 
     int GlassFooterPanel::getIdealHeight() const {
         const auto font = base_.getFontSize();
-        return getButtonSize(font) + 2 * getPaddingSize(font) + juce::roundToInt(font * .18f);
+        return getButtonSize(font) + 2 * getPaddingSize(font);
     }
 
     void GlassFooterPanel::paint(juce::Graphics& g) {
-        const auto paint_group = [&g](const juce::Rectangle<int>& ib) {
-            if (ib.isEmpty()) return;
-            auto group = ib.toFloat().reduced(.5f);
-            zlgui::glass::fillGlassSurface(g, group, group.getHeight() * .5f, .07f, .12f, .11f);
-        };
-        paint_group(analyzer_group_bound_);
-        paint_group(tools_group_bound_);
-        paint_group(processing_group_bound_);
+        auto strip = getLocalBounds().toFloat().reduced(.5f);
+        zlgui::glass::fillGlassSurface(g, strip, juce::jmax(9.f, strip.getHeight() * .34f),
+                                      .075f, .145f, .15f);
+
+        g.setColour(juce::Colour(244, 250, 255).withAlpha(.085f));
+        for (const auto x : {tools_group_bound_.getX() - getPaddingSize(base_.getFontSize()),
+                             processing_group_bound_.getX() - getPaddingSize(base_.getFontSize())}) {
+            if (x > 0) {
+                g.drawVerticalLine(x, strip.getY() + strip.getHeight() * .22f,
+                                   strip.getBottom() - strip.getHeight() * .22f);
+            }
+        }
 
         g.setColour(base_.getTextColour().withAlpha(.38f));
         g.setFont(juce::FontOptions(base_.getFontSize() * .62f));
@@ -109,7 +103,7 @@ namespace zlpanel {
     void GlassFooterPanel::resized() {
         const auto font = base_.getFontSize();
         const auto padding = getPaddingSize(font);
-        auto b = getLocalBounds().reduced(padding + padding / 2, padding);
+        auto b = getLocalBounds().reduced(padding + padding / 2, padding / 2);
 
         const auto analyzer_w = juce::jmax(74, juce::roundToInt(font * 5.15f));
         analyzer_button_.setBounds(b.removeFromLeft(analyzer_w));
@@ -131,13 +125,9 @@ namespace zlpanel {
             .expanded(juce::jmax(3, padding / 2), juce::jmax(2, padding / 3));
 
         const auto tool_w = juce::jmax(70, juce::roundToInt(font * 4.9f));
-        auto tools = getLocalBounds().withSizeKeepingCentre(tool_w * 2 + padding / 3,
-                                                            getButtonSize(font) + padding / 2);
-        output_button_.setBounds(tools.removeFromLeft(tool_w));
-        tools.removeFromLeft(padding / 3);
-        settings_button_.setBounds(tools.removeFromLeft(tool_w));
+        auto tools = getLocalBounds().withSizeKeepingCentre(tool_w, getButtonSize(font));
+        output_button_.setBounds(tools);
         tools_group_bound_ = output_button_.getBounds()
-            .getUnion(settings_button_.getBounds())
             .expanded(juce::jmax(3, padding / 2), juce::jmax(2, padding / 3));
 
         const auto phase_w = juce::jmax(138, juce::roundToInt(font * 9.0f));
@@ -156,9 +146,6 @@ namespace zlpanel {
             juce::dontSendNotification);
         output_button_.getButton().setToggleState(
             static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kOutputPanel)) > .5,
-            juce::dontSendNotification);
-        settings_button_.getButton().setToggleState(
-            static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel)) > .5,
             juce::dontSendNotification);
         repaint();
     }

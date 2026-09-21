@@ -262,6 +262,14 @@ void PluginProcessor::processBlockInternal(juce::AudioBuffer<float>& buffer) {
         return;
     }
     }
+    const auto output_channels = juce::jmin(2, getTotalNumOutputChannels());
+    for (int channel = 0; channel < output_channels; ++channel) {
+        output_peak_[static_cast<size_t>(channel)].store(
+            buffer.getMagnitude(channel, 0, buffer.getNumSamples()), std::memory_order::relaxed);
+    }
+    if (output_channels == 1) {
+        output_peak_[1].store(output_peak_[0].load(std::memory_order::relaxed), std::memory_order::relaxed);
+    }
 }
 
 template <bool bypass>
@@ -346,6 +354,15 @@ void PluginProcessor::processBlockInternal(juce::AudioBuffer<double>& buffer) {
     case kInvalid: {
         return;
     }
+    }
+    const auto output_channels = juce::jmin(2, getTotalNumOutputChannels());
+    for (int channel = 0; channel < output_channels; ++channel) {
+        output_peak_[static_cast<size_t>(channel)].store(
+            static_cast<float>(buffer.getMagnitude(channel, 0, buffer.getNumSamples())),
+            std::memory_order::relaxed);
+    }
+    if (output_channels == 1) {
+        output_peak_[1].store(output_peak_[0].load(std::memory_order::relaxed), std::memory_order::relaxed);
     }
 }
 

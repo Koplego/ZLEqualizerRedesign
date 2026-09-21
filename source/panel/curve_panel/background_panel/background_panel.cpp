@@ -27,18 +27,38 @@ namespace zlpanel {
         const auto radius = zlgui::glass::surfaceRadius(base_.getFontSize()) * 1.25f;
 
         // The graph is a calm optical viewport, not a decorative glass object.
-        juce::ColourGradient glass(zlgui::glass::canvasTop(), panel.getCentreX(), panel.getY(),
-                                   zlgui::glass::canvasBottom(), panel.getCentreX(), panel.getBottom(), false);
-        glass.addColour(.48, zlgui::glass::canvasMid());
+        juce::ColourGradient glass(juce::Colour(58, 84, 103), panel.getCentreX(), panel.getY(),
+                                   juce::Colour(20, 41, 58), panel.getCentreX(), panel.getBottom(), false);
+        glass.addColour(.48, juce::Colour(34, 60, 79));
         g.setGradientFill(glass);
         g.fillRoundedRectangle(panel, radius);
 
         // Subtle center luminance keeps the response readable and gives the viewport depth.
-        juce::ColourGradient centerGlow(juce::Colour(128, 176, 210).withAlpha(.055f),
+        juce::ColourGradient centerGlow(juce::Colour(190, 220, 238).withAlpha(.135f),
                                         panel.getCentreX(), panel.getY() + panel.getHeight() * .32f,
                                         juce::Colours::transparentBlack,
                                         panel.getCentreX(), panel.getBottom(), true);
         g.setGradientFill(centerGlow);
+        g.fillRoundedRectangle(panel, radius);
+
+        // Broad frosted highlights echo the soft reflected ribbons in the reference
+        // while keeping the analyzer and response curves as the sharpest content.
+        juce::ColourGradient leftMist(juce::Colour(178, 213, 236).withAlpha(.15f),
+                                      panel.getX() + panel.getWidth() * .16f,
+                                      panel.getY() + panel.getHeight() * .08f,
+                                      juce::Colours::transparentBlack,
+                                      panel.getX() + panel.getWidth() * .46f,
+                                      panel.getY() + panel.getHeight() * .64f, true);
+        g.setGradientFill(leftMist);
+        g.fillRoundedRectangle(panel, radius);
+
+        juce::ColourGradient warmMist(juce::Colour(230, 205, 171).withAlpha(.095f),
+                                      panel.getX() + panel.getWidth() * .76f,
+                                      panel.getY() + panel.getHeight() * .26f,
+                                      juce::Colours::transparentBlack,
+                                      panel.getX() + panel.getWidth() * .48f,
+                                      panel.getBottom(), true);
+        g.setGradientFill(warmMist);
         g.fillRoundedRectangle(panel, radius);
 
         g.setColour(zlgui::glass::rim().withMultipliedAlpha(.65f));
@@ -61,6 +81,20 @@ namespace zlpanel {
         const auto full_width = bound.getWidth();
         bound.setWidth(bound.getWidth() * kFFTSizeOverWidth);
         const auto thickness = juce::jmax(0.45f, base_.getFontSize() * 0.045f);
+        juce::RectangleList<float> minor_rects;
+        for (double decade = 10.0; decade <= freq_max_; decade *= 10.0) {
+            for (int multiple = 2; multiple < 10; ++multiple) {
+                if (multiple == 2 || multiple == 5) continue;
+                const auto freq = decade * static_cast<double>(multiple);
+                if (freq >= freq_max_) break;
+                const auto p = std::log(freq * .1) / std::log(freq_max_ * .1);
+                minor_rects.add(static_cast<float>(p) * bound.getWidth() - thickness * .30f,
+                                0.f, thickness * .60f, bound.getHeight());
+            }
+        }
+        g.setColour(zlgui::glass::gridMinor().withMultipliedAlpha(1.45f));
+        g.fillRectList(minor_rects);
+
         juce::RectangleList<float> rect_list;
         for (const auto& freq : kFreqValues) {
             const auto p = std::log(static_cast<double>(freq) * .1) / std::log(freq_max_ * .1);
@@ -123,6 +157,6 @@ namespace zlpanel {
     }
 
     void BackgroundPanel::lookAndFeelChanged() {
-        grid_colour_ = zlgui::glass::gridMajor();
+        grid_colour_ = zlgui::glass::gridMajor().withMultipliedAlpha(1.35f);
     }
 }

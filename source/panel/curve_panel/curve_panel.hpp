@@ -17,6 +17,25 @@
 #include "analyzer_panel/analyzer_panel.hpp"
 
 namespace zlpanel {
+    class GlassOutputMeter final : public juce::Component,
+                                   private juce::Timer {
+    public:
+        GlassOutputMeter(PluginProcessor& p, zlgui::UIBase& base) : p_ref_(p), base_(base) {
+            setInterceptsMouseClicks(false, false);
+            startTimerHz(30);
+        }
+
+        void paint(juce::Graphics& g) override;
+
+    private:
+        PluginProcessor& p_ref_;
+        zlgui::UIBase& base_;
+        std::array<float, 2> level_db_{{-60.f, -60.f}};
+        std::array<float, 2> peak_db_{{-60.f, -60.f}};
+
+        void timerCallback() override;
+    };
+
     class CurvePanel final : public juce::Component,
                              private juce::ValueTree::Listener,
                              private juce::Thread {
@@ -60,6 +79,7 @@ namespace zlpanel {
 
     private:
         zlgui::UIBase& base_;
+        GlassOutputMeter output_meter_;
         BackgroundPanel background_panel_;
         FFTPanel fft_panel_;
         ResponsePanel response_panel_;
