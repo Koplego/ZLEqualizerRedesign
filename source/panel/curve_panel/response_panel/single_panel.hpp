@@ -45,13 +45,13 @@ namespace zlpanel {
 
     private:
         static constexpr size_t kNumPoints = 400;
-        static constexpr float kFillingAlpha = .082f;
-        static constexpr float kDynamicFillingAlpha = .135f;
-        static constexpr float kNotSelectedAlphaMultiplier = .42f;
+        static constexpr float kFillingAlpha = .090f;
+        static constexpr float kDynamicFillingAlpha = .120f;
+        static constexpr float kNotSelectedAlphaMultiplier = .45f;
         static constexpr float kBypassAlphaMultiplier = .75f;
         static constexpr float kDiffStereoAlphaMultiplier = .33333f;
         static constexpr float kNoBandSelectedAlphaMultiplier = .58f;
-        static constexpr float kThickMultiplier = 1.16f;
+        static constexpr float kThickMultiplier = 1.12f;
 
         PluginProcessor& p_ref_;
         zlgui::UIBase& base_;
@@ -63,15 +63,10 @@ namespace zlpanel {
         float side_y_{0.f};
 
         std::array<TriBuffer<juce::Path>, zlp::kBandNum> base_paths_{};
-
         std::array<TriBuffer<juce::Path>, zlp::kBandNum> base_fills_{};
-
         std::array<TriBuffer<juce::Path>, zlp::kBandNum> target_fills_{};
-
         std::array<TriBuffer<juce::Line<float>>, zlp::kBandNum> button_lines_{};
-
         std::array<TriBuffer<juce::Line<float>>, zlp::kBandNum> side_lines_{};
-
         std::array<TriBuffer<juce::Line<float>>, zlp::kBandNum> all_pass_lines_{};
 
         std::array<float, zlp::kBandNum> base_stroke_alpha_{};
