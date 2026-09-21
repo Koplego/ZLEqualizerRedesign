@@ -12,6 +12,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 
 #include "../interface_definitions.hpp"
+#include "../glass_tokens.hpp"
 
 namespace zlgui::dragger {
     class DraggerLookAndFeel final : public juce::LookAndFeel_V4 {
@@ -31,51 +32,57 @@ namespace zlgui::dragger {
                               bool should_draw_button_as_highlighted,
                               bool should_draw_button_as_down) override {
             const auto active = should_draw_button_as_down || button.getToggleState() || is_selected_;
+            const auto hover = should_draw_button_as_highlighted && !active;
+            const auto visibility = juce::jlimit(0.f, 1.f, alpha_);
 
-            // Liquid Glass node glow. A small coloured halo makes the band handles feel
-            // luminous without turning them into large neon buttons.
+            // Mockup convergence: band nodes are tiny illuminated pieces of glass, not
+            // animated neon buttons. Keep the hue in the core, use a cool-white optical
+            // rim, and reserve the larger halo for the selected band.
             if (dragger_shape_ == kRound) {
-                const auto phase = static_cast<float>(juce::Time::getMillisecondCounterHiRes() * .0042);
-                const auto pulse = active ? .5f + .5f * std::sin(phase) : 0.f;
-                const juce::DropShadow wideHalo{
-                    colour_.withAlpha(active ? .30f + pulse * .12f : .14f),
-                    juce::jmax(4, juce::roundToInt(base_.getFontSize() * (active ? 1.34f : .78f))), {0, 0}};
-                wideHalo.drawForPath(g, outline_path_);
-                const juce::DropShadow coreHalo{
-                    colour_.interpolatedWith(juce::Colours::white, .18f)
-                        .withAlpha(active ? .66f + pulse * .16f : .34f),
-                    juce::jmax(2, juce::roundToInt(base_.getFontSize() * (active ? .58f : .40f))), {0, 0}};
-                coreHalo.drawForPath(g, inner_path_);
+                const juce::DropShadow halo{
+                    colour_.withAlpha((active ? .24f : hover ? .12f : .065f) * visibility),
+                    juce::jmax(2, juce::roundToInt(base_.getFontSize() * (active ? .82f : .38f))),
+                    {0, 0}};
+                halo.drawForPath(g, outline_path_);
             }
 
-            if (active) {
-                g.setColour(colour_.interpolatedWith(juce::Colours::white, .62f).withAlpha(.96f));
-                g.fillPath(outline_path_);
-            } else if (should_draw_button_as_highlighted) {
-                g.setColour(colour_.interpolatedWith(juce::Colours::white, .54f).withAlpha(.78f));
-                g.fillPath(outline_path_);
-            } else {
-                g.setColour(colour_.interpolatedWith(juce::Colours::white, .45f).withAlpha(.54f));
-                g.fillPath(outline_path_);
-            }
+            g.setColour(juce::Colour(9, 27, 42).withAlpha((active ? .42f : .28f) * visibility));
+            g.fillPath(outline_path_);
 
-            // Keep the band identity in a luminous, lens-like core rather than a flat dot.
+            g.setColour(colour_.interpolatedWith(juce::Colours::white, .20f)
+                        .withAlpha((active ? .30f : hover ? .21f : .14f) * visibility));
+            g.fillPath(outline_path_);
+
+            g.setColour(glass::textPrimary().withAlpha((active ? .82f : hover ? .58f : .42f) * visibility));
+            g.strokePath(outline_path_, juce::PathStrokeType(juce::jmax(.75f, base_.getFontSize() * .080f)));
+
             const auto innerBounds = inner_path_.getBounds();
             juce::ColourGradient lens(
-                colour_.interpolatedWith(juce::Colours::white, .58f).withAlpha(.98f),
-                innerBounds.getX() + innerBounds.getWidth() * .34f,
-                innerBounds.getY() + innerBounds.getHeight() * .28f,
-                colour_.interpolatedWith(juce::Colours::black, .12f).withAlpha(active ? .98f : .88f),
+                colour_.interpolatedWith(juce::Colours::white, active ? .42f : .30f)
+                    .withAlpha((active ? .98f : .90f) * visibility),
+                innerBounds.getX() + innerBounds.getWidth() * .30f,
+                innerBounds.getY() + innerBounds.getHeight() * .24f,
+                colour_.interpolatedWith(juce::Colours::black, .10f)
+                    .withAlpha((active ? .98f : .88f) * visibility),
                 innerBounds.getRight(), innerBounds.getBottom(), true);
-            lens.addColour(.52, colour_.interpolatedWith(juce::Colours::white, .16f)
-                                      .withAlpha(active ? .98f : .90f));
+            lens.addColour(.52, colour_.interpolatedWith(juce::Colours::white, .12f)
+                                      .withAlpha((active ? .98f : .91f) * visibility));
             g.setGradientFill(lens);
             g.fillPath(inner_path_);
-            g.setColour(juce::Colours::white.withAlpha(active ? .70f : .40f));
+
+            g.setColour(juce::Colours::white.withAlpha((active ? .90f : .58f) * visibility));
             g.strokePath(inner_path_, juce::PathStrokeType(juce::jmax(.8f, base_.getFontSize() * .075f)));
 
+            if (active && dragger_shape_ == kRound) {
+                auto glint = innerBounds.withSizeKeepingCentre(innerBounds.getWidth() * .44f,
+                                                               innerBounds.getHeight() * .28f);
+                glint.translate(-innerBounds.getWidth() * .12f, -innerBounds.getHeight() * .18f);
+                g.setColour(juce::Colours::white.withAlpha(.26f * visibility));
+                g.fillEllipse(glint);
+            }
+
             if (label_.length() > 0) {
-                g.setColour(base_.getTextColour().withAlpha(alpha_));
+                g.setColour(base_.getTextColour().withAlpha(.88f * visibility));
                 g.setFont(base_.getFontSize() * label_scale_);
                 auto bound = button.getLocalBounds().toFloat();
                 const auto radius = std::min(bound.getHeight(), bound.getWidth());
