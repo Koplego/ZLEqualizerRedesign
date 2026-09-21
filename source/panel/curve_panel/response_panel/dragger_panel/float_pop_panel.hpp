@@ -26,24 +26,17 @@ namespace zlpanel {
         ~FloatPopPanel() override;
 
         void paintOverChildren(juce::Graphics& g) override;
-
         void resized() override;
-
         void mouseUp(const juce::MouseEvent& event) override;
-
         void repaintCallBackSlow();
-
         void updateBand();
 
         int getIdealHeight() const;
-
         int getIdealWidth() const;
 
         void updatePosition(juce::Point<float> position,
                             juce::Point<float> target_position);
-
         void setTargetVisible(bool is_target_visible);
-
         void updateFloatingBound(juce::Rectangle<float> bound);
 
     private:
@@ -55,6 +48,8 @@ namespace zlpanel {
 
         bool is_target_visible_{false};
         bool dynamic_on_{false};
+        // "dynamics" is the normal primary Dynamic view. Detector and Sidechain are
+        // nested secondary expansions, not three peer tabs.
         enum class DetailPage { dynamics, detector, sidechain };
         DetailPage detail_page_{DetailPage::dynamics};
         juce::Point<float> position_{};
@@ -84,6 +79,8 @@ namespace zlpanel {
         std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> dynamic_attachment_;
         std::atomic<float>* dynamic_on_ptr_{nullptr};
 
+        // dynamics_page_button_ remains as an attachment-free placeholder for the original
+        // component tree but is never shown. "More" and "Sidechain" reveal nested detail.
         zlgui::button::ClickTextButton dynamics_page_button_;
         zlgui::button::ClickTextButton detector_page_button_;
         zlgui::button::ClickTextButton sidechain_page_button_;
@@ -155,9 +152,9 @@ namespace zlpanel {
         std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> side_swap_attachment_;
 
         juce::Rectangle<int> filter_name_bound_, mode_name_bound_;
-        juce::Rectangle<int> freq_label_bound_, gain_label_bound_, q_label_bound_;
-        juce::Rectangle<int> range_label_bound_, threshold_label_bound_, attack_label_bound_, release_label_bound_;
-        std::array<juce::Rectangle<int>, 4> detail_label_bounds_{};
+        juce::Rectangle<int> dynamic_title_bound_, advanced_section_title_bound_;
+        std::array<juce::Rectangle<int>, 4> primary_dynamic_label_bounds_{};
+        std::array<juce::Rectangle<int>, 4> advanced_dynamic_label_bounds_{};
 
         void updateDynamicVisibility(bool dynamic_on, bool request_parent_resize);
         void updateDetailPage(DetailPage page, bool request_parent_resize);
