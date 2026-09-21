@@ -19,7 +19,7 @@ namespace zlgui::combobox {
     public:
         explicit CompactComboboxLookAndFeel(UIBase& base, bool align_label = true) :
             base_(base), align_label_(align_label) {
-            setColour(juce::PopupMenu::backgroundColourId, glass::canvasBottom());
+            setColour(juce::PopupMenu::backgroundColourId, juce::Colours::transparentBlack);
         }
 
         void drawComboBox(juce::Graphics& g, int width, int height, bool isButtonDown, int, int, int, int,
@@ -28,28 +28,26 @@ namespace zlgui::combobox {
                                                           static_cast<float>(width),
                                                           static_cast<float>(height));
             const auto corner_size = box_bound.getHeight() * .5f;
-            if (isButtonDown || box.isPopupActive()) {
-                glass::fillGlassSurface(g, box_bound.reduced(.5f), corner_size, .17f, .25f, .28f);
-            } else {
-                glass::fillGlassSurface(g, box_bound.reduced(.5f), corner_size,
-                                        .055f + .055f * box_alpha_,
-                                        .09f + .06f * box_alpha_,
-                                        .09f + .10f * box_alpha_);
-            }
+            const auto active = isButtonDown || box.isPopupActive();
+            glass::fillGlassSurface(g, box_bound.reduced(.5f), corner_size,
+                                    active ? .115f : .045f + .035f * box_alpha_,
+                                    active ? .175f : .070f + .040f * box_alpha_,
+                                    active ? .19f : .075f + .065f * box_alpha_);
+
             if (!icons_.empty() && box.getSelectedItemIndex() >= 0) {
                 const auto fig = icons_[static_cast<size_t>(box.getSelectedItemIndex())]->createCopy();
                 fig->replaceColour(juce::Colours::black, glass::textPrimary());
-                fig->drawWithin(g, box.getLocalBounds().toFloat().reduced(box_bound.getHeight() * .24f),
-                                juce::RectanglePlacement::centred, .88f);
+                fig->drawWithin(g, box.getLocalBounds().toFloat().reduced(box_bound.getHeight() * .25f),
+                                juce::RectanglePlacement::centred, .86f);
             } else {
-                auto arrow = box_bound.withLeft(box_bound.getRight() - box_bound.getHeight() * .72f);
+                auto arrow = box_bound.withLeft(box_bound.getRight() - box_bound.getHeight() * .70f);
                 const auto centre = arrow.getCentre();
                 juce::Path chevron;
                 chevron.startNewSubPath(centre.x - 3.f, centre.y - 1.f);
                 chevron.lineTo(centre.x, centre.y + 2.f);
                 chevron.lineTo(centre.x + 3.f, centre.y - 1.f);
-                g.setColour(glass::textSecondary().withAlpha(.58f + .22f * box_alpha_));
-                g.strokePath(chevron, juce::PathStrokeType(1.05f, juce::PathStrokeType::curved,
+                g.setColour(glass::textSecondary().withAlpha(.52f + .18f * box_alpha_));
+                g.strokePath(chevron, juce::PathStrokeType(.95f, juce::PathStrokeType::curved,
                                                            juce::PathStrokeType::rounded));
             }
         }
@@ -59,17 +57,15 @@ namespace zlgui::combobox {
         }
 
         void drawLabel(juce::Graphics& g, juce::Label& label) override {
-            // Icon-backed comboboxes use text in their popup for accessibility and
-            // clarity, while their collapsed control remains the compact icon.
             if (!icons_.empty()) return;
-            g.setColour(glass::textPrimary().withAlpha(.92f));
+            g.setColour(glass::textPrimary().withAlpha(.88f));
             g.setFont(base_.getFontSize() * font_scale_);
             auto bound = label.getLocalBounds().toFloat();
             const auto inset = align_label_
-                ? juce::jmin(juce::jmax(base_.getFontSize() * .72f, padding_), bound.getWidth() * .14f)
+                ? juce::jmin(juce::jmax(base_.getFontSize() * .70f, padding_), bound.getWidth() * .14f)
                 : 0.f;
             bound.removeFromLeft(inset);
-            bound.removeFromRight(juce::jmin(juce::jmax(base_.getFontSize() * 1.45f, inset * .55f),
+            bound.removeFromRight(juce::jmin(juce::jmax(base_.getFontSize() * 1.40f, inset * .55f),
                                              bound.getWidth() * .38f));
             g.drawText(label.getText(), bound, label_justification_);
         }
@@ -77,12 +73,15 @@ namespace zlgui::combobox {
         void drawPopupMenuBackground(juce::Graphics& g, const int width, const int height) override {
             const auto box_bound = juce::Rectangle<float>(0, 0, static_cast<float>(width),
                                                           static_cast<float>(height));
-            // JUCE popups are separate windows in plugin hosts. A translucent window
-            // cannot sample or blur the editor beneath it, so it only causes labels
-            // and response curves to bleed through. Use a solid canvas under the
-            // glass treatment to keep every menu legible.
-            const auto corner_size = juce::jmax(base_.getFontSize() * .72f, 8.f);
-            glass::fillGlassSurface(g, box_bound.reduced(1.25f), corner_size, .23f, .36f, .42f);
+            const auto corner_size = juce::jmax(base_.getFontSize() * .70f, 8.f);
+            const auto body = box_bound.reduced(1.0f);
+
+            // Popup menus live in their own host window, so give the rounded body a nearly
+            // opaque base before applying the shared glass material. This prevents graph
+            // details from bleeding through without bringing back rectangular black corners.
+            g.setColour(glass::canvasBottom().withAlpha(.965f));
+            g.fillRoundedRectangle(body, corner_size);
+            glass::fillGlassSurface(g, body, corner_size, .105f, .18f, .23f);
         }
 
         void getIdealPopupMenuItemSize(const juce::String& text, const bool isSeparator, int standardMenuItemHeight,
@@ -90,8 +89,8 @@ namespace zlgui::combobox {
             juce::ignoreUnused(isSeparator, standardMenuItemHeight);
             const auto font = juce::Font(base_.getFontSize() * font_scale_);
             const auto text_width = juce::roundToInt(juce::GlyphArrangement::getStringWidth(font, text));
-            ideal_width = juce::jmax(item_width_, text_width + juce::roundToInt(base_.getFontSize() * 4.2f));
-            ideal_height = juce::jmax(item_height_, juce::roundToInt(base_.getFontSize() * 2.15f));
+            ideal_width = juce::jmax(item_width_, text_width + juce::roundToInt(base_.getFontSize() * 3.55f));
+            ideal_height = juce::jmax(item_height_, juce::roundToInt(base_.getFontSize() * 1.86f));
         }
 
         void drawPopupMenuItem(juce::Graphics& g, const juce::Rectangle<int>& area,
@@ -103,40 +102,31 @@ namespace zlgui::combobox {
             juce::ignoreUnused(hasSubMenu, shortcutKeyText, textColourToUse);
             if (isSeparator) {
                 auto line = area.toFloat().withHeight(1.f).withCentre(area.toFloat().getCentre());
-                line.reduce(base_.getFontSize() * 1.1f, 0.f);
-                g.setColour(glass::rim().withMultipliedAlpha(.55f));
+                line.reduce(base_.getFontSize() * 1.0f, 0.f);
+                g.setColour(glass::rim().withMultipliedAlpha(.36f));
                 g.fillRect(line);
                 return;
             }
 
-            float alpha;
+            const auto alpha = !isActive ? .28f : (isHighlighted || isTicked ? .98f : .78f);
+            auto card = area.toFloat().reduced(base_.getFontSize() * .20f, base_.getFontSize() * .10f);
             if ((isHighlighted || isTicked) && isActive) {
-                alpha = 1.0f;
-            } else if (!isActive) {
-                alpha = .30f;
-            } else {
-                alpha = .82f;
+                g.setColour(juce::Colour(132, 187, 229).withAlpha(isTicked ? .16f : .095f));
+                g.fillRoundedRectangle(card, juce::jmax(5.f, base_.getFontSize() * .44f));
+                if (isTicked) {
+                    g.setColour(glass::rim().withMultipliedAlpha(.60f));
+                    g.drawRoundedRectangle(card, juce::jmax(5.f, base_.getFontSize() * .44f), .65f);
+                }
             }
 
-            auto card = area.toFloat().reduced(base_.getFontSize() * .22f, base_.getFontSize() * .12f);
-            if ((isHighlighted || isTicked) && isActive) {
-                juce::ColourGradient fill(
-                    juce::Colour(153, 205, 244).withAlpha(isTicked ? .18f : .12f), card.getCentreX(), card.getY(),
-                    juce::Colour(46, 78, 103).withAlpha(isTicked ? .22f : .15f), card.getCentreX(), card.getBottom(), false);
-                g.setGradientFill(fill);
-                g.fillRoundedRectangle(card, juce::jmax(6.f, base_.getFontSize() * .48f));
-                g.setColour(glass::rim().withMultipliedAlpha(isTicked ? .95f : .60f));
-                g.drawRoundedRectangle(card, juce::jmax(6.f, base_.getFontSize() * .48f), .7f);
-            }
-
-            auto content = area.reduced(juce::roundToInt(base_.getFontSize() * .85f), 0);
+            auto content = area.reduced(juce::roundToInt(base_.getFontSize() * .78f), 0);
             if (icon != nullptr) {
-                const auto icon_size = juce::jmin(content.getHeight(), juce::roundToInt(base_.getFontSize() * 2.0f));
-                auto icon_area = content.removeFromLeft(icon_size).toFloat().reduced(base_.getFontSize() * .25f);
+                const auto icon_size = juce::jmin(content.getHeight(), juce::roundToInt(base_.getFontSize() * 1.82f));
+                auto icon_area = content.removeFromLeft(icon_size).toFloat().reduced(base_.getFontSize() * .24f);
                 const auto fig = icon->createCopy();
                 fig->replaceColour(juce::Colours::black, glass::textPrimary());
                 fig->drawWithin(g, icon_area, juce::RectanglePlacement::centred, alpha);
-                if (text.isNotEmpty()) content.removeFromLeft(juce::roundToInt(base_.getFontSize() * .55f));
+                if (text.isNotEmpty()) content.removeFromLeft(juce::roundToInt(base_.getFontSize() * .48f));
             }
 
             if (text.isNotEmpty()) {
@@ -168,20 +158,15 @@ namespace zlgui::combobox {
                 }
             }
             if (option.getMinimumWidth() == 0) {
-                option = option.withMinimumWidth(juce::jmax(box.getWidth(), juce::roundToInt(base_.getFontSize() * 9.f)));
+                option = option.withMinimumWidth(juce::jmax(box.getWidth(), juce::roundToInt(base_.getFontSize() * 8.4f)));
             }
-            // v1.2 system-integrity rule: compact controls never explode into multi-column
-            // matrices. Keep every menu in one readable column and let JUCE flip/scroll it.
             option = option.withMinimumNumColumns(1).withMaximumNumColumns(1);
             return option.withTargetComponent(&box)
                          .withInitiallySelectedItem(box.getSelectedId())
-                         .withStandardItemHeight(juce::jmax(label.getHeight(), juce::roundToInt(base_.getFontSize() * 2.15f)));
+                         .withStandardItemHeight(juce::jmax(label.getHeight(), juce::roundToInt(base_.getFontSize() * 1.86f)));
         }
 
         void preparePopupMenuWindow(juce::Component& new_window) override {
-            // Keep the native popup window transparent outside the rounded menu body.
-            // Filling an opaque rectangular window first produced the black corner blocks
-            // visible in REAPER even though the menu itself was rounded.
             new_window.setOpaque(false);
             popup_uses_opaque_fallback_ = false;
 
@@ -201,19 +186,12 @@ namespace zlgui::combobox {
             const juce::PopupMenu::Options&) override {
             auto bound = bounds.toFloat();
             bound = bound.withSizeKeepingCentre(bound.getWidth() * .4f, bound.getHeight());
-            juce::ColourGradient gradient;
-            gradient.point1 = bound.getTopLeft();
-            gradient.point2 = bound.getBottomLeft();
-            gradient.isRadial = false;
-            gradient.addColour(0.f, glass::rim().withMultipliedAlpha(.20f));
-            gradient.addColour(.5f, glass::rim().withMultipliedAlpha(.85f));
-            gradient.addColour(1.f, glass::rim().withMultipliedAlpha(.20f));
-            g.setGradientFill(gradient);
+            g.setColour(glass::rim().withMultipliedAlpha(.38f));
             g.fillRect(bound);
         }
 
         int getPopupMenuColumnSeparatorWidthWithOptions(const juce::PopupMenu::Options&) override {
-            return static_cast<int>(base_.getFontSize() * .4f);
+            return static_cast<int>(base_.getFontSize() * .35f);
         }
 
         void setBoxAlpha(const float x) { box_alpha_ = x; }
@@ -233,8 +211,6 @@ namespace zlgui::combobox {
         }
 
     private:
-        static constexpr float kHoverAlpha{.055f};
-
         int item_width_{0}, item_height_{0};
         float font_scale_{1.0f}, box_alpha_{0.f};
         float padding_{0.f};
