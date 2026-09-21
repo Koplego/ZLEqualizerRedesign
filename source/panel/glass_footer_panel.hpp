@@ -38,6 +38,7 @@ namespace zlpanel {
         zlgui::combobox::CompactCombobox speed_box_;
         zlgui::attachment::ComboBoxAttachment<true> speed_attach_;
 
+        zlgui::button::ClickTextButton output_button_;
         zlgui::button::ClickTextButton controls_button_;
         zlgui::button::ClickTextButton settings_button_;
 
