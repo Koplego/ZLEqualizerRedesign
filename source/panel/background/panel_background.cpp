@@ -28,10 +28,10 @@ namespace zlpanel {
                                       juce::jmax(padding + 2, 3), {0, juce::jmax(1, padding / 3)}};
         shadow.drawForPath(g, path);
 
-        // JUCE does not provide live backdrop blur for hosted plugin panels. Give
-        // the surface enough body that graph lines do not compete with its controls,
-        // then retain the lighter glass gradient and rim above it.
-        g.setColour(juce::Colour(8, 23, 37).withAlpha(.72f));
+        // These panels live inside the editor, so the graph can remain visible through
+        // them. Keep just enough dark body for text contrast, then let the shared glass
+        // layers bend and tint the response underneath instead of hiding it.
+        g.setColour(juce::Colour(8, 23, 37).withAlpha(.44f));
         g.fillRoundedRectangle(bound, corner);
         zlgui::glass::fillGlassSurface(g, bound, corner, .14f, .20f, .28f);
 
