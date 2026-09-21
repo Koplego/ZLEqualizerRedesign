@@ -6,88 +6,98 @@
 
 namespace zlpanel {
     GlassFooterPanel::GlassFooterPanel(PluginProcessor& p, zlgui::UIBase& base) :
-        base_(base),
-        analyzer_button_(base, "Analyzer"),
+        p_ref_(p), base_(base),
+        analyzer_menu_button_(base, "Analyzer"),
+        analyzer_toggle_button_(base, ""),
         pre_button_(base, "Pre"),
         post_button_(base, "Post"),
+        side_button_(base, "Side"),
         pre_attach_(pre_button_.getButton(), p.parameters_NA_, zlstate::PFFTPreON::kID, updater_),
         post_attach_(post_button_.getButton(), p.parameters_NA_, zlstate::PFFTPostON::kID, updater_),
+        side_attach_(side_button_.getButton(), p.parameters_NA_, zlstate::PFFTSideON::kID, updater_),
         speed_box_(zlstate::PFFTSpeed::kChoices, base, ""),
         speed_attach_(speed_box_.getBox(), p.parameters_NA_, zlstate::PFFTSpeed::kID, updater_),
-        output_button_(base, "Output"),
         phase_box_(zlp::PFilterStructure::kChoices, base, ""),
         phase_attach_(phase_box_.getBox(), p.parameters_, zlp::PFilterStructure::kID, updater_) {
         setOpaque(false);
-        for (auto* button : {&analyzer_button_, &pre_button_, &post_button_, &output_button_}) {
+
+        for (auto* button : {&analyzer_menu_button_, &pre_button_, &post_button_, &side_button_}) {
             stylePill(*button);
             button->getLAF().setFontScale(.69f);
             button->getLAF().setJustification(juce::Justification::centred);
         }
 
-        analyzer_button_.getButton().setToggleable(true);
-        analyzer_button_.getButton().setClickingTogglesState(false);
-        analyzer_button_.getButton().setButtonText("");
-        analyzer_button_.setBackgroundPainter([this](juce::Graphics& g, juce::Button& b,
-                                                      const bool highlighted, const bool down) {
-            const auto selected = b.getToggleState() || down;
-            auto local = b.getLocalBounds().toFloat();
-            g.setColour(zlgui::glass::textPrimary().withAlpha(selected ? .90f : highlighted ? .72f : .57f));
-            g.setFont(juce::FontOptions(base_.getFontSize() * .67f));
-            auto label = local.toNearestInt();
-            label.removeFromRight(juce::roundToInt(base_.getFontSize() * 2.55f));
-            g.drawText("Analyzer", label.reduced(2, 0), juce::Justification::centredLeft, false);
+        analyzer_menu_button_.getButton().setToggleable(true);
+        analyzer_menu_button_.getButton().setClickingTogglesState(false);
+        analyzer_menu_button_.getButton().onClick = [this]() {
+            const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel));
+            base_.setPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel, open < .5 ? 1. : 0.);
+        };
 
-            auto toggle = local.removeFromRight(base_.getFontSize() * 2.22f)
-                               .withSizeKeepingCentre(base_.getFontSize() * 2.02f,
-                                                      base_.getFontSize() * 1.00f);
-            g.setColour(juce::Colour(5, 20, 33).withAlpha(.42f));
+        // The switch is its own hit target. This is intentionally not the menu button:
+        // it means exactly one thing — whether the spectrum analyzer is active.
+        analyzer_toggle_button_.getButton().setToggleable(true);
+        analyzer_toggle_button_.getButton().setClickingTogglesState(false);
+        analyzer_toggle_button_.getButton().setButtonText("");
+        analyzer_toggle_button_.setBackgroundPainter([this](juce::Graphics& g, juce::Button& b,
+                                                             const bool highlighted, const bool down) {
+            const auto active = b.getToggleState();
+            auto toggle = b.getLocalBounds().toFloat().reduced(1.f)
+                              .withSizeKeepingCentre(base_.getFontSize() * 2.05f,
+                                                     base_.getFontSize() * 1.04f);
+            if (highlighted || down) {
+                const auto halo = toggle.expanded(2.f);
+                g.setColour(juce::Colour(173, 215, 248).withAlpha(down ? .10f : .055f));
+                g.fillRoundedRectangle(halo, halo.getHeight() * .5f);
+            }
+            g.setColour(juce::Colour(5, 20, 33).withAlpha(.44f));
             g.fillRoundedRectangle(toggle, toggle.getHeight() * .5f);
-            g.setColour(zlgui::glass::rim().withMultipliedAlpha(.72f));
-            g.drawRoundedRectangle(toggle, toggle.getHeight() * .5f, .7f);
-            if (selected) {
-                g.setColour(juce::Colour(105, 165, 255).withAlpha(.58f));
+            if (active) {
+                juce::ColourGradient on(juce::Colour(123, 190, 255).withAlpha(.66f), toggle.getX(), toggle.getY(),
+                                        juce::Colour(73, 134, 218).withAlpha(.48f), toggle.getRight(),
+                                        toggle.getBottom(), false);
+                g.setGradientFill(on);
                 g.fillRoundedRectangle(toggle, toggle.getHeight() * .5f);
             }
+            g.setColour(zlgui::glass::rim().withMultipliedAlpha(active ? .84f : .62f));
+            g.drawRoundedRectangle(toggle, toggle.getHeight() * .5f, .72f);
+
             const auto knob = toggle.getHeight() * .76f;
-            const auto knob_x = selected ? toggle.getRight() - knob - toggle.getHeight() * .12f
-                                         : toggle.getX() + toggle.getHeight() * .12f;
-            juce::ColourGradient lens(juce::Colour(255, 255, 255).withAlpha(.91f), knob_x, toggle.getY(),
-                                      juce::Colour(169, 205, 236).withAlpha(.82f), knob_x + knob,
+            const auto knob_x = active ? toggle.getRight() - knob - toggle.getHeight() * .12f
+                                       : toggle.getX() + toggle.getHeight() * .12f;
+            juce::ColourGradient lens(juce::Colour(255, 255, 255).withAlpha(.94f), knob_x, toggle.getY(),
+                                      juce::Colour(169, 205, 236).withAlpha(.84f), knob_x + knob,
                                       toggle.getBottom(), false);
             g.setGradientFill(lens);
             g.fillEllipse(knob_x, toggle.getCentreY() - knob * .5f, knob, knob);
         });
-        output_button_.getButton().setToggleable(true);
-        output_button_.getButton().setClickingTogglesState(false);
-        pre_button_.getButton().setToggleable(true);
-        pre_button_.getButton().setClickingTogglesState(true);
-        post_button_.getButton().setToggleable(true);
-        post_button_.getButton().setClickingTogglesState(true);
+        analyzer_toggle_button_.getButton().onClick = [this]() { toggleAnalyzerEnabled(); };
 
-        analyzer_button_.getButton().onClick = [this]() {
-            const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel));
-            base_.setPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel, open < .5 ? 1. : 0.);
-        };
-        output_button_.getButton().onClick = [this]() {
-            const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kOutputPanel));
-            base_.setPanelProperty(zlgui::PanelSettingIdx::kOutputPanel, open < .5 ? 1. : 0.);
-        };
+        for (auto* button : {&pre_button_, &post_button_, &side_button_}) {
+            button->getButton().setToggleable(true);
+            button->getButton().setClickingTogglesState(true);
+        }
 
         speed_box_.getLAF().setFontScale(.76f);
         speed_box_.getLAF().setLabelJustification(juce::Justification::centred);
+        speed_box_.getLAF().setBoxAlpha(.28f);
         speed_box_.setBufferedToImage(true);
 
         phase_box_.getLAF().setFontScale(.76f);
         phase_box_.getLAF().setLabelJustification(juce::Justification::centred);
+        phase_box_.getLAF().setBoxAlpha(.28f);
         phase_box_.setBufferedToImage(true);
 
-        addAndMakeVisible(analyzer_button_);
+        addAndMakeVisible(analyzer_menu_button_);
+        addAndMakeVisible(analyzer_toggle_button_);
         addAndMakeVisible(pre_button_);
         addAndMakeVisible(post_button_);
+        addAndMakeVisible(side_button_);
         addAndMakeVisible(speed_box_);
-        addAndMakeVisible(output_button_);
         addAndMakeVisible(phase_box_);
         setInterceptsMouseClicks(false, true);
+
+        if (const auto mask = getAnalyzerMask(); mask != 0u) analyzer_restore_mask_ = mask;
     }
 
     void GlassFooterPanel::stylePill(zlgui::button::ClickTextButton& button) {
@@ -106,6 +116,43 @@ namespace zlpanel {
                 g.fillRoundedRectangle(r.reduced(r.getHeight() * .12f), r.getHeight() * .42f);
             }
         });
+    }
+
+    bool GlassFooterPanel::isAnalyzerEnabled() const {
+        return getAnalyzerMask() != 0u;
+    }
+
+    unsigned int GlassFooterPanel::getAnalyzerMask() const {
+        unsigned int mask = 0u;
+        const auto read = [this](const char* id) {
+            if (const auto* value = p_ref_.parameters_NA_.getRawParameterValue(id))
+                return value->load(std::memory_order_relaxed) > .5f;
+            return false;
+        };
+        if (read(zlstate::PFFTPreON::kID)) mask |= 0b001u;
+        if (read(zlstate::PFFTPostON::kID)) mask |= 0b010u;
+        if (read(zlstate::PFFTSideON::kID)) mask |= 0b100u;
+        return mask;
+    }
+
+    void GlassFooterPanel::setAnalyzerMask(const unsigned int mask) {
+        const auto set = [this, mask](const char* id, const unsigned int bit) {
+            if (auto* parameter = p_ref_.parameters_NA_.getParameter(id))
+                updateValue(parameter, (mask & bit) != 0u ? 1.f : 0.f);
+        };
+        set(zlstate::PFFTPreON::kID, 0b001u);
+        set(zlstate::PFFTPostON::kID, 0b010u);
+        set(zlstate::PFFTSideON::kID, 0b100u);
+    }
+
+    void GlassFooterPanel::toggleAnalyzerEnabled() {
+        const auto mask = getAnalyzerMask();
+        if (mask != 0u) {
+            analyzer_restore_mask_ = mask;
+            setAnalyzerMask(0u);
+        } else {
+            setAnalyzerMask(analyzer_restore_mask_ != 0u ? analyzer_restore_mask_ : 0b011u);
+        }
     }
 
     int GlassFooterPanel::getIdealHeight() const {
@@ -139,35 +186,35 @@ namespace zlpanel {
         const auto padding = getPaddingSize(font);
         auto b = getLocalBounds().reduced(padding + padding / 2, padding / 2 + 1);
 
-        const auto analyzer_w = juce::jmax(78, juce::roundToInt(font * 5.25f));
-        analyzer_button_.setBounds(b.removeFromLeft(analyzer_w));
+        const auto analyzer_label_w = juce::jmax(66, juce::roundToInt(font * 4.25f));
+        analyzer_menu_button_.setBounds(b.removeFromLeft(analyzer_label_w));
+        const auto switch_w = juce::jmax(39, juce::roundToInt(font * 2.45f));
+        analyzer_toggle_button_.setBounds(b.removeFromLeft(switch_w));
         b.removeFromLeft(padding / 2);
 
-        const auto small_w = juce::jmax(44, juce::roundToInt(font * 2.85f));
+        const auto small_w = juce::jmax(40, juce::roundToInt(font * 2.62f));
         pre_button_.setBounds(b.removeFromLeft(small_w));
-        b.removeFromLeft(padding / 4);
+        b.removeFromLeft(padding / 5);
         post_button_.setBounds(b.removeFromLeft(small_w));
+        b.removeFromLeft(padding / 5);
+        side_button_.setBounds(b.removeFromLeft(small_w));
         b.removeFromLeft(padding / 2);
 
-        const auto spectrum_w = juce::jmax(70, juce::roundToInt(font * 4.65f));
+        const auto spectrum_w = juce::jmax(62, juce::roundToInt(font * 4.10f));
         spectrum_label_bound_ = b.removeFromLeft(spectrum_w);
-        b.removeFromLeft(padding / 4);
+        b.removeFromLeft(padding / 5);
 
-        const auto speed_w = juce::jmax(82, juce::roundToInt(font * 5.15f));
+        const auto speed_w = juce::jmax(78, juce::roundToInt(font * 5.00f));
         speed_box_.setBounds(b.removeFromLeft(speed_w));
 
-        analyzer_group_bound_ = analyzer_button_.getBounds()
+        analyzer_group_bound_ = analyzer_menu_button_.getBounds()
+            .getUnion(analyzer_toggle_button_.getBounds())
             .getUnion(pre_button_.getBounds())
             .getUnion(post_button_.getBounds())
+            .getUnion(side_button_.getBounds())
             .getUnion(spectrum_label_bound_)
             .getUnion(speed_box_.getBounds())
             .expanded(juce::jmax(3, padding / 2), juce::jmax(2, padding / 4));
-
-        const auto tool_w = juce::jmax(72, juce::roundToInt(font * 4.7f));
-        auto tools = getLocalBounds().withSizeKeepingCentre(tool_w, getButtonSize(font));
-        output_button_.setBounds(tools);
-        tools_group_bound_ = output_button_.getBounds()
-            .expanded(juce::jmax(2, padding / 3), juce::jmax(2, padding / 4));
 
         const auto phase_w = juce::jmax(136, juce::roundToInt(font * 8.65f));
         auto phase = b.removeFromRight(phase_w);
@@ -180,11 +227,12 @@ namespace zlpanel {
 
     void GlassFooterPanel::repaintCallbackSlow() {
         updater_.updateComponents();
-        analyzer_button_.getButton().setToggleState(
+        const auto mask = getAnalyzerMask();
+        if (mask != 0u) analyzer_restore_mask_ = mask;
+
+        analyzer_toggle_button_.getButton().setToggleState(mask != 0u, juce::dontSendNotification);
+        analyzer_menu_button_.getButton().setToggleState(
             static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel)) > .5,
-            juce::dontSendNotification);
-        output_button_.getButton().setToggleState(
-            static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kOutputPanel)) > .5,
             juce::dontSendNotification);
         repaint();
     }
