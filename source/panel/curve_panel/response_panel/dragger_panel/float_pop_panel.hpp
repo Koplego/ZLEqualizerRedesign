@@ -22,7 +22,6 @@ namespace zlpanel {
     public:
         explicit FloatPopPanel(PluginProcessor& p, zlgui::UIBase& base,
                                const multilingual::TooltipHelper& tooltip_helper);
-
         ~FloatPopPanel() override;
 
         void paintOverChildren(juce::Graphics& g) override;
@@ -43,26 +42,21 @@ namespace zlpanel {
         PluginProcessor& p_ref_;
         zlgui::UIBase& base_;
         zlgui::attachment::ComponentUpdater updater_{};
-
         PanelBackground control_background_;
 
         bool is_target_visible_{false};
         bool dynamic_on_{false};
-        // "dynamics" is the normal primary Dynamic view. Detector and Sidechain are
-        // nested secondary expansions, not three peer tabs.
+        bool hub_open_{false};
+        bool bubble_below_{false};
+        bool bubble_side_initialized_{false};
+
         enum class DetailPage { dynamics, detector, sidechain };
         DetailPage detail_page_{DetailPage::dynamics};
+
         juce::Point<float> position_{};
         juce::Point<float> target_position_{};
-        juce::Point<float> upper_center_{};
-        juce::Point<float> lower_center_{};
-        juce::Point<float> left_center_{};
-        juce::Point<float> right_center_{};
+        juce::Rectangle<float> safe_bound_{};
         float ideal_height_{}, ideal_width_{};
-
-        float x_min_{}, x_max_{}, x_mid_{}, y_min_{}, y_max_{};
-        float floating_top_{}, floating_bottom_{};
-        float y1_{}, y2_{}, y3_{};
 
         const std::unique_ptr<juce::Drawable> bypass_drawable_;
         zlgui::button::ClickButton bypass_button_;
@@ -79,21 +73,16 @@ namespace zlpanel {
         std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> dynamic_attachment_;
         std::atomic<float>* dynamic_on_ptr_{nullptr};
 
-        // dynamics_page_button_ remains as an attachment-free placeholder for the original
-        // component tree but is never shown. "More" and "Sidechain" reveal nested detail.
         zlgui::button::ClickTextButton dynamics_page_button_;
         zlgui::button::ClickTextButton detector_page_button_;
         zlgui::button::ClickTextButton sidechain_page_button_;
         zlgui::button::ClickTextButton more_button_;
-        bool advanced_open_{false};
         bool slope_supported_{true};
 
         zlgui::combobox::CompactCombobox ftype_box_;
         std::unique_ptr<zlgui::attachment::ComboBoxAttachment<true>> ftype_attachment_;
-
         zlgui::combobox::CompactCombobox lr_box_;
         std::unique_ptr<zlgui::attachment::ComboBoxAttachment<true>> lr_attachment_;
-
         zlgui::combobox::CompactCombobox slope_box_;
         std::unique_ptr<zlgui::attachment::ComboBoxAttachment<true>> slope_attachment_;
         std::atomic<float>* filter_type_ptr_{nullptr};
@@ -103,22 +92,17 @@ namespace zlpanel {
 
         zlgui::slider::CompactLinearSlider<false, false, false> freq_slider_;
         std::unique_ptr<zlgui::attachment::SliderAttachment<true>> freq_attachment_;
-
         zlgui::slider::CompactLinearSlider<false, false, false> gain_slider_;
         std::unique_ptr<zlgui::attachment::SliderAttachment<true>> gain_attachment_;
-
         zlgui::slider::CompactLinearSlider<false, false, false> q_slider_;
         std::unique_ptr<zlgui::attachment::SliderAttachment<true>> q_attachment_;
 
         zlgui::slider::CompactLinearSlider<false, false, false> range_slider_;
         std::unique_ptr<zlgui::attachment::SliderAttachment<true>> range_attachment_;
-
         zlgui::slider::CompactLinearSlider<false, false, false> threshold_slider_;
         std::unique_ptr<zlgui::attachment::SliderAttachment<true>> threshold_attachment_;
-
         zlgui::slider::CompactLinearSlider<false, false, false> attack_slider_;
         std::unique_ptr<zlgui::attachment::SliderAttachment<true>> attack_attachment_;
-
         zlgui::slider::CompactLinearSlider<false, false, false> release_slider_;
         std::unique_ptr<zlgui::attachment::SliderAttachment<true>> release_attachment_;
 
@@ -151,17 +135,17 @@ namespace zlpanel {
         std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> side_link_attachment_;
         std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> side_swap_attachment_;
 
-        juce::Rectangle<int> filter_name_bound_, mode_name_bound_;
+        juce::Rectangle<int> filter_name_bound_, mode_name_bound_, hub_title_bound_;
         juce::Rectangle<int> dynamic_title_bound_, advanced_section_title_bound_;
         std::array<juce::Rectangle<int>, 4> primary_dynamic_label_bounds_{};
         std::array<juce::Rectangle<int>, 4> advanced_dynamic_label_bounds_{};
 
+        void setHubOpen(bool open);
         void updateDynamicVisibility(bool dynamic_on, bool request_parent_resize);
         void updateDetailPage(DetailPage page, bool request_parent_resize);
         void updateDetailVisibility();
         void updateFilterCapabilities();
         void styleDetailButton(zlgui::button::ClickTextButton& button);
-
         void updateTransformation();
 
         void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
