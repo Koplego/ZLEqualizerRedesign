@@ -26,6 +26,10 @@ namespace zlpanel {
         juce::ignoreUnused(base_);
         setOpaque(false);
 
+        top_panel_.setPresetNameProvider([this]() {
+            return preset_browser_.getDisplayPresetName();
+        });
+
         if (base_.getTooltipLangID() != 0) {
             tooltip_window_ = std::make_unique<zlgui::tooltip::TooltipWindow>(&curve_panel_);
             tooltip_window_->setLookAndFeel(&tooltip_laf_);
@@ -39,7 +43,7 @@ namespace zlpanel {
         addAndMakeVisible(curve_panel_);
         addChildComponent(overlay_scrim_);
 
-        // Normal band editing now lives in the contextual inspector. ControlPanel remains
+        // Normal band editing lives in the contextual inspector. ControlPanel remains
         // available only because its Match view is the dedicated EQ Match workspace.
         addChildComponent(control_panel_);
         control_panel_.setVisible(false);
@@ -71,99 +75,51 @@ namespace zlpanel {
             juce::Graphics::ScopedSaveState clip(g);
             g.reduceClipRegion(shell_clip);
 
-            juce::ColourGradient body(juce::Colour(43, 66, 85), shell.getCentreX(), shell.getY(),
+            juce::ColourGradient body(juce::Colour(42, 65, 83), shell.getCentreX(), shell.getY(),
                                       juce::Colour(9, 25, 39), shell.getCentreX(), shell.getBottom(), false);
-            body.addColour(.36, juce::Colour(30, 54, 72));
-            body.addColour(.72, juce::Colour(16, 36, 52));
+            body.addColour(.38, juce::Colour(29, 53, 71));
+            body.addColour(.74, juce::Colour(15, 35, 51));
             g.setGradientFill(body);
             g.fillRect(shell.expanded(2.f));
 
-            // Broad transmitted-light fields establish the photographed glass depth in
-            // the mockup. They sit behind every control so the header, graph and footer
-            // appear to share one continuous material.
+            // The shell carries the glass impression with broad environmental light only.
+            // Visible ribbons/caustics were removed because the mockup keeps the UI plane
+            // calm and lets controls and EQ colours provide the sharp visual information.
             juce::ColourGradient cool_bloom(
-                juce::Colour(182, 220, 246).withAlpha(.16f),
-                shell.getX() + shell.getWidth() * .18f, shell.getY() + shell.getHeight() * .05f,
+                juce::Colour(187, 222, 246).withAlpha(.105f),
+                shell.getX() + shell.getWidth() * .16f,
+                shell.getY() + shell.getHeight() * .04f,
                 juce::Colours::transparentBlack,
-                shell.getX() + shell.getWidth() * .48f, shell.getY() + shell.getHeight() * .62f, true);
+                shell.getX() + shell.getWidth() * .52f,
+                shell.getY() + shell.getHeight() * .66f,
+                true);
             g.setGradientFill(cool_bloom);
             g.fillRect(shell);
 
             juce::ColourGradient warm_bloom(
-                juce::Colour(225, 204, 179).withAlpha(.085f),
-                shell.getX() + shell.getWidth() * .73f, shell.getY() + shell.getHeight() * .12f,
+                juce::Colour(226, 204, 180).withAlpha(.044f),
+                shell.getX() + shell.getWidth() * .78f,
+                shell.getY() + shell.getHeight() * .17f,
                 juce::Colours::transparentBlack,
-                shell.getX() + shell.getWidth() * .48f, shell.getBottom(), true);
+                shell.getX() + shell.getWidth() * .54f,
+                shell.getBottom(),
+                true);
             g.setGradientFill(warm_bloom);
             g.fillRect(shell);
-
-            // Refracted ribbons: a dark displaced edge, a frosted body and a narrow
-            // highlight give the impression that light is bending through thick glass.
-            juce::Path upper_ribbon;
-            upper_ribbon.startNewSubPath(shell.getX() - shell.getWidth() * .08f,
-                                         shell.getY() + shell.getHeight() * .10f);
-            upper_ribbon.cubicTo(shell.getX() + shell.getWidth() * .18f,
-                                 shell.getY() - shell.getHeight() * .07f,
-                                 shell.getX() + shell.getWidth() * .35f,
-                                 shell.getY() + shell.getHeight() * .28f,
-                                 shell.getX() + shell.getWidth() * .58f,
-                                 shell.getY() + shell.getHeight() * .15f);
-            upper_ribbon.cubicTo(shell.getX() + shell.getWidth() * .77f,
-                                 shell.getY() + shell.getHeight() * .04f,
-                                 shell.getX() + shell.getWidth() * .88f,
-                                 shell.getY() + shell.getHeight() * .18f,
-                                 shell.getRight() + shell.getWidth() * .05f,
-                                 shell.getY() + shell.getHeight() * .03f);
-            g.setColour(juce::Colour(1, 11, 21).withAlpha(.13f));
-            g.strokePath(upper_ribbon, juce::PathStrokeType(shell.getHeight() * .13f,
-                                                            juce::PathStrokeType::curved,
-                                                            juce::PathStrokeType::rounded),
-                         juce::AffineTransform::translation(0.f, shell.getHeight() * .018f));
-            juce::ColourGradient ribbon_fill(
-                juce::Colour(221, 240, 251).withAlpha(.12f), shell.getX(), shell.getY(),
-                juce::Colour(91, 151, 194).withAlpha(.025f), shell.getRight(), shell.getBottom(), false);
-            g.setGradientFill(ribbon_fill);
-            g.strokePath(upper_ribbon, juce::PathStrokeType(shell.getHeight() * .105f,
-                                                            juce::PathStrokeType::curved,
-                                                            juce::PathStrokeType::rounded));
-            g.setColour(juce::Colour(244, 251, 255).withAlpha(.12f));
-            g.strokePath(upper_ribbon, juce::PathStrokeType(1.15f, juce::PathStrokeType::curved,
-                                                            juce::PathStrokeType::rounded),
-                         juce::AffineTransform::translation(0.f, -shell.getHeight() * .045f));
-
-            juce::Path lower_ribbon;
-            lower_ribbon.startNewSubPath(shell.getX() - shell.getWidth() * .04f,
-                                         shell.getY() + shell.getHeight() * .80f);
-            lower_ribbon.cubicTo(shell.getX() + shell.getWidth() * .21f,
-                                 shell.getY() + shell.getHeight() * .62f,
-                                 shell.getX() + shell.getWidth() * .34f,
-                                 shell.getY() + shell.getHeight() * .93f,
-                                 shell.getX() + shell.getWidth() * .56f,
-                                 shell.getY() + shell.getHeight() * .78f);
-            lower_ribbon.cubicTo(shell.getX() + shell.getWidth() * .73f,
-                                 shell.getY() + shell.getHeight() * .68f,
-                                 shell.getX() + shell.getWidth() * .85f,
-                                 shell.getY() + shell.getHeight() * .91f,
-                                 shell.getRight() + shell.getWidth() * .04f,
-                                 shell.getY() + shell.getHeight() * .72f);
-            g.setColour(juce::Colour(138, 190, 224).withAlpha(.045f));
-            g.strokePath(lower_ribbon, juce::PathStrokeType(shell.getHeight() * .085f,
-                                                            juce::PathStrokeType::curved,
-                                                            juce::PathStrokeType::rounded));
         }
 
         g.setColour(zlgui::glass::rimStrong());
-        g.drawRoundedRectangle(shell, radius, 1.f);
+        g.drawRoundedRectangle(shell, radius, .95f);
         const auto inner = shell.reduced(2.f);
-        g.setColour(zlgui::glass::rim().withMultipliedAlpha(.62f));
-        g.drawRoundedRectangle(inner, juce::jmax(1.f, radius - 2.f), .8f);
+        g.setColour(zlgui::glass::rim().withMultipliedAlpha(.42f));
+        g.drawRoundedRectangle(inner, juce::jmax(1.f, radius - 2.f), .65f);
 
-        auto top_specular = shell.reduced(radius * .50f, 1.f);
+        auto top_specular = shell.reduced(radius * .55f, 1.f);
         top_specular.setHeight(1.f);
         juce::ColourGradient top_line(juce::Colours::transparentWhite, top_specular.getX(), top_specular.getY(),
                                       juce::Colours::transparentWhite, top_specular.getRight(), top_specular.getY(), false);
-        top_line.addColour(.18, juce::Colour(255, 255, 255).withAlpha(.23f));
-        top_line.addColour(.64, juce::Colour(202, 232, 250).withAlpha(.10f));
+        top_line.addColour(.20, juce::Colour(255, 255, 255).withAlpha(.19f));
+        top_line.addColour(.64, juce::Colour(202, 232, 250).withAlpha(.075f));
         g.setGradientFill(top_line);
         g.fillRect(top_specular);
     }
@@ -277,7 +233,6 @@ namespace zlpanel {
         if (settings_open) ui_setting_panel_.toFront(false);
         if (preset_open) preset_browser_.toFront(false);
 
-        // Keep the persistent navigation islands usable above sheets.
         top_panel_.toFront(false);
         footer_panel_.toFront(false);
     }
