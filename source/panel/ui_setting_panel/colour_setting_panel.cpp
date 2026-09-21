@@ -8,6 +8,7 @@
 // You should have received a copy of the GNU Affero General Public License along with ZLEqualizer. If not, see <https://www.gnu.org/licenses/>.
 
 #include "colour_setting_panel.hpp"
+#include "../../gui/glass_tokens.hpp"
 
 namespace zlpanel {
     static juce::Colour getIntColour(const int r, const int g, const int b, float alpha) {
@@ -23,34 +24,38 @@ namespace zlpanel {
         pRef(p), base_(base), name_laf_(base),
         c_map1_selector_(base), c_map2_selector_(base) {
         juce::ignoreUnused(pRef);
+        setOpaque(false);
         if (!kSettingDirectory.isDirectory()) {
             const auto result = kSettingDirectory.createDirectory();
             juce::ignoreUnused(result);
         }
-        name_laf_.setFontScale(.88f);
+        name_laf_.setFontScale(.76f);
         for (size_t i = 0; i < kNumSelectors; ++i) {
             auto label = std::string(zlgui::kColourNames[i]);
             label[0] = static_cast<char>(std::toupper(label[0]));
             label += " Colour";
             selector_labels_[i].setText(label, juce::dontSendNotification);
-            selector_labels_[i].setJustificationType(juce::Justification::centredRight);
+            selector_labels_[i].setJustificationType(juce::Justification::centredLeft);
             selector_labels_[i].setLookAndFeel(&name_laf_);
+            selector_labels_[i].setAlpha(.76f);
             addAndMakeVisible(selector_labels_[i]);
 
             selectors_[i] = std::make_unique<zlgui::colour_selector::ColourOpacitySelector>(
                 base, *this, i > 1,
                 12.f, 10.f, 5.f, 5.f);
-            selectors_[i]->setFontScale(.76f);
+            selectors_[i]->setFontScale(.72f);
             addAndMakeVisible(*selectors_[i]);
         }
-        c_map1_label_.setText("Colour Map 1", juce::dontSendNotification);
-        c_map1_label_.setJustificationType(juce::Justification::centredRight);
+        c_map1_label_.setText("Band Palette", juce::dontSendNotification);
+        c_map1_label_.setJustificationType(juce::Justification::centredLeft);
         c_map1_label_.setLookAndFeel(&name_laf_);
+        c_map1_label_.setAlpha(.76f);
         addAndMakeVisible(c_map1_label_);
         addAndMakeVisible(c_map1_selector_);
-        c_map2_label_.setText("Colour Map 2", juce::dontSendNotification);
-        c_map2_label_.setJustificationType(juce::Justification::centredRight);
+        c_map2_label_.setText("Secondary Palette", juce::dontSendNotification);
+        c_map2_label_.setJustificationType(juce::Justification::centredLeft);
         c_map2_label_.setLookAndFeel(&name_laf_);
+        c_map2_label_.setAlpha(.76f);
         addAndMakeVisible(c_map2_label_);
         addAndMakeVisible(c_map2_selector_);
     }
@@ -59,6 +64,8 @@ namespace zlpanel {
         for (size_t i = 0; i < kNumSelectors; ++i) {
             selector_labels_[i].setLookAndFeel(nullptr);
         }
+        c_map1_label_.setLookAndFeel(nullptr);
+        c_map2_label_.setLookAndFeel(nullptr);
     }
 
     void ColourSettingPanel::loadSetting() {
@@ -73,6 +80,10 @@ namespace zlpanel {
         for (size_t i = 0; i < kNumSelectors; ++i) {
             base_.setColourByIdx(static_cast<zlgui::ColourIdx>(i), selectors_[i]->getColour());
         }
+        c_map1_selector_.getBox().setSelectedId(juce::jmax(1, c_map1_selector_.getBox().getSelectedId()),
+                                                juce::dontSendNotification);
+        c_map2_selector_.getBox().setSelectedId(juce::jmax(1, c_map2_selector_.getBox().getSelectedId()),
+                                                juce::dontSendNotification);
         base_.setCMap1Idx(static_cast<size_t>(c_map1_selector_.getBox().getSelectedId() - 1));
         base_.setCMap2Idx(static_cast<size_t>(c_map2_selector_.getBox().getSelectedId() - 1));
         base_.saveToAPVTS();
@@ -89,38 +100,66 @@ namespace zlpanel {
     }
 
     int ColourSettingPanel::getIdealHeight() const {
-        const auto padding = juce::roundToInt(base_.getFontSize() * .80f);
-        const auto slider_height = juce::roundToInt(base_.getFontSize() * 2.12f);
-
-        return padding * 12 + slider_height * 11;
+        const auto font = base_.getFontSize();
+        const auto padding = juce::roundToInt(font * .68f);
+        const auto row = juce::roundToInt(font * 2.15f);
+        const auto section = juce::roundToInt(font * 1.45f);
+        return section * 2 + row * static_cast<int>(kNumSelectors + 2) +
+               padding * static_cast<int>(kNumSelectors + 7);
     }
 
     void ColourSettingPanel::resized() {
-        auto bound = getLocalBounds();
-        const auto padding = juce::roundToInt(base_.getFontSize() * .80f);
-        const auto slider_width = juce::roundToInt(base_.getFontSize() * 5.f);
-        const auto slider_height = juce::roundToInt(base_.getFontSize() * 2.12f);
+        const auto font = base_.getFontSize();
+        const auto padding = juce::jmax(5, juce::roundToInt(font * .68f));
+        const auto row = juce::jmax(28, juce::roundToInt(font * 2.15f));
+        const auto section_h = juce::jmax(18, juce::roundToInt(font * 1.45f));
+        const auto label_w = juce::jmax(132, juce::roundToInt(font * 10.4f));
+
+        row_bounds_.clear();
+        auto bound = getLocalBounds().reduced(padding, 0);
+        palette_title_bound_ = bound.removeFromTop(section_h);
+        bound.removeFromTop(padding / 3);
 
         for (size_t i = 0; i < kNumSelectors; ++i) {
-            bound.removeFromTop(padding);
-            auto local_bound = bound.removeFromTop(slider_height);
-            selector_labels_[i].setBounds(local_bound.removeFromLeft(slider_width * 2));
-            local_bound.removeFromLeft(padding);
-            selectors_[i]->setBounds(local_bound);
+            auto row_bound = bound.removeFromTop(row);
+            row_bounds_.push_back(row_bound);
+            auto inner = row_bound.reduced(padding / 2, 1);
+            selector_labels_[i].setBounds(inner.removeFromLeft(juce::jmin(label_w, inner.getWidth() / 2)));
+            inner.removeFromLeft(padding);
+            selectors_[i]->setBounds(inner);
+            bound.removeFromTop(padding / 3);
         }
-        {
-            bound.removeFromTop(padding);
-            auto local_bound = bound.removeFromTop(slider_height);
-            c_map1_label_.setBounds(local_bound.removeFromLeft(slider_width * 2));
-            local_bound.removeFromLeft(padding);
-            c_map1_selector_.setBounds(local_bound.removeFromLeft(slider_width * 4 + padding).reduced(0, padding / 3));
-        }
-        {
-            bound.removeFromTop(padding);
-            auto local_bound = bound.removeFromTop(slider_height);
-            c_map2_label_.setBounds(local_bound.removeFromLeft(slider_width * 2));
-            local_bound.removeFromLeft(padding);
-            c_map2_selector_.setBounds(local_bound.removeFromLeft(slider_width * 4 + padding).reduced(0, padding / 3));
+
+        bound.removeFromTop(padding / 2);
+        maps_title_bound_ = bound.removeFromTop(section_h);
+        bound.removeFromTop(padding / 3);
+
+        auto layout_map = [&](juce::Label& label, juce::Component& selector) {
+            auto row_bound = bound.removeFromTop(row);
+            row_bounds_.push_back(row_bound);
+            auto inner = row_bound.reduced(padding / 2, 1);
+            label.setBounds(inner.removeFromLeft(juce::jmin(label_w, inner.getWidth() / 2)));
+            inner.removeFromLeft(padding);
+            selector.setBounds(inner.reduced(0, padding / 4));
+            bound.removeFromTop(padding / 3);
+        };
+        layout_map(c_map1_label_, c_map1_selector_);
+        layout_map(c_map2_label_, c_map2_selector_);
+    }
+
+    void ColourSettingPanel::paint(juce::Graphics& g) {
+        const auto font = base_.getFontSize();
+        g.setColour(zlgui::glass::textPrimary().withAlpha(.84f));
+        g.setFont(juce::FontOptions(font * .72f));
+        g.drawText("INTERFACE PALETTE", palette_title_bound_, juce::Justification::centredLeft, false);
+        g.drawText("BAND COLOUR MAPS", maps_title_bound_, juce::Justification::centredLeft, false);
+
+        for (const auto& row : row_bounds_) {
+            auto r = row.toFloat().reduced(.5f);
+            g.setColour(juce::Colour(238, 248, 255).withAlpha(.024f));
+            g.fillRoundedRectangle(r, juce::jmax(6.f, font * .55f));
+            g.setColour(zlgui::glass::rim().withMultipliedAlpha(.24f));
+            g.drawRoundedRectangle(r, juce::jmax(6.f, font * .55f), .55f);
         }
     }
 }
