@@ -32,6 +32,7 @@ namespace zlpanel {
         int getIdealWidth() const;
 
         void resized() override;
+        void paintOverChildren(juce::Graphics& g) override;
 
     private:
         PluginProcessor& p_ref_;
@@ -65,6 +66,17 @@ namespace zlpanel {
         zlgui::button::ClickButton fit_start_button_;
 
         zlgui::slider::CompactLinearSlider<false, false, false> num_band_slider_;
+
+        juce::Rectangle<int> title_bound_{};
+        juce::Rectangle<int> subtitle_bound_{};
+        juce::Rectangle<int> target_label_bound_{};
+        juce::Rectangle<int> difference_title_bound_{};
+        juce::Rectangle<int> fit_title_bound_{};
+        juce::Rectangle<int> limit_label_bound_{};
+        juce::Rectangle<int> bands_label_bound_{};
+        juce::Rectangle<int> target_surface_bound_{};
+        juce::Rectangle<int> difference_surface_bound_{};
+        juce::Rectangle<int> fit_surface_bound_{};
 
         std::unique_ptr<juce::FileChooser> chooser_;
         const juce::File kPresetDirectory =
