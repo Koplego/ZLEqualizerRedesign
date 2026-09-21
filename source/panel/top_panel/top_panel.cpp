@@ -42,8 +42,8 @@ namespace zlpanel {
                       tooltip_helper.getToolTipText(multilingual::kEQMatch)) {
         setOpaque(false);
 
-        // The legacy components stay alive as interaction/attachment plumbing, but their
-        // original ZL artwork is hidden. This panel paints a new visual language itself.
+        // Legacy components remain alive where they carry attachments/behavior, while this
+        // component owns the v1.2 visual presentation.
         logo_panel_.setVisible(false);
         analyzer_label_.setVisible(false);
         fstruct_box_.setVisible(false);
@@ -82,11 +82,8 @@ namespace zlpanel {
         const auto padding = static_cast<float>(getPaddingSize(base_.getFontSize()));
         const auto radius = juce::jmax(14.f, base_.getFontSize() * 1.18f);
 
-        // No traditional full-width toolbar. Instead, the title, preset selector and utilities
-        // sit as three independent pieces of glass on the same optical plane.
         auto title_capsule = bounds.removeFromLeft(juce::jmax(190.f, base_.getFontSize() * 12.8f)).reduced(.5f);
-        auto title_fill = title_capsule;
-        zlgui::glass::fillGlassSurface(g, title_fill, radius, .085f, .14f, .14f);
+        zlgui::glass::fillGlassSurface(g, title_capsule, radius, .085f, .14f, .14f);
 
         const auto orb_size = juce::jmax(24.f, base_.getFontSize() * 1.9f);
         auto orb = juce::Rectangle<float>(title_capsule.getX() + padding,
@@ -100,7 +97,6 @@ namespace zlpanel {
         g.fillEllipse(orb);
         g.setColour(juce::Colour(255, 255, 255).withAlpha(.42f));
         g.drawEllipse(orb, 1.f);
-        // Small crescent highlight gives the orb a lens-like volume.
         auto crescent = orb.reduced(orb_size * .20f);
         crescent.translate(-orb_size * .10f, -orb_size * .10f);
         g.setColour(juce::Colour(255, 255, 255).withAlpha(.20f));
@@ -123,7 +119,7 @@ namespace zlpanel {
         version.setWidth(juce::roundToInt(base_.getFontSize() * 2.1f));
         g.setColour(juce::Colour(232, 244, 252).withAlpha(.36f));
         g.setFont(juce::FontOptions(base_.getFontSize() * .55f));
-        g.drawText("1.1", version, juce::Justification::centredLeft, false);
+        g.drawText("1.2", version, juce::Justification::centredLeft, false);
 
         if (!preset_pill_bound_.isEmpty()) {
             auto pill = preset_pill_bound_.toFloat().reduced(.5f);
@@ -146,9 +142,12 @@ namespace zlpanel {
             auto utility = utility_cluster_bound_.toFloat().reduced(.5f);
             zlgui::glass::fillGlassSurface(g, utility, utility.getHeight() * .5f, .09f, .16f, .15f);
 
-            // Draw our own minimal glyphs over transparent legacy hit targets.
-            const auto draw_wave = [&g, this](const juce::Rectangle<int>& ib, const bool active) {
-                auto r = ib.toFloat().reduced(base_.getFontSize() * .52f);
+            // EQ Match is a first-class workspace in v1.2, so unlike the previous cryptic wave
+            // icon it gets a stable text label while retaining the waveform cue.
+            {
+                auto mr = match_button_.getBounds().toFloat();
+                auto wave_area = mr.removeFromLeft(juce::jmin(mr.getHeight(), mr.getWidth() * .38f));
+                auto r = wave_area.reduced(base_.getFontSize() * .45f);
                 juce::Path p;
                 p.startNewSubPath(r.getX(), r.getCentreY());
                 p.cubicTo(r.getX() + r.getWidth() * .22f, r.getY(),
@@ -157,13 +156,13 @@ namespace zlpanel {
                 p.cubicTo(r.getX() + r.getWidth() * .72f, r.getY(),
                           r.getX() + r.getWidth() * .78f, r.getBottom(),
                           r.getRight(), r.getCentreY());
-                g.setColour(juce::Colour(243, 250, 255).withAlpha(active ? .90f : .46f));
-                g.strokePath(p, juce::PathStrokeType(1.35f, juce::PathStrokeType::curved,
+                g.setColour(juce::Colour(243, 250, 255).withAlpha(match_button_.getToggleState() ? .92f : .55f));
+                g.strokePath(p, juce::PathStrokeType(1.25f, juce::PathStrokeType::curved,
                                                      juce::PathStrokeType::rounded));
-            };
-            draw_wave(match_button_.getBounds(), match_button_.getToggleState());
+                g.setFont(juce::FontOptions(base_.getFontSize() * .64f));
+                g.drawText("Match", mr.toNearestInt(), juce::Justification::centredLeft, false);
+            }
 
-            // External-side-chain symbol: two glass dots linked by a short bridge.
             auto er = ext_button_.getBounds().toFloat().reduced(base_.getFontSize() * .58f);
             const auto dot = juce::jmax(3.f, er.getHeight() * .24f);
             g.setColour(juce::Colour(243, 250, 255).withAlpha(ext_button_.getToggleState() ? .90f : .45f));
@@ -171,7 +170,6 @@ namespace zlpanel {
             g.drawEllipse(er.getRight() - dot, er.getCentreY() - dot * .5f, dot, dot, 1.2f);
             g.drawLine(er.getX() + dot, er.getCentreY(), er.getRight() - dot, er.getCentreY(), 1.2f);
 
-            // Power glyph.
             auto pr = bypass_button_.getBounds().toFloat().reduced(base_.getFontSize() * .50f);
             g.setColour(juce::Colour(248, 252, 255).withAlpha(bypass_button_.getToggleState() ? .42f : .92f));
             juce::Path power_arc;
@@ -209,7 +207,8 @@ namespace zlpanel {
         bound.removeFromRight(padding / 4);
         ext_button_.setBounds(bound.removeFromRight(button));
         bound.removeFromRight(padding / 4);
-        match_button_.setBounds(bound.removeFromRight(button));
+        const auto match_width = juce::jmax(button * 2, juce::roundToInt(font_size * 5.2f));
+        match_button_.setBounds(bound.removeFromRight(match_width));
         bound.removeFromRight(padding / 3);
         const auto output_width = juce::jmax(72, juce::roundToInt(font_size * 5.0f));
         output_label_.setBounds(bound.removeFromRight(output_width));
