@@ -48,39 +48,23 @@ namespace zlpanel {
         collision_drawable_(juce::Drawable::createFromImageData(BinaryData::collision_svg, BinaryData::collision_svgSize)),
         collision_button_(base, collision_drawable_.get(), collision_drawable_.get(), tooltip_helper.getToolTipText(multilingual::kFFTCollision)),
         collision_attach_(collision_button_.getButton(), p.parameters_NA_, zlstate::PCollisionON::kID, updater_),
-        label_laf_(base), strength_label_("", "Strength"),
+        label_laf_(base), strength_label_("", "Collision Strength"),
         strength_slider_("", base, tooltip_helper.getToolTipText(multilingual::kFFTCollisionStrength)),
         strength_attach_(strength_slider_.getSlider(), p.parameters_NA_, zlstate::PCollisionStrength::kID, updater_) {
 
         control_background_.setBufferedToImage(true);
         addAndMakeVisible(control_background_);
 
-        const auto style_toggle = [this](zlgui::button::ClickTextButton& button) {
-            button.getLAF().setFontScale(.76f);
-            button.getLAF().setJustification(juce::Justification::centred);
-            button.getButton().setToggleable(true);
-            button.getButton().setClickingTogglesState(true);
-            button.setBackgroundPainter([](juce::Graphics& g, juce::Button& b, const bool hover, const bool down) {
-                const auto active = b.getToggleState() || down;
-                if (!active && !hover) return;
-                auto r = b.getLocalBounds().toFloat().reduced(.6f);
-                g.setColour(juce::Colour(126, 185, 232).withAlpha(active ? .17f : .065f));
-                g.fillRoundedRectangle(r, r.getHeight() * .5f);
-                if (active) {
-                    g.setColour(zlgui::glass::rim().withMultipliedAlpha(.62f));
-                    g.drawRoundedRectangle(r, r.getHeight() * .5f, .65f);
-                }
-            });
-            button.setBufferedToImage(true);
-            addAndMakeVisible(button);
-        };
-        style_toggle(pre_button_);
-        style_toggle(post_button_);
-        style_toggle(side_button_);
+        // Pre, Post, Side and analyzer speed are first-class controls in the footer now.
+        // Keep these attachment-owning components alive, but never show a second copy here.
+        pre_button_.setVisible(false);
+        post_button_.setVisible(false);
+        side_button_.setVisible(false);
+        speed_box_.setVisible(false);
 
-        for (auto& c : {&speed_box_, &slope_box_, &smooth_type_box_}) {
+        for (auto& c : {&slope_box_, &smooth_type_box_}) {
             c->getLAF().setFontScale(.74f);
-            c->getLAF().setBoxAlpha(.42f);
+            c->getLAF().setBoxAlpha(.36f);
             c->getLAF().setLabelJustification(juce::Justification::centred);
             c->setBufferedToImage(true);
             addAndMakeVisible(c);
@@ -88,7 +72,7 @@ namespace zlpanel {
 
         for (auto* c : {&smooth_oct_value_box_, &smooth_erb_value_box_}) {
             c->getLAF().setFontScale(.72f);
-            c->getLAF().setBoxAlpha(.34f);
+            c->getLAF().setBoxAlpha(.30f);
             c->getLAF().setLabelJustification(juce::Justification::centred);
             c->setBufferedToImage(true);
         }
@@ -104,20 +88,20 @@ namespace zlpanel {
         const auto popup_option = juce::PopupMenu::Options().withPreferredPopupDirection(
             juce::PopupMenu::Options::PopupDirection::downwards);
         lr_box_.getLAF().setOption(popup_option);
-        lr_box_.getLAF().setBoxAlpha(.34f);
+        lr_box_.getLAF().setBoxAlpha(.30f);
         lr_box_.setBufferedToImage(true);
         addAndMakeVisible(lr_box_);
 
         for (auto& b : {&freeze_button_, &collision_button_}) {
-            b->setImageAlpha(.38f, .60f, .94f, .94f);
+            b->setImageAlpha(.34f, .60f, .94f, .94f);
             b->setBufferedToImage(true);
             addAndMakeVisible(b);
         }
 
-        label_laf_.setFontScale(.78f);
+        label_laf_.setFontScale(.74f);
         strength_label_.setJustificationType(juce::Justification::centredLeft);
         strength_label_.setLookAndFeel(&label_laf_);
-        strength_label_.setAlpha(.70f);
+        strength_label_.setAlpha(.64f);
         strength_label_.setBufferedToImage(true);
         addAndMakeVisible(strength_label_);
 
@@ -135,39 +119,36 @@ namespace zlpanel {
 
     int AnalyzerPanel::getIdealWidth() const {
         const auto font = base_.getFontSize();
-        return juce::jmax(juce::roundToInt(font * 18.5f), 3 * getSliderWidth(font));
+        return juce::jmax(juce::roundToInt(font * 17.2f), 3 * getSliderWidth(font));
     }
 
     int AnalyzerPanel::getIdealHeight() const {
         const auto font = base_.getFontSize();
-        const auto row = juce::jmax(getButtonSize(font), juce::roundToInt(font * 1.95f));
+        const auto row = juce::jmax(getButtonSize(font), juce::roundToInt(font * 1.90f));
         const auto padding = getPaddingSize(font);
-        return 6 * row + 5 * padding;
+        return 4 * row + 4 * padding;
     }
 
     void AnalyzerPanel::resized() {
         const auto font = base_.getFontSize();
-        const auto row = juce::jmax(getButtonSize(font), juce::roundToInt(font * 1.95f));
+        const auto row = juce::jmax(getButtonSize(font), juce::roundToInt(font * 1.90f));
         const auto padding = getPaddingSize(font);
 
         auto bound = getLocalBounds();
         control_background_.setBounds(bound);
         bound.reduce(2 * padding, padding);
 
-        {
-            auto r = bound.removeFromTop(row);
-            const auto gap = juce::jmax(2, padding / 3);
-            const auto w = (r.getWidth() - 2 * gap) / 3;
-            pre_button_.setBounds(r.removeFromLeft(w)); r.removeFromLeft(gap);
-            post_button_.setBounds(r.removeFromLeft(w)); r.removeFromLeft(gap);
-            side_button_.setBounds(r);
-        }
-        bound.removeFromTop(padding / 2);
-        speed_box_.setBounds(bound.removeFromTop(row));
-        bound.removeFromTop(padding / 2);
+        // Explicitly clear the footer-owned duplicates.
+        pre_button_.setBounds({});
+        post_button_.setBounds({});
+        side_button_.setBounds({});
+        speed_box_.setBounds({});
+
+        // Detail row 1: analyzer tilt.
         slope_box_.setBounds(bound.removeFromTop(row));
         bound.removeFromTop(padding / 2);
 
+        // Detail row 2: smoothing amount and domain.
         {
             auto r = bound.removeFromTop(row);
             const auto gap = juce::jmax(2, padding / 3);
@@ -179,9 +160,10 @@ namespace zlpanel {
         }
         bound.removeFromTop(padding / 2);
 
+        // Detail row 3: freeze, stereo domain and collision detection.
         {
             auto r = bound.removeFromTop(row);
-            const auto icon_size = juce::jmin(row, juce::roundToInt(font * 2.0f));
+            const auto icon_size = juce::jmin(row, juce::roundToInt(font * 2.08f));
             const auto gap = juce::jmax(padding, (r.getWidth() - 3 * icon_size) / 4);
             r.removeFromLeft(gap);
             freeze_button_.setBounds(r.removeFromLeft(icon_size)); r.removeFromLeft(gap);
@@ -190,9 +172,10 @@ namespace zlpanel {
         }
         bound.removeFromTop(padding / 2);
 
+        // Detail row 4: collision strength only. Nothing here mirrors the footer.
         {
             auto r = bound.removeFromTop(row);
-            const auto label_w = juce::jmax(juce::roundToInt(font * 5.0f), r.getWidth() / 2);
+            const auto label_w = juce::jmax(juce::roundToInt(font * 7.0f), r.getWidth() / 2);
             strength_label_.setBounds(r.removeFromLeft(label_w));
             r.removeFromLeft(padding / 2);
             strength_slider_.setBounds(r);
