@@ -19,7 +19,9 @@ namespace zlpanel {
         control_panel_(p, base, curve_panel_.getMatchFFTPanel(), tooltip_helper_),
         extra_dynamic_panel_(p, base, tooltip_helper_),
         top_panel_(p, base, tooltip_helper_),
-        footer_panel_(p, base),
+        footer_panel_(p, base,
+                      [this]() { toggleControlSheet(); },
+                      [this]() { toggleSettingsSheet(); }),
         preset_browser_(p, base),
         ui_setting_panel_(p, base_),
         tooltip_laf_(base_) {
@@ -34,15 +36,15 @@ namespace zlpanel {
         }
 
         base_.getPanelValueTree().addListener(this);
-
         startTimerHz(1);
 
         addAndMakeVisible(curve_panel_);
-        // Liquid Glass UI: keep the legacy ControlPanel alive for parameter/update plumbing,
-        // but do not present its permanent bottom strip. Band controls now live in the
-        // contextual FloatPopPanel attached to the selected EQ node.
+
+        // v1.2: the original control system is restored as an on-demand sheet. It remains
+        // hidden during normal graph work, but every original ZL control is reachable again.
         addChildComponent(control_panel_);
         control_panel_.setVisible(false);
+
         extra_dynamic_panel_.setBufferedToImage(true);
         addChildComponent(extra_dynamic_panel_);
         addAndMakeVisible(top_panel_);
@@ -51,6 +53,8 @@ namespace zlpanel {
         preset_browser_.setBufferedToImage(true);
         addChildComponent(preset_browser_);
         preset_browser_.toFront(false);
+
+        updateOverlayState();
     }
 
     MainPanel::~MainPanel() {
@@ -63,8 +67,6 @@ namespace zlpanel {
         const auto shell = bounds.reduced(3.0f);
         const auto radius = zlgui::glass::shellRadius(base_.getFontSize());
 
-        // One coherent material shell. The graph and floating controls provide the hierarchy;
-        // the editor itself should not advertise decorative glass effects.
         juce::ColourGradient body(zlgui::glass::shellTop(), shell.getCentreX(), shell.getY(),
                                   zlgui::glass::shellBottom(), shell.getCentreX(), shell.getBottom(), false);
         body.addColour(.42, juce::Colour(34, 57, 76));
@@ -72,7 +74,6 @@ namespace zlpanel {
         g.setGradientFill(body);
         g.fillRoundedRectangle(shell, radius);
 
-        // A restrained central bloom gives depth without the artificial streaks used in v0.9.
         juce::ColourGradient bloom(juce::Colour(159, 199, 226).withAlpha(.075f),
                                    shell.getCentreX(), shell.getY() + shell.getHeight() * .20f,
                                    juce::Colours::transparentBlack,
@@ -87,10 +88,14 @@ namespace zlpanel {
         g.drawRoundedRectangle(inner, juce::jmax(1.f, radius - 2.f), .8f);
     }
 
+    void MainPanel::paintOverChildren(juce::Graphics& g) {
+        // Keep the canvas quiet when a global sheet is open, without dimming the sheet itself.
+        // The sheet components are brought to front after this component's layout updates.
+        juce::ignoreUnused(g);
+    }
+
     void MainPanel::resized() {
         auto full = getLocalBounds();
-
-        // set actual width/height
         {
             const auto height = static_cast<float>(full.getHeight());
             const auto width = static_cast<float>(full.getWidth());
@@ -109,7 +114,6 @@ namespace zlpanel {
         auto bound = full.reduced(outer_padding);
         const auto main_bound = bound;
 
-        control_panel_.setBounds({});
         extra_dynamic_panel_.setBounds({});
 
         top_panel_.setBounds(bound.removeFromTop(top_panel_.getIdealHeight()));
@@ -121,6 +125,21 @@ namespace zlpanel {
         curve_panel_.setBounds(bound);
 
         const auto padding = getPaddingSize(font_size);
+        const auto match_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel)) > .5;
+        const auto controls_visible = match_open || control_sheet_open_;
+        if (controls_visible) {
+            const auto max_w = juce::jmax(0, curve_panel_.getWidth() - 4 * padding);
+            const auto max_h = juce::jmax(0, curve_panel_.getHeight() - 4 * padding);
+            const auto sheet_w = juce::jmin(control_panel_.getActiveIdealWidth(), max_w);
+            const auto sheet_h = juce::jmin(control_panel_.getActiveIdealHeight(), max_h);
+            auto sheet = juce::Rectangle<int>(0, 0, sheet_w, sheet_h);
+            sheet.setCentre(curve_panel_.getBounds().getCentreX(),
+                            curve_panel_.getY() + padding + sheet_h / 2);
+            control_panel_.setBounds(sheet);
+        } else {
+            control_panel_.setBounds({});
+        }
+
         const auto setting_width = juce::jmax(0, juce::jmin(ui_setting_panel_.getIdealWidth(),
                                                             main_bound.getWidth() - 4 * padding));
         const auto setting_height = juce::jmax(0, juce::jmin(ui_setting_panel_.getIdealHeight(),
@@ -132,6 +151,58 @@ namespace zlpanel {
         const auto preset_height = juce::jmax(0, juce::jmin(preset_browser_.getIdealHeight(),
                                                             main_bound.getHeight() - 4 * padding));
         preset_browser_.setBounds(main_bound.withSizeKeepingCentre(preset_width, preset_height));
+
+        updateOverlayState();
+    }
+
+    void MainPanel::toggleControlSheet() {
+        const auto match_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel)) > .5;
+        if (match_open) {
+            base_.setPanelProperty(zlgui::PanelSettingIdx::kMatchPanel, 0.0);
+        }
+        control_sheet_open_ = !control_sheet_open_;
+        if (control_sheet_open_) {
+            closeGlobalOverlaysExcept(zlgui::PanelSettingIdx::kPanelSettingNum);
+        }
+        resized();
+    }
+
+    void MainPanel::toggleSettingsSheet() {
+        control_sheet_open_ = false;
+        const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel)) > .5;
+        if (!open) closeGlobalOverlaysExcept(zlgui::PanelSettingIdx::kUISettingPanel);
+        base_.setPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel, open ? 0.0 : 1.0);
+        resized();
+    }
+
+    void MainPanel::closeGlobalOverlaysExcept(const zlgui::PanelSettingIdx keep) {
+        if (keep != zlgui::PanelSettingIdx::kPresetBrowser)
+            base_.setPanelProperty(zlgui::PanelSettingIdx::kPresetBrowser, 0.0);
+        if (keep != zlgui::PanelSettingIdx::kUISettingPanel)
+            base_.setPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel, 0.0);
+        if (keep != zlgui::PanelSettingIdx::kMatchPanel)
+            base_.setPanelProperty(zlgui::PanelSettingIdx::kMatchPanel, 0.0);
+        base_.setPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel, 0.0);
+        base_.setPanelProperty(zlgui::PanelSettingIdx::kOutputPanel, 0.0);
+    }
+
+    void MainPanel::updateOverlayState() {
+        const auto match_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel)) > .5;
+        const auto settings_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel)) > .5;
+        const auto preset_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kPresetBrowser)) > .5;
+
+        if (match_open) control_sheet_open_ = false;
+
+        control_panel_.setVisible(match_open || control_sheet_open_);
+        ui_setting_panel_.setVisible(settings_open);
+        preset_browser_.setVisible(preset_open);
+        footer_panel_.setControlsActive(control_sheet_open_ && !match_open);
+
+        if (control_panel_.isVisible()) control_panel_.toFront(false);
+        if (settings_open) ui_setting_panel_.toFront(false);
+        if (preset_open) preset_browser_.toFront(false);
+        top_panel_.toFront(false);
+        footer_panel_.toFront(false);
     }
 
     void MainPanel::repaintCallBack(const double time_stamp) {
@@ -140,19 +211,14 @@ namespace zlpanel {
                 previous_time_stamp_ = time_stamp;
                 repaintCallBackSlow();
             }
-            // update selected band
             if (c_band_ != base_.getSelectedBand()) {
                 c_band_ = base_.getSelectedBand();
                 extra_dynamic_panel_.updateBand();
                 control_panel_.updateBand();
                 curve_panel_.updateBand();
             }
-            if (ui_setting_panel_.isVisible()) {
-                ui_setting_panel_.flushPendingScroll();
-            }
-            if (preset_browser_.isVisible()) {
-                preset_browser_.flushPendingScroll();
-            }
+            if (ui_setting_panel_.isVisible()) ui_setting_panel_.flushPendingScroll();
+            if (preset_browser_.isVisible()) preset_browser_.flushPendingScroll();
             curve_panel_.repaintCallBack();
             control_panel_.repaintCallBack();
             const auto c_refresh_rate = refresh_handler_.getActualRefreshRate();
@@ -165,33 +231,46 @@ namespace zlpanel {
 
     void MainPanel::valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property) {
         if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kUISettingPanel, property)) {
-            const auto ui_setting_visibility = static_cast<bool>(
-                base_.getPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel));
-            ui_setting_panel_.setVisible(ui_setting_visibility);
-            if (ui_setting_visibility) {
-                ui_setting_panel_.toFront(false);
+            const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel)) > .5;
+            if (open) {
+                control_sheet_open_ = false;
+                closeGlobalOverlaysExcept(zlgui::PanelSettingIdx::kUISettingPanel);
             }
+            updateOverlayState();
+            resized();
+        } else if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kPresetBrowser, property)) {
+            const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kPresetBrowser)) > .5;
+            if (open) {
+                control_sheet_open_ = false;
+                closeGlobalOverlaysExcept(zlgui::PanelSettingIdx::kPresetBrowser);
+            }
+            updateOverlayState();
+            resized();
+        } else if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kMatchPanel, property)) {
+            const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel)) > .5;
+            if (open) {
+                control_sheet_open_ = false;
+                closeGlobalOverlaysExcept(zlgui::PanelSettingIdx::kMatchPanel);
+            }
+            updateOverlayState();
+            resized();
         }
     }
 
     void MainPanel::timerCallback() {
         if (juce::Process::isForegroundProcess()) {
-            if (getCurrentlyFocusedComponent() != this) {
-                grabKeyboardFocus();
-            }
+            if (getCurrentlyFocusedComponent() != this) grabKeyboardFocus();
             stopTimer();
         }
     }
 
     void MainPanel::repaintCallBackSlow() {
-        // update sample rate
         const auto sample_rate = p_ref_.getAtomicSampleRate();
         if (std::abs(sample_rate - c_sample_rate_) > 1.0) {
             c_sample_rate_ = sample_rate;
             curve_panel_.updateSampleRate(sample_rate);
             control_panel_.updateSampleRate(sample_rate);
         }
-        // sub slow callbacks
         extra_dynamic_panel_.repaintCallBackSlow();
         control_panel_.repaintCallBackSlow();
         curve_panel_.repaintCallBackSlow();
@@ -199,11 +278,6 @@ namespace zlpanel {
         footer_panel_.repaintCallbackSlow();
     }
 
-    void MainPanel::startThreads() {
-        curve_panel_.startThreads();
-    }
-
-    void MainPanel::stopThreads() {
-        curve_panel_.stopThreads();
-    }
+    void MainPanel::startThreads() { curve_panel_.startThreads(); }
+    void MainPanel::stopThreads() { curve_panel_.stopThreads(); }
 }
