@@ -25,17 +25,15 @@ namespace zlpanel {
         ~ControlPanel() override;
 
         int getIdealWidth() const;
-
         int getIdealHeight() const;
+        int getActiveIdealWidth() const;
+        int getActiveIdealHeight() const;
 
         void resized() override;
 
         void repaintCallBack();
-
         void repaintCallBackSlow();
-
         void updateBand();
-
         void updateSampleRate(double sample_rate);
 
     private:
@@ -57,7 +55,6 @@ namespace zlpanel {
         juce::Rectangle<int> center_bound_{};
 
         void changeLeftRightBound(bool dynamic_on);
-
         void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property) override;
     };
 }
