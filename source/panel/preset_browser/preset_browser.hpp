@@ -44,6 +44,8 @@ namespace zlpanel {
 
         int getIdealHeight() const;
 
+        juce::String getDisplayPresetName() const;
+
     private:
         PluginProcessor& processor_;
         zlgui::UIBase& base_;
