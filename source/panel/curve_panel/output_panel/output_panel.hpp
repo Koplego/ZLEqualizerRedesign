@@ -27,8 +27,9 @@ namespace zlpanel {
         int getIdealWidth() const;
         int getIdealHeight() const;
 
-        void resized() override;
+        void paint(juce::Graphics& g) override;
         void paintOverChildren(juce::Graphics& g) override;
+        void resized() override;
         void repaintCallBackSlow();
 
     private:
