@@ -5,7 +5,7 @@
 //
 // ZLEqualizer is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 //
-// You should have received a copy of the GNU标志 General Public License along with ZLEqualizer. If not, see <https://www.gnu.org/licenses/>.
+// You should have received a copy of the GNU Affero General Public License along with ZLEqualizer. If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
 
@@ -27,22 +27,15 @@ namespace zlpanel {
         ~MainPanel() override;
 
         void paint(juce::Graphics& g) override;
-
+        void paintOverChildren(juce::Graphics& g) override;
         void resized() override;
 
         void repaintCallBack(double time_stamp);
-
         void startThreads();
-
         void stopThreads();
 
-        ControlPanel& getControlPanel() {
-            return control_panel_;
-        }
-
-        OutputPanel& getOutputPanel() {
-            return curve_panel_.getOutputPanel();
-        }
+        ControlPanel& getControlPanel() { return control_panel_; }
+        OutputPanel& getOutputPanel() { return curve_panel_.getOutputPanel(); }
 
     private:
         static constexpr float kHoWMin = 0.33f;
@@ -68,11 +61,15 @@ namespace zlpanel {
 
         size_t c_band_{zlp::kBandNum};
         double c_sample_rate_{0.};
+        bool control_sheet_open_{false};
+
+        void toggleControlSheet();
+        void toggleSettingsSheet();
+        void closeGlobalOverlaysExcept(zlgui::PanelSettingIdx keep);
+        void updateOverlayState();
 
         void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property) override;
-
         void timerCallback() override;
-
         void repaintCallBackSlow();
     };
 }
