@@ -25,11 +25,10 @@ namespace zlpanel {
         ~OutputPanel() override;
 
         int getIdealWidth() const;
-
         int getIdealHeight() const;
 
         void resized() override;
-
+        void paintOverChildren(juce::Graphics& g) override;
         void repaintCallBackSlow();
 
     private:
@@ -43,10 +42,12 @@ namespace zlpanel {
         juce::Label gain_label_;
         juce::Label scale_label_;
 
-        zlgui::slider::TwoValueRotarySlider<false, false, false> gain_slider_;
+        // The old rotary controls made this sheet look like legacy ZL. The Glass sheet
+        // treats output values as direct numerical fields instead.
+        zlgui::slider::CompactLinearSlider<false, false, false> gain_slider_;
         zlgui::attachment::SliderAttachment<true> gain_attach_;
 
-        zlgui::slider::TwoValueRotarySlider<false, false, false> scale_slider_;
+        zlgui::slider::CompactLinearSlider<false, false, false> scale_slider_;
         zlgui::attachment::SliderAttachment<true> scale_attach_;
 
         const std::unique_ptr<juce::Drawable> sgc_drawable_;
@@ -67,6 +68,13 @@ namespace zlpanel {
         juce::Label lookahead_label_;
         zlgui::slider::CompactLinearSlider<false, false, false> lookahead_slider_;
         zlgui::attachment::SliderAttachment<true> lookahead_attach_;
+
+        juce::Rectangle<int> title_bound_{};
+        juce::Rectangle<int> subtitle_bound_{};
+        juce::Rectangle<int> gain_surface_bound_{};
+        juce::Rectangle<int> scale_surface_bound_{};
+        juce::Rectangle<int> lookahead_surface_bound_{};
+        std::array<juce::Rectangle<int>, 4> action_bounds_{};
 
         void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property) override;
     };
