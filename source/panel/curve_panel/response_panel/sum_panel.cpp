@@ -41,29 +41,29 @@ namespace zlpanel {
             if (path.isEmpty()) return;
 
             if (!data.valid || data.xs.back() <= data.xs.front() + 1.f) {
-                g.setColour(zlgui::glass::neutralResponse().withAlpha(.10f * alpha));
-                g.strokePath(path, juce::PathStrokeType(thickness * 2.15f,
+                g.setColour(zlgui::glass::neutralResponse().withAlpha(.055f * alpha));
+                g.strokePath(path, juce::PathStrokeType(thickness * 1.9f,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
-                g.setColour(zlgui::glass::neutralResponse().withAlpha(.86f * alpha));
+                g.setColour(zlgui::glass::neutralResponse().withAlpha(.82f * alpha));
                 g.strokePath(path, juce::PathStrokeType(thickness,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
                 return;
             }
 
-            // Both the glow and the crisp response use the band's blended gradient. This keeps
-            // the hue readable at a glance instead of surrounding it with a pale cyan halo.
-            g.setGradientFill(makeResponseGradient(data, .055f * alpha));
-            g.strokePath(path, juce::PathStrokeType(thickness * 5.2f,
+            // Keep the summed response crisp. The mockup reads the colour primarily from
+            // the line itself and the band fills, with only a very small optical halo.
+            g.setGradientFill(makeResponseGradient(data, .035f * alpha));
+            g.strokePath(path, juce::PathStrokeType(thickness * 3.6f,
                                                     juce::PathStrokeType::curved,
                                                     juce::PathStrokeType::rounded));
-            g.setGradientFill(makeResponseGradient(data, .18f * alpha));
-            g.strokePath(path, juce::PathStrokeType(thickness * 2.65f,
+            g.setGradientFill(makeResponseGradient(data, .10f * alpha));
+            g.strokePath(path, juce::PathStrokeType(thickness * 1.8f,
                                                     juce::PathStrokeType::curved,
                                                     juce::PathStrokeType::rounded));
 
-            g.setGradientFill(makeResponseGradient(data, .98f * alpha));
+            g.setGradientFill(makeResponseGradient(data, .96f * alpha));
             g.strokePath(path, juce::PathStrokeType(thickness,
                                                     juce::PathStrokeType::curved,
                                                     juce::PathStrokeType::rounded));
@@ -147,9 +147,9 @@ namespace zlpanel {
             }
         }
 
-        // Build a horizontal colour field from the actual influence of every active band.
-        // This is what gives the final response the mockup's blue→teal→amber→violet blending
-        // instead of a single cyan sum line.
+        // Build the response colour field from each band's actual local contribution.
+        // More stops and less neutral mixing make overlapping hues read like the mockup
+        // without introducing hard colour boundaries.
         auto& gradient = gradients_[lr].getWriter();
         gradient.valid = !on_indices.empty() && xs.size() >= kGradientStops;
         if (gradient.valid) {
@@ -173,10 +173,8 @@ namespace zlpanel {
                 juce::Colour mixed = neutral;
                 if (total > 1.0e-4f) {
                     mixed = juce::Colour::fromFloatRGBA(rr / total, gg / total, bb / total, 1.f)
-                                .interpolatedWith(juce::Colours::white, .08f);
-                    // v1.0 leaned too far toward the neutral response colour. Keep the line
-                    // pastel, but allow the active bands to visibly own the hue.
-                    const auto tint = juce::jlimit(.68f, .96f, .72f + total * .060f);
+                                .interpolatedWith(juce::Colours::white, .065f);
+                    const auto tint = juce::jlimit(.78f, .985f, .82f + total * .050f);
                     mixed = neutral.interpolatedWith(mixed, tint);
                 }
                 gradient.colours[stop] = mixed.withAlpha(.98f);
@@ -194,6 +192,6 @@ namespace zlpanel {
     }
 
     void SumPanel::lookAndFeelChanged() {
-        curve_thickness_ = base_.getFontSize() * .128f * base_.getSumEQCurveThickness();
+        curve_thickness_ = base_.getFontSize() * .105f * base_.getSumEQCurveThickness();
     }
 }
