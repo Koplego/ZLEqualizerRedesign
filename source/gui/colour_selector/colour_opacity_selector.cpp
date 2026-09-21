@@ -37,7 +37,7 @@ namespace zlgui::colour_selector {
 
     void ColourOpacitySelector::resized() {
         auto bound = getLocalBounds();
-        const auto padding = juce::roundToInt(base_.getFontSize() * 2.f);
+        const auto padding = juce::roundToInt(base_.getFontSize() * .82f);
         selector_.setBounds(bound.removeFromLeft(juce::roundToInt(base_.getFontSize() * weights_[0])));
         if (opacity_on_) {
             bound.removeFromLeft(padding);

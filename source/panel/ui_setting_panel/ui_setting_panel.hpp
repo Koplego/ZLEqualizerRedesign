@@ -30,6 +30,8 @@ namespace zlpanel {
 
         void resized() override;
 
+        void paintOverChildren(juce::Graphics& g) override;
+
         void loadSetting();
 
         void flushPendingScroll();
@@ -57,6 +59,7 @@ namespace zlpanel {
         zlgui::button::ClickButton save_button_, close_button_, reset_button_, folder_open_button_;
 
         std::array<double, 4> view_positions_{};
+        juce::Rectangle<int> settings_title_bound_{};
 
         enum PanelIdx {
             kColourP,

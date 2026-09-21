@@ -81,9 +81,8 @@ namespace zlgui::combobox {
             // cannot sample or blur the editor beneath it, so it only causes labels
             // and response curves to bleed through. Use a solid canvas under the
             // glass treatment to keep every menu legible.
-            g.fillAll(juce::Colour(9, 24, 38));
             const auto corner_size = juce::jmax(base_.getFontSize() * .72f, 8.f);
-            glass::fillGlassSurface(g, box_bound.reduced(.75f), corner_size, .18f, .30f, .36f);
+            glass::fillGlassSurface(g, box_bound.reduced(1.25f), corner_size, .23f, .36f, .42f);
         }
 
         void getIdealPopupMenuItemSize(const juce::String& text, const bool isSeparator, int standardMenuItemHeight,
@@ -114,9 +113,9 @@ namespace zlgui::combobox {
             if ((isHighlighted || isTicked) && isActive) {
                 alpha = 1.0f;
             } else if (!isActive) {
-                alpha = .24f;
+                alpha = .30f;
             } else {
-                alpha = .70f;
+                alpha = .82f;
             }
 
             auto card = area.toFloat().reduced(base_.getFontSize() * .22f, base_.getFontSize() * .12f);
@@ -180,8 +179,11 @@ namespace zlgui::combobox {
         }
 
         void preparePopupMenuWindow(juce::Component& new_window) override {
-            new_window.setOpaque(true);
-            popup_uses_opaque_fallback_ = true;
+            // Keep the native popup window transparent outside the rounded menu body.
+            // Filling an opaque rectangular window first produced the black corner blocks
+            // visible in REAPER even though the menu itself was rounded.
+            new_window.setOpaque(false);
+            popup_uses_opaque_fallback_ = false;
 
             if (popup_target_ == nullptr) return;
 

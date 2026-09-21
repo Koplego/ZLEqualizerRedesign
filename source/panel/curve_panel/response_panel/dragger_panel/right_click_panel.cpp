@@ -46,7 +46,7 @@ namespace zlpanel {
 
         for (auto& b : {&invert_button_, &lr_split_button_, &ms_split_button_,
                         &copy_button_, &paste_button_}) {
-            b->getLAF().setFontScale(1.5f);
+            b->getLAF().setFontScale(.78f);
             b->getLAF().setJustification(juce::Justification::centredLeft);
             addAndMakeVisible(b);
         }

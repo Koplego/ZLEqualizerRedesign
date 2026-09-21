@@ -27,7 +27,12 @@ namespace zlpanel {
         curve_db2_slider_("Max", base),
         window_size_fix_box_(zlstate::PWindowSizeFix::kChoices, base) {
         juce::ignoreUnused(p_ref_);
-        name_laf_.setFontScale(zlgui::kFontHuge);
+        name_laf_.setFontScale(.88f);
+        for (auto* slider : {&fft_tilt_slider_, &fft_speed_slider_, &single_curve_slider_, &sum_curve_slider_,
+                             &font_scale_slider_, &static_font_size_slider_, &curve_db0_slider_,
+                             &curve_db1_slider_, &curve_db2_slider_}) {
+            slider->setFontScale(.76f);
+        }
 
         refresh_rate_label_.setText("Refresh Rate", juce::dontSendNotification);
         refresh_rate_label_.setJustificationType(juce::Justification::centredRight);
@@ -134,16 +139,16 @@ namespace zlpanel {
     }
 
     int OtherUISettingPanel::getIdealHeight() const {
-        const auto padding = juce::roundToInt(base_.getFontSize() * kPaddingScale * 3.f);
-        const auto slider_height = juce::roundToInt(base_.getFontSize() * kSliderHeightScale);
+        const auto padding = juce::roundToInt(base_.getFontSize() * .80f);
+        const auto slider_height = juce::roundToInt(base_.getFontSize() * 2.12f);
 
         return 8 * padding + 7 * slider_height;
     }
 
     void OtherUISettingPanel::resized() {
-        const auto padding = juce::roundToInt(base_.getFontSize() * kPaddingScale * 3.f);
-        const auto slider_width = juce::roundToInt(base_.getFontSize() * kSliderWidthScale);
-        const auto slider_height = juce::roundToInt(base_.getFontSize() * kSliderHeightScale);
+        const auto padding = juce::roundToInt(base_.getFontSize() * .80f);
+        const auto slider_width = juce::roundToInt(base_.getFontSize() * 5.f);
+        const auto slider_height = juce::roundToInt(base_.getFontSize() * 2.12f);
 
         auto bound = getLocalBounds();
         {

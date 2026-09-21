@@ -13,7 +13,7 @@ namespace zlpanel {
                        std::function<void()> settings_callback) :
         p_ref_(p), base_(base), updater_(),
         settings_callback_(std::move(settings_callback)),
-        settings_button_(base, ""),
+        settings_button_(base, "", "Settings"),
         logo_panel_(p, base, tooltip_helper),
         output_label_(p, base),
         analyzer_label_(p, base),
@@ -151,30 +151,42 @@ namespace zlpanel {
                 zlgui::glass::fillGlassSurface(g, circle, circle.getHeight() * .5f, .10f, .17f, .16f);
             }
 
-            // EQ Match is a first-class workspace in v1.2, so unlike the previous cryptic wave
-            // icon it gets a stable text label while retaining the waveform cue.
+            const auto iconStroke = juce::PathStrokeType(1.25f, juce::PathStrokeType::curved,
+                                                         juce::PathStrokeType::rounded);
+
+            // Match: a clean spectral trace with a reference point.
             {
                 auto mr = match_button_.getBounds().toFloat();
-                auto r = mr.reduced(base_.getFontSize() * .58f);
+                auto r = mr.reduced(base_.getFontSize() * .64f);
                 juce::Path p;
-                p.startNewSubPath(r.getX(), r.getCentreY());
-                p.cubicTo(r.getX() + r.getWidth() * .22f, r.getY(),
-                          r.getX() + r.getWidth() * .28f, r.getBottom(),
-                          r.getX() + r.getWidth() * .50f, r.getCentreY());
-                p.cubicTo(r.getX() + r.getWidth() * .72f, r.getY(),
-                          r.getX() + r.getWidth() * .78f, r.getBottom(),
-                          r.getRight(), r.getCentreY());
+                p.startNewSubPath(r.getX(), r.getBottom() - r.getHeight() * .22f);
+                p.cubicTo(r.getX() + r.getWidth() * .22f, r.getBottom() - r.getHeight() * .22f,
+                          r.getX() + r.getWidth() * .28f, r.getY() + r.getHeight() * .16f,
+                          r.getX() + r.getWidth() * .46f, r.getY() + r.getHeight() * .16f);
+                p.cubicTo(r.getX() + r.getWidth() * .64f, r.getY() + r.getHeight() * .16f,
+                          r.getX() + r.getWidth() * .70f, r.getBottom() - r.getHeight() * .34f,
+                          r.getRight(), r.getBottom() - r.getHeight() * .34f);
                 g.setColour(juce::Colour(243, 250, 255).withAlpha(match_button_.getToggleState() ? .92f : .55f));
-                g.strokePath(p, juce::PathStrokeType(1.25f, juce::PathStrokeType::curved,
-                                                     juce::PathStrokeType::rounded));
+                g.strokePath(p, iconStroke);
+                g.fillEllipse(r.getX() + r.getWidth() * .42f, r.getY() + r.getHeight() * .10f, 2.4f, 2.4f);
             }
 
-            auto er = ext_button_.getBounds().toFloat().reduced(base_.getFontSize() * .58f);
-            const auto dot = juce::jmax(3.f, er.getHeight() * .24f);
-            g.setColour(juce::Colour(243, 250, 255).withAlpha(ext_button_.getToggleState() ? .90f : .45f));
-            g.drawEllipse(er.getX(), er.getCentreY() - dot * .5f, dot, dot, 1.2f);
-            g.drawEllipse(er.getRight() - dot, er.getCentreY() - dot * .5f, dot, dot, 1.2f);
-            g.drawLine(er.getX() + dot, er.getCentreY(), er.getRight() - dot, er.getCentreY(), 1.2f);
+            // External sidechain: two interlocking links, sized from the same optical box.
+            {
+                auto er = ext_button_.getBounds().toFloat().reduced(base_.getFontSize() * .66f);
+                const auto alpha = ext_button_.getToggleState() ? .90f : .48f;
+                g.setColour(juce::Colour(243, 250, 255).withAlpha(alpha));
+                juce::Path leftLink, rightLink;
+                auto link = juce::Rectangle<float>(er.getCentreX() - er.getWidth() * .48f,
+                                                   er.getCentreY() - er.getHeight() * .23f,
+                                                   er.getWidth() * .56f, er.getHeight() * .46f);
+                leftLink.addRoundedRectangle(link, link.getHeight() * .48f);
+                link.translate(er.getWidth() * .40f, 0.f);
+                rightLink.addRoundedRectangle(link, link.getHeight() * .48f);
+                const auto rotation = juce::AffineTransform::rotation(-.55f, er.getCentreX(), er.getCentreY());
+                g.strokePath(leftLink, iconStroke, rotation);
+                g.strokePath(rightLink, iconStroke, rotation);
+            }
 
             auto pr = bypass_button_.getBounds().toFloat().reduced(base_.getFontSize() * .50f);
             g.setColour(juce::Colour(248, 252, 255).withAlpha(bypass_button_.getToggleState() ? .42f : .92f));
@@ -185,17 +197,17 @@ namespace zlpanel {
                                                          juce::PathStrokeType::rounded));
             g.drawLine(pr.getCentreX(), pr.getY(), pr.getCentreX(), pr.getCentreY(), 1.5f);
 
-            auto sr = settings_button_.getBounds().toFloat().reduced(base_.getFontSize() * .62f);
-            const auto gear_colour = juce::Colour(248, 252, 255).withAlpha(.68f);
-            g.setColour(gear_colour);
-            g.drawEllipse(sr.reduced(sr.getWidth() * .27f), 1.2f);
+            auto sr = settings_button_.getBounds().toFloat().reduced(base_.getFontSize() * .66f);
+            g.setColour(juce::Colour(248, 252, 255).withAlpha(.68f));
+            g.drawEllipse(sr.withSizeKeepingCentre(sr.getWidth() * .72f, sr.getHeight() * .72f), 1.05f);
+            g.drawEllipse(sr.withSizeKeepingCentre(sr.getWidth() * .24f, sr.getHeight() * .24f), 1.15f);
             for (int tooth = 0; tooth < 8; ++tooth) {
                 const auto angle = juce::MathConstants<float>::twoPi * static_cast<float>(tooth) / 8.f;
-                const auto inner = sr.getWidth() * .34f;
-                const auto outer = sr.getWidth() * .50f;
+                const auto inner = sr.getWidth() * .37f;
+                const auto outer = sr.getWidth() * .49f;
                 const auto centre = sr.getCentre();
                 g.drawLine(centre.x + std::cos(angle) * inner, centre.y + std::sin(angle) * inner,
-                           centre.x + std::cos(angle) * outer, centre.y + std::sin(angle) * outer, 1.1f);
+                           centre.x + std::cos(angle) * outer, centre.y + std::sin(angle) * outer, 1.15f);
             }
         }
     }

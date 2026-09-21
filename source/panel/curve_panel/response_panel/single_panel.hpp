@@ -58,6 +58,8 @@ namespace zlpanel {
         std::vector<size_t>& not_off_indices_;
 
         std::atomic<float> center_y_{0.f};
+        std::array<std::atomic<float>, zlp::kBandNum> node_x_{};
+        std::array<std::atomic<float>, zlp::kBandNum> node_y_{};
         float side_y_{0.f};
 
         std::array<TriBuffer<juce::Path>, zlp::kBandNum> base_paths_{};

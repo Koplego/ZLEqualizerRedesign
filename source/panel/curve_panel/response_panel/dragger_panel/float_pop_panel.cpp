@@ -36,31 +36,10 @@ namespace zlpanel {
         detector_page_button_(base, "Detector"),
         sidechain_page_button_(base, "Sidechain"),
         more_button_(base, "..."),
-        ftype_box_([]() -> std::vector<std::unique_ptr<juce::Drawable>> {
-            std::vector<std::unique_ptr<juce::Drawable>> icons;
-            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::peak_svg, BinaryData::peak_svgSize));
-            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::lowshelf_svg, BinaryData::lowshelf_svgSize));
-            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::lowpass_svg, BinaryData::lowpass_svgSize));
-            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::highshelf_svg, BinaryData::highshelf_svgSize));
-            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::highpass_svg, BinaryData::highpass_svgSize));
-            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::notch_svg, BinaryData::notch_svgSize));
-            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::bandpass_svg, BinaryData::bandpass_svgSize));
-            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::tiltshelf_svg, BinaryData::tiltshelf_svgSize));
-            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::flatshelf_svg, BinaryData::flatshelf_svgSize));
-            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::allpass_svg, BinaryData::allpass_svgSize));
-            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::flatgain_svg, BinaryData::flatgain_svgSize));
-            return icons;
-        }(), base, "", {"Bell", "Low Shelf", "High Cut", "High Shelf", "Low Cut",
-                          "Notch", "Band Pass", "Tilt", "Flat Tilt", "All Pass", "Gain"}),
-        lr_box_([]() -> std::vector<std::unique_ptr<juce::Drawable>> {
-            std::vector<std::unique_ptr<juce::Drawable>> icons;
-            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::stereo_svg, BinaryData::stereo_svgSize));
-            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::left_svg, BinaryData::left_svgSize));
-            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::right_svg, BinaryData::right_svgSize));
-            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::mid_svg, BinaryData::mid_svgSize));
-            icons.emplace_back(juce::Drawable::createFromImageData(BinaryData::side_svg, BinaryData::side_svgSize));
-            return icons;
-        }(), base, "", {"Stereo", "Left", "Right", "Mid", "Side"}),
+        ftype_box_(juce::StringArray{"Bell", "Low Shelf", "High Cut", "High Shelf", "Low Cut",
+                                     "Notch", "Band Pass", "Tilt", "Flat Tilt", "All Pass", "Gain"},
+                   base, ""),
+        lr_box_(juce::StringArray{"Stereo", "Left", "Right", "Mid", "Side"}, base, ""),
         slope_box_(zlp::POrder::kChoices, base, ""),
         freq_slider_("", base),
         gain_slider_("", base),
@@ -411,24 +390,87 @@ namespace zlpanel {
                                                     juce::PathStrokeType::rounded));
         }
 
-        // Filter-type glyph: a tiny bell response instead of the old diamond ZL icon.
-        {
-            auto r = ftype_box_.getBounds().toFloat().reduced(ftype_box_.getHeight() * .24f);
-            juce::Path bell;
-            bell.startNewSubPath(r.getX(), r.getBottom() - r.getHeight() * .18f);
-            bell.cubicTo(r.getX() + r.getWidth() * .26f, r.getBottom() - r.getHeight() * .18f,
-                         r.getX() + r.getWidth() * .28f, r.getY() + r.getHeight() * .12f,
-                         r.getCentreX(), r.getY() + r.getHeight() * .12f);
-            bell.cubicTo(r.getX() + r.getWidth() * .72f, r.getY() + r.getHeight() * .12f,
-                         r.getX() + r.getWidth() * .74f, r.getBottom() - r.getHeight() * .18f,
-                         r.getRight(), r.getBottom() - r.getHeight() * .18f);
-            g.setColour(text_colour.withAlpha(.86f));
-            g.strokePath(bell, juce::PathStrokeType(1.25f, juce::PathStrokeType::curved,
-                                                    juce::PathStrokeType::rounded));
-        }
-
         const auto f_idx = ftype_box_.getBox().getSelectedItemIndex();
         const auto lr_idx = lr_box_.getBox().getSelectedItemIndex();
+
+        // Draw every filter type in the same thin response-curve language. The former
+        // selector always painted a Bell icon and then opened a menu full of legacy SVGs,
+        // so the symbol often disagreed with the active filter.
+        {
+            auto r = ftype_box_.getBounds().toFloat().reduced(ftype_box_.getHeight() * .24f);
+            const auto y0 = r.getCentreY();
+            juce::Path glyph;
+            switch (f_idx) {
+            case 0: // Bell
+                glyph.startNewSubPath(r.getX(), y0 + r.getHeight() * .20f);
+                glyph.cubicTo(r.getX() + r.getWidth() * .26f, y0 + r.getHeight() * .20f,
+                              r.getX() + r.getWidth() * .30f, r.getY(), r.getCentreX(), r.getY());
+                glyph.cubicTo(r.getX() + r.getWidth() * .70f, r.getY(),
+                              r.getX() + r.getWidth() * .74f, y0 + r.getHeight() * .20f,
+                              r.getRight(), y0 + r.getHeight() * .20f);
+                break;
+            case 1: // Low Shelf
+                glyph.startNewSubPath(r.getX(), r.getY() + r.getHeight() * .18f);
+                glyph.lineTo(r.getX() + r.getWidth() * .30f, r.getY() + r.getHeight() * .18f);
+                glyph.cubicTo(r.getCentreX(), r.getY() + r.getHeight() * .18f,
+                              r.getCentreX(), r.getBottom() - r.getHeight() * .18f,
+                              r.getRight(), r.getBottom() - r.getHeight() * .18f);
+                break;
+            case 2: // High Cut
+                glyph.startNewSubPath(r.getX(), r.getY() + r.getHeight() * .18f);
+                glyph.lineTo(r.getX() + r.getWidth() * .38f, r.getY() + r.getHeight() * .18f);
+                glyph.cubicTo(r.getCentreX(), r.getY() + r.getHeight() * .18f,
+                              r.getCentreX(), r.getBottom() - r.getHeight() * .18f,
+                              r.getRight(), r.getBottom() - r.getHeight() * .18f);
+                break;
+            case 3: // High Shelf
+                glyph.startNewSubPath(r.getX(), r.getBottom() - r.getHeight() * .18f);
+                glyph.lineTo(r.getX() + r.getWidth() * .30f, r.getBottom() - r.getHeight() * .18f);
+                glyph.cubicTo(r.getCentreX(), r.getBottom() - r.getHeight() * .18f,
+                              r.getCentreX(), r.getY() + r.getHeight() * .18f,
+                              r.getRight(), r.getY() + r.getHeight() * .18f);
+                break;
+            case 4: // Low Cut
+                glyph.startNewSubPath(r.getX(), r.getBottom() - r.getHeight() * .18f);
+                glyph.cubicTo(r.getCentreX(), r.getBottom() - r.getHeight() * .18f,
+                              r.getCentreX(), r.getY() + r.getHeight() * .18f,
+                              r.getX() + r.getWidth() * .62f, r.getY() + r.getHeight() * .18f);
+                glyph.lineTo(r.getRight(), r.getY() + r.getHeight() * .18f);
+                break;
+            case 5: // Notch
+                glyph.startNewSubPath(r.getX(), y0 - r.getHeight() * .16f);
+                glyph.cubicTo(r.getX() + r.getWidth() * .34f, y0 - r.getHeight() * .16f,
+                              r.getX() + r.getWidth() * .40f, r.getBottom(), r.getCentreX(), r.getBottom());
+                glyph.cubicTo(r.getX() + r.getWidth() * .60f, r.getBottom(),
+                              r.getX() + r.getWidth() * .66f, y0 - r.getHeight() * .16f,
+                              r.getRight(), y0 - r.getHeight() * .16f);
+                break;
+            case 6: // Band Pass
+                glyph.startNewSubPath(r.getX(), r.getBottom());
+                glyph.cubicTo(r.getX() + r.getWidth() * .30f, r.getBottom(),
+                              r.getX() + r.getWidth() * .34f, r.getY(), r.getCentreX(), r.getY());
+                glyph.cubicTo(r.getX() + r.getWidth() * .66f, r.getY(),
+                              r.getX() + r.getWidth() * .70f, r.getBottom(), r.getRight(), r.getBottom());
+                break;
+            case 7: glyph.startNewSubPath(r.getX(), r.getBottom()); glyph.lineTo(r.getRight(), r.getY()); break;
+            case 8:
+                glyph.startNewSubPath(r.getX(), r.getBottom() - r.getHeight() * .18f);
+                glyph.cubicTo(r.getCentreX(), r.getBottom() - r.getHeight() * .18f,
+                              r.getCentreX(), r.getY() + r.getHeight() * .18f,
+                              r.getRight(), r.getY() + r.getHeight() * .18f);
+                break;
+            case 9:
+                glyph.startNewSubPath(r.getX(), y0); glyph.lineTo(r.getX() + r.getWidth() * .28f, y0);
+                glyph.lineTo(r.getX() + r.getWidth() * .42f, r.getY());
+                glyph.lineTo(r.getX() + r.getWidth() * .58f, r.getBottom());
+                glyph.lineTo(r.getX() + r.getWidth() * .72f, y0); glyph.lineTo(r.getRight(), y0);
+                break;
+            default: glyph.startNewSubPath(r.getX(), y0); glyph.lineTo(r.getRight(), y0); break;
+            }
+            g.setColour(text_colour.withAlpha(.88f));
+            g.strokePath(glyph, juce::PathStrokeType(1.25f, juce::PathStrokeType::curved,
+                                                     juce::PathStrokeType::rounded));
+        }
 
         // A restrained band-colour glint along the upper rim ties the inspector to the
         // selected node without colouring the whole card.
@@ -831,7 +873,7 @@ namespace zlpanel {
     int FloatPopPanel::getIdealWidth() const {
         const auto padding = getPaddingSize(base_.getFontSize());
         const auto button_size = getButtonSize(base_.getFontSize());
-        return juce::roundToInt(6.35f * static_cast<float>(button_size) + 4.5f * static_cast<float>(padding));
+        return juce::roundToInt(7.25f * static_cast<float>(button_size) + 4.5f * static_cast<float>(padding));
     }
 
     int FloatPopPanel::getIdealHeight() const {

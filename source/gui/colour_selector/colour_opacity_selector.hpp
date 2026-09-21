@@ -34,6 +34,8 @@ namespace zlgui::colour_selector {
             slider_.getSlider().setValue(static_cast<double>(c.getFloatAlpha()));
         }
 
+        void setFontScale(const float scale) { slider_.setFontScale(scale); }
+
     private:
         zlgui::UIBase& base_;
         ColourSelector selector_;

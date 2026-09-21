@@ -45,7 +45,7 @@ namespace zlpanel {
             zlgui::combobox::CompactCombobox(zlstate::PDeleteBandKey::kChoices, base)
         } {
         juce::ignoreUnused(p_ref_);
-        name_laf_.setFontScale(zlgui::kFontHuge);
+        name_laf_.setFontScale(.88f);
 
         wheel_label_.setText("Wheel Sensitivity", juce::dontSendNotification);
         wheel_label_.setJustificationType(juce::Justification::centredRight);
@@ -60,6 +60,7 @@ namespace zlpanel {
         dragger_label_.setLookAndFeel(&name_laf_);
         addAndMakeVisible(dragger_label_);
         for (auto& s : sensitivity_sliders_) {
+            s.setFontScale(.76f);
             s.getSlider().setRange(0.01, 1.0, 0.01);
             addAndMakeVisible(s);
         }
@@ -77,6 +78,7 @@ namespace zlpanel {
         addAndMakeVisible(rotary_style_label_);
         addAndMakeVisible(rotary_style_box_);
         rotary_drag_sensitivity_slider_.getSlider().setRange(2.0, 32.0, 0.01);
+        rotary_drag_sensitivity_slider_.setFontScale(.76f);
         rotary_drag_sensitivity_slider_.getSlider().setDoubleClickReturnValue(true, 10.0);
         addAndMakeVisible(rotary_drag_sensitivity_slider_);
         slider_double_click_label_.setText("Slider Double Click", juce::dontSendNotification);
@@ -165,16 +167,16 @@ namespace zlpanel {
     }
 
     int ControlSettingPanel::getIdealHeight() const {
-        const auto padding = juce::roundToInt(base_.getFontSize() * kPaddingScale * 3.f);
-        const auto slider_height = juce::roundToInt(base_.getFontSize() * kSliderHeightScale);
+        const auto padding = juce::roundToInt(base_.getFontSize() * .80f);
+        const auto slider_height = juce::roundToInt(base_.getFontSize() * 2.12f);
 
         return padding * 12 + slider_height * 11;
     }
 
     void ControlSettingPanel::resized() {
-        const auto padding = juce::roundToInt(base_.getFontSize() * kPaddingScale * 3.f);
-        const auto slider_width = juce::roundToInt(base_.getFontSize() * kSliderWidthScale);
-        const auto slider_height = juce::roundToInt(base_.getFontSize() * kSliderHeightScale);
+        const auto padding = juce::roundToInt(base_.getFontSize() * .80f);
+        const auto slider_width = juce::roundToInt(base_.getFontSize() * 5.f);
+        const auto slider_height = juce::roundToInt(base_.getFontSize() * 2.12f);
         static constexpr int kLabelWidth = 2;
 
         auto bound = getLocalBounds();
@@ -189,7 +191,8 @@ namespace zlpanel {
             local_bound.removeFromLeft(padding);
             sensitivity_sliders_[6].setBounds(local_bound.removeFromLeft(slider_width));
             local_bound.removeFromLeft(padding);
-            wheel_reverse_box_.setBounds(local_bound.removeFromLeft(slider_width + padding).reduced(0, padding / 3));
+            wheel_reverse_box_.setBounds(
+                local_bound.removeFromLeft(juce::roundToInt(slider_width * 1.7f)).reduced(0, padding / 3));
         }
         {
             bound.removeFromTop(padding);

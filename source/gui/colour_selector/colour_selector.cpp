@@ -8,6 +8,7 @@
 // You should have received a copy of the GNU Affero General Public License along with ZLEqualizer. If not, see <https://www.gnu.org/licenses/>.
 
 #include "colour_selector.hpp"
+#include "../glass_tokens.hpp"
 
 namespace zlgui::colour_selector {
     class SelectorBox final : public juce::Component {
@@ -47,14 +48,14 @@ namespace zlgui::colour_selector {
     }
 
     void ColourSelector::paint(juce::Graphics& g) {
-        g.fillAll(base_.getTextColour().withAlpha(.875f));
-        auto bound = getLocalBounds().toFloat();
-        bound = bound.withSizeKeepingCentre(bound.getWidth() - base_.getFontSize() * .375f,
-                                            bound.getHeight() - base_.getFontSize() * .375f);
-        g.setColour(base_.getBackgroundColour());
-        g.fillRect(bound);
-        g.setColour(colour_);
-        g.fillRect(bound);
+        auto bound = getLocalBounds().toFloat().reduced(1.f);
+        const auto radius = juce::jmax(5.f, bound.getHeight() * .28f);
+        glass::fillGlassSurface(g, bound, radius, .045f, .09f, .12f);
+        auto swatch = bound.reduced(base_.getFontSize() * .18f);
+        g.setColour(colour_.withMultipliedAlpha(.88f));
+        g.fillRoundedRectangle(swatch, juce::jmax(4.f, radius * .72f));
+        g.setColour(juce::Colours::white.withAlpha(.22f));
+        g.drawRoundedRectangle(swatch, juce::jmax(4.f, radius * .72f), .8f);
     }
 
     void ColourSelector::mouseDown(const juce::MouseEvent& event) {

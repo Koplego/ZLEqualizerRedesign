@@ -38,8 +38,8 @@ namespace zlgui::dragger {
                 const auto phase = static_cast<float>(juce::Time::getMillisecondCounterHiRes() * .0042);
                 const auto pulse = active ? .5f + .5f * std::sin(phase) : 0.f;
                 const juce::DropShadow wideHalo{
-                    colour_.withAlpha(active ? .24f + pulse * .10f : .13f),
-                    juce::jmax(4, juce::roundToInt(base_.getFontSize() * (active ? 1.18f : .78f))), {0, 0}};
+                    colour_.withAlpha(active ? .30f + pulse * .12f : .14f),
+                    juce::jmax(4, juce::roundToInt(base_.getFontSize() * (active ? 1.34f : .78f))), {0, 0}};
                 wideHalo.drawForPath(g, outline_path_);
                 const juce::DropShadow coreHalo{
                     colour_.interpolatedWith(juce::Colours::white, .18f)
@@ -49,13 +49,13 @@ namespace zlgui::dragger {
             }
 
             if (active) {
-                g.setColour(juce::Colour(249, 253, 255).withAlpha(.96f));
+                g.setColour(colour_.interpolatedWith(juce::Colours::white, .62f).withAlpha(.96f));
                 g.fillPath(outline_path_);
             } else if (should_draw_button_as_highlighted) {
-                g.setColour(juce::Colour(246, 252, 255).withAlpha(.72f));
+                g.setColour(colour_.interpolatedWith(juce::Colours::white, .54f).withAlpha(.78f));
                 g.fillPath(outline_path_);
             } else {
-                g.setColour(juce::Colour(240, 249, 255).withAlpha(.48f));
+                g.setColour(colour_.interpolatedWith(juce::Colours::white, .45f).withAlpha(.54f));
                 g.fillPath(outline_path_);
             }
 

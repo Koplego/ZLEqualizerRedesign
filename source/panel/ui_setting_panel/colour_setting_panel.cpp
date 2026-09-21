@@ -27,7 +27,7 @@ namespace zlpanel {
             const auto result = kSettingDirectory.createDirectory();
             juce::ignoreUnused(result);
         }
-        name_laf_.setFontScale(zlgui::kFontHuge);
+        name_laf_.setFontScale(.88f);
         for (size_t i = 0; i < kNumSelectors; ++i) {
             auto label = std::string(zlgui::kColourNames[i]);
             label[0] = static_cast<char>(std::toupper(label[0]));
@@ -39,7 +39,8 @@ namespace zlpanel {
 
             selectors_[i] = std::make_unique<zlgui::colour_selector::ColourOpacitySelector>(
                 base, *this, i > 1,
-                12.f, 10.f, kSliderWidthScale, kSliderWidthScale);
+                12.f, 10.f, 5.f, 5.f);
+            selectors_[i]->setFontScale(.76f);
             addAndMakeVisible(*selectors_[i]);
         }
         c_map1_label_.setText("Colour Map 1", juce::dontSendNotification);
@@ -88,17 +89,17 @@ namespace zlpanel {
     }
 
     int ColourSettingPanel::getIdealHeight() const {
-        const auto padding = juce::roundToInt(base_.getFontSize() * kPaddingScale * 3.f);
-        const auto slider_height = juce::roundToInt(base_.getFontSize() * kSliderHeightScale);
+        const auto padding = juce::roundToInt(base_.getFontSize() * .80f);
+        const auto slider_height = juce::roundToInt(base_.getFontSize() * 2.12f);
 
         return padding * 12 + slider_height * 11;
     }
 
     void ColourSettingPanel::resized() {
         auto bound = getLocalBounds();
-        const auto padding = juce::roundToInt(base_.getFontSize() * kPaddingScale * 3.f);
-        const auto slider_width = juce::roundToInt(base_.getFontSize() * kSliderWidthScale);
-        const auto slider_height = juce::roundToInt(base_.getFontSize() * kSliderHeightScale);
+        const auto padding = juce::roundToInt(base_.getFontSize() * .80f);
+        const auto slider_width = juce::roundToInt(base_.getFontSize() * 5.f);
+        const auto slider_height = juce::roundToInt(base_.getFontSize() * 2.12f);
 
         for (size_t i = 0; i < kNumSelectors; ++i) {
             bound.removeFromTop(padding);

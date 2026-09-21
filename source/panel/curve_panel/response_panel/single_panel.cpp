@@ -125,6 +125,8 @@ namespace zlpanel {
         auto& next_all_pass_line{all_pass_lines_[band].getWriter()};
 
         if (to_update_base) {
+            node_x_[band].store(center_x, std::memory_order_relaxed);
+            node_y_[band].store(button_mag, std::memory_order_relaxed);
             next_base_path.clear();
             next_base_fill.clear();
             next_button_line.setEnd(-100.f, -100.f);
@@ -188,23 +190,76 @@ namespace zlpanel {
     template <bool thick>
     void SinglePanel::drawBand(juce::Graphics& g, const size_t band) {
         const auto colour = base_.getColourMap1(band);
+        const auto node_x = node_x_[band].load(std::memory_order_relaxed);
+        const auto node_y = node_y_[band].load(std::memory_order_relaxed);
+        const auto glow_radius = juce::jmax(base_.getFontSize() * 10.5f, 112.f);
         if (base_fill_alpha_[band] > 0.01f) {
-            g.setColour(colour.withAlpha(base_fill_alpha_[band]));
             base_fills_[band].pull();
-            g.fillPath(base_fills_[band].getReader());
+            const auto& fill = base_fills_[band].getReader();
+            g.setColour(colour.withAlpha(base_fill_alpha_[band]));
+            g.fillPath(fill);
+            if constexpr (thick) {
+                juce::ColourGradient illumination(
+                    colour.interpolatedWith(juce::Colours::white, .16f).withAlpha(.22f),
+                    node_x, node_y,
+                    colour.withAlpha(0.f), node_x + glow_radius, node_y, true);
+                illumination.addColour(.32, colour.withAlpha(.14f));
+                illumination.addColour(.72, colour.withAlpha(.035f));
+                g.setGradientFill(illumination);
+                g.fillPath(fill);
+            }
         }
         if (target_fill_alpha_[band] > 0.01f) {
-            g.setColour(colour.withAlpha(target_fill_alpha_[band]));
             target_fills_[band].pull();
-            g.fillPath(target_fills_[band].getReader());
+            const auto& fill = target_fills_[band].getReader();
+            g.setColour(colour.withAlpha(target_fill_alpha_[band]));
+            g.fillPath(fill);
+            if constexpr (thick) {
+                juce::ColourGradient target_light(
+                    colour.interpolatedWith(juce::Colours::white, .12f).withAlpha(.16f),
+                    node_x, node_y,
+                    colour.withAlpha(0.f), node_x + glow_radius * .88f, node_y, true);
+                g.setGradientFill(target_light);
+                g.fillPath(fill);
+            }
         }
         const auto curve_thickness = thick ? curve_thickness_ * kThickMultiplier : curve_thickness_;
         if (base_stroke_alpha_[band] > 0.01f) {
-            g.setColour(base_stroke_colour_[band]);
             base_paths_[band].pull();
-            g.strokePath(base_paths_[band].getReader(), juce::PathStrokeType(curve_thickness,
-                                                                             juce::PathStrokeType::curved,
-                                                                             juce::PathStrokeType::rounded));
+            const auto& path = base_paths_[band].getReader();
+            if constexpr (thick) {
+                juce::ColourGradient outer_light(
+                    colour.interpolatedWith(juce::Colours::white, .18f).withAlpha(.30f),
+                    node_x, node_y,
+                    colour.withAlpha(0.f), node_x + glow_radius * 1.08f, node_y, true);
+                g.setGradientFill(outer_light);
+                g.strokePath(path, juce::PathStrokeType(curve_thickness * 6.2f,
+                                                        juce::PathStrokeType::curved,
+                                                        juce::PathStrokeType::rounded));
+
+                juce::ColourGradient core_light(
+                    colour.interpolatedWith(juce::Colours::white, .30f).withAlpha(.56f),
+                    node_x, node_y,
+                    colour.withAlpha(0.f), node_x + glow_radius * .58f, node_y, true);
+                g.setGradientFill(core_light);
+                g.strokePath(path, juce::PathStrokeType(curve_thickness * 2.8f,
+                                                        juce::PathStrokeType::curved,
+                                                        juce::PathStrokeType::rounded));
+            }
+            if constexpr (thick) {
+                juce::ColourGradient lit_stroke(
+                    colour.interpolatedWith(juce::Colours::white, .38f).withAlpha(.98f),
+                    node_x, node_y,
+                    colour.interpolatedWith(juce::Colours::white, .08f).withAlpha(.36f),
+                    node_x + glow_radius * 1.22f, node_y, true);
+                lit_stroke.addColour(.38, colour.interpolatedWith(juce::Colours::white, .22f).withAlpha(.82f));
+                g.setGradientFill(lit_stroke);
+            } else {
+                g.setColour(base_stroke_colour_[band]);
+            }
+            g.strokePath(path, juce::PathStrokeType(curve_thickness,
+                                                    juce::PathStrokeType::curved,
+                                                    juce::PathStrokeType::rounded));
             button_lines_[band].pull();
             if (const auto line = button_lines_[band].getReader(); line.getEndX() > 0.f) {
                 if (line.getEndY() > line.getStartY()) {

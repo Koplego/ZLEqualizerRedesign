@@ -8,7 +8,7 @@
 // You should have received a copy of the GNU Affero General Public License along with ZLEqualizer. If not, see <https://www.gnu.org/licenses/>.
 
 #include "ui_setting_components.hpp"
-#include "../helper/paint_selected_card.hpp"
+#include "../../gui/glass_tokens.hpp"
 
 namespace zlpanel {
     UISettingTabBar::UISettingTabBar(zlgui::UIBase& base) : base_(base) {
@@ -18,17 +18,23 @@ namespace zlpanel {
 
     void UISettingTabBar::paint(juce::Graphics& g) {
         const auto font_size = base_.getFontSize();
-        g.setFont(juce::FontOptions{1.5f * font_size});
+        g.setFont(juce::FontOptions{.78f * font_size});
 
         for (auto index = 0; index < static_cast<int>(tab_names_.size()); ++index) {
             const auto selected = index == selected_index_;
             const auto hovered = index == hovered_index_;
             const auto tab_bounds = getTabBounds(index);
-            paintSelectableCard(g, tab_bounds, base_.getTextColour(), font_size, selected, hovered);
+            if (selected || hovered) {
+                auto pill = tab_bounds.toFloat().reduced(font_size * .12f);
+                zlgui::glass::fillGlassSurface(g, pill, pill.getHeight() * .5f,
+                                               selected ? .14f : .06f,
+                                               selected ? .20f : .10f,
+                                               selected ? .24f : .11f);
+            }
 
             g.setColour(base_.getTextColour().withAlpha(selected ? .95f : .62f));
             g.drawFittedText(tab_names_[static_cast<size_t>(index)],
-                             tab_bounds.reduced(juce::roundToInt(font_size * .5f), 0),
+                             tab_bounds.reduced(juce::roundToInt(font_size * .42f), 0),
                              juce::Justification::centred, 1);
         }
     }

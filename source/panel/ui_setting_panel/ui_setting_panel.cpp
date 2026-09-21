@@ -8,6 +8,7 @@
 // You should have received a copy of the GNU Affero General Public License along with ZLEqualizer. If not, see <https://www.gnu.org/licenses/>.
 
 #include "ui_setting_panel.hpp"
+#include "../../gui/glass_tokens.hpp"
 #include "BinaryData.h"
 
 namespace zlpanel {
@@ -42,7 +43,7 @@ namespace zlpanel {
 
         background_.setBufferedToImage(true);
         addAndMakeVisible(background_);
-        version_text_laf_.setFontScale(1.25f);
+        version_text_laf_.setFontScale(.68f);
         version_text_.setJustificationType(juce::Justification::centred);
         version_text_.setLookAndFeel(&version_text_laf_);
         version_text_.setAlpha(.5f);
@@ -53,7 +54,7 @@ namespace zlpanel {
         addAndMakeVisible(view_port_);
 
         for (auto* button : {&save_button_, &reset_button_, &close_button_, &folder_open_button_}) {
-            button->setImageAlpha(.55f, 1.f);
+            button->setImageAlpha(0.f, 0.f, 0.f, 0.f);
             button->setBufferedToImage(true);
             addAndMakeVisible(button);
         }
@@ -95,7 +96,7 @@ namespace zlpanel {
         const auto font_size = base_.getFontSize();
         const auto padding = juce::roundToInt(font_size * .72f);
         const auto button_size = juce::roundToInt(font_size * 2.f);
-        const auto header_height = button_size;
+        const auto header_height = juce::roundToInt(font_size * 2.35f);
         const auto footer_height = button_size + padding;
         const auto content_top_margin = juce::roundToInt(font_size * .36f);
 
@@ -104,7 +105,9 @@ namespace zlpanel {
         auto footer = bounds.removeFromBottom(footer_height);
         footer.removeFromTop(padding);
 
-        tab_bar_.setBounds(header);
+        settings_title_bound_ = header.removeFromLeft(juce::roundToInt(font_size * 7.2f));
+        header.removeFromLeft(juce::roundToInt(font_size * .45f));
+        tab_bar_.setBounds(header.reduced(0, juce::roundToInt(font_size * .20f)));
 
         bounds.removeFromTop(content_top_margin);
         view_port_.setBounds(bounds);
@@ -129,6 +132,63 @@ namespace zlpanel {
         changeDisplayPanel();
     }
 
+    void UISettingPanel::paintOverChildren(juce::Graphics& g) {
+        const auto font = base_.getFontSize();
+        g.setColour(zlgui::glass::textPrimary().withAlpha(.92f));
+        g.setFont(juce::FontOptions(font * 1.02f));
+        g.drawText("Settings", settings_title_bound_, juce::Justification::centredLeft, false);
+
+        const auto drawActionSurface = [&g, font](const juce::Rectangle<int>& ib) {
+            auto r = ib.toFloat().reduced(1.f);
+            zlgui::glass::fillGlassSurface(g, r, r.getHeight() * .5f, .055f, .10f, .12f);
+            return r.reduced(font * .48f);
+        };
+        const auto colour = zlgui::glass::textPrimary().withAlpha(.62f);
+        const auto stroke = juce::PathStrokeType(1.15f, juce::PathStrokeType::curved,
+                                                 juce::PathStrokeType::rounded);
+
+        // Open settings file.
+        {
+            const auto r = drawActionSurface(folder_open_button_.getBounds());
+            juce::Path p;
+            p.startNewSubPath(r.getX(), r.getY() + r.getHeight() * .30f);
+            p.lineTo(r.getX() + r.getWidth() * .38f, r.getY() + r.getHeight() * .30f);
+            p.lineTo(r.getX() + r.getWidth() * .48f, r.getY() + r.getHeight() * .16f);
+            p.lineTo(r.getRight(), r.getY() + r.getHeight() * .16f);
+            p.lineTo(r.getRight() - r.getWidth() * .10f, r.getBottom());
+            p.lineTo(r.getX(), r.getBottom()); p.closeSubPath();
+            g.setColour(colour); g.strokePath(p, stroke);
+        }
+        // Reset.
+        {
+            const auto r = drawActionSurface(reset_button_.getBounds());
+            juce::Path p;
+            p.addCentredArc(r.getCentreX(), r.getCentreY(), r.getWidth() * .42f, r.getHeight() * .42f,
+                            0.f, .35f, 5.2f, true);
+            p.startNewSubPath(r.getX() + r.getWidth() * .12f, r.getY() + r.getHeight() * .42f);
+            p.lineTo(r.getX() + r.getWidth() * .12f, r.getY() + r.getHeight() * .12f);
+            p.lineTo(r.getX() + r.getWidth() * .42f, r.getY() + r.getHeight() * .18f);
+            g.setColour(colour); g.strokePath(p, stroke);
+        }
+        // Apply/save.
+        {
+            const auto r = drawActionSurface(save_button_.getBounds());
+            juce::Path p;
+            p.startNewSubPath(r.getX() + r.getWidth() * .12f, r.getCentreY());
+            p.lineTo(r.getX() + r.getWidth() * .40f, r.getBottom() - r.getHeight() * .16f);
+            p.lineTo(r.getRight() - r.getWidth() * .08f, r.getY() + r.getHeight() * .14f);
+            g.setColour(colour); g.strokePath(p, juce::PathStrokeType(1.55f, juce::PathStrokeType::curved,
+                                                                      juce::PathStrokeType::rounded));
+        }
+        // Close.
+        {
+            const auto r = drawActionSurface(close_button_.getBounds());
+            g.setColour(colour);
+            g.drawLine(juce::Line<float>{r.getTopLeft(), r.getBottomRight()}, 1.25f);
+            g.drawLine(juce::Line<float>{r.getTopRight(), r.getBottomLeft()}, 1.25f);
+        }
+    }
+
     void UISettingPanel::loadSetting() {
         colour_panel_.loadSetting();
         control_panel_.loadSetting();
@@ -140,11 +200,11 @@ namespace zlpanel {
     }
 
     int UISettingPanel::getIdealWidth() const {
-        return juce::roundToInt(base_.getFontSize() * 50.f);
+        return juce::roundToInt(base_.getFontSize() * 42.f);
     }
 
     int UISettingPanel::getIdealHeight() const {
-        return juce::roundToInt(base_.getFontSize() * 34.f);
+        return juce::roundToInt(base_.getFontSize() * 27.f);
     }
 
     void UISettingPanel::changeDisplayPanel() {
