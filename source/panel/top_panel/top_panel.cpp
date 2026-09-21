@@ -45,8 +45,8 @@ namespace zlpanel {
                       tooltip_helper.getToolTipText(multilingual::kEQMatch)) {
         setOpaque(false);
 
-        // Legacy components remain alive where they carry attachments/behavior, while this
-        // component owns the v1.2 visual presentation.
+        // Legacy controls stay alive where they own attachments, but the visible header is
+        // intentionally reduced to the three zones in the concept: identity, preset, utility.
         logo_panel_.setVisible(false);
         analyzer_label_.setVisible(false);
         fstruct_box_.setVisible(false);
@@ -88,76 +88,80 @@ namespace zlpanel {
 
     void TopPanel::paint(juce::Graphics& g) {
         auto bounds = getLocalBounds().toFloat();
-        const auto padding = static_cast<float>(getPaddingSize(base_.getFontSize()));
-        auto title_capsule = bounds.removeFromLeft(juce::jmax(220.f, base_.getFontSize() * 15.2f)).reduced(.5f);
+        const auto font = base_.getFontSize();
+        const auto padding = static_cast<float>(getPaddingSize(font));
+        auto title_area_full = bounds.removeFromLeft(juce::jmax(205.f, font * 14.2f)).reduced(.5f);
 
-        const auto orb_size = juce::jmax(24.f, base_.getFontSize() * 1.9f);
-        auto orb = juce::Rectangle<float>(title_capsule.getX() + padding,
-                                          title_capsule.getCentreY() - orb_size * .5f,
+        const auto orb_size = juce::jmax(23.f, font * 1.78f);
+        auto orb = juce::Rectangle<float>(title_area_full.getX() + padding,
+                                          title_area_full.getCentreY() - orb_size * .5f,
                                           orb_size, orb_size);
-        juce::ColourGradient orb_gradient(juce::Colour(245, 252, 255).withAlpha(.55f),
+        juce::ColourGradient orb_gradient(juce::Colour(247, 252, 255).withAlpha(.48f),
                                           orb.getX(), orb.getY(),
-                                          juce::Colour(87, 140, 185).withAlpha(.24f),
+                                          juce::Colour(83, 139, 184).withAlpha(.22f),
                                           orb.getRight(), orb.getBottom(), false);
         g.setGradientFill(orb_gradient);
         g.fillEllipse(orb);
-        g.setColour(juce::Colour(255, 255, 255).withAlpha(.42f));
-        g.drawEllipse(orb, 1.f);
-        auto crescent = orb.reduced(orb_size * .20f);
-        crescent.translate(-orb_size * .10f, -orb_size * .10f);
-        g.setColour(juce::Colour(255, 255, 255).withAlpha(.20f));
+        g.setColour(juce::Colour(255, 255, 255).withAlpha(.34f));
+        g.drawEllipse(orb, .9f);
+        auto crescent = orb.reduced(orb_size * .22f);
+        crescent.translate(-orb_size * .09f, -orb_size * .09f);
+        g.setColour(juce::Colour(255, 255, 255).withAlpha(.18f));
         juce::Path crescent_path;
         crescent_path.addCentredArc(crescent.getCentreX(), crescent.getCentreY(),
                                     crescent.getWidth() * .5f, crescent.getHeight() * .5f,
                                     0.f, .25f, 2.35f, true);
-        g.strokePath(crescent_path, juce::PathStrokeType(1.2f, juce::PathStrokeType::curved,
+        g.strokePath(crescent_path, juce::PathStrokeType(1.05f, juce::PathStrokeType::curved,
                                                          juce::PathStrokeType::rounded));
 
-        auto title_area = title_capsule.toNearestInt();
-        title_area.setX(juce::roundToInt(orb.getRight() + padding * .9f));
-        title_area.setWidth(juce::jmax(132, juce::roundToInt(base_.getFontSize() * 9.2f)));
-        g.setColour(juce::Colour(248, 252, 255).withAlpha(.95f));
-        g.setFont(juce::FontOptions(base_.getFontSize() * 1.02f));
-        g.drawText("ZL Equalizer 2", title_area, juce::Justification::centredLeft, false);
+        auto title = title_area_full.toNearestInt();
+        title.setX(juce::roundToInt(orb.getRight() + padding * .82f));
+        title.setWidth(juce::jmax(126, juce::roundToInt(font * 8.7f)));
+        g.setColour(zlgui::glass::textPrimary().withAlpha(.94f));
+        g.setFont(juce::FontOptions(font * .98f));
+        g.drawText("ZL Equalizer 2", title, juce::Justification::centredLeft, false);
 
-        auto version = title_area;
-        version.setX(title_area.getRight());
-        version.setWidth(juce::roundToInt(base_.getFontSize() * 3.7f));
-        g.setColour(juce::Colour(232, 244, 252).withAlpha(.36f));
-        g.setFont(juce::FontOptions(base_.getFontSize() * .55f));
-        g.drawText("GLASS", version, juce::Justification::centredLeft, false);
+        auto edition = title;
+        edition.setX(title.getRight());
+        edition.setWidth(juce::roundToInt(font * 3.2f));
+        g.setColour(zlgui::glass::textTertiary().withMultipliedAlpha(.86f));
+        g.setFont(juce::FontOptions(font * .50f));
+        g.drawText("GLASS", edition, juce::Justification::centredLeft, false);
 
         if (!preset_pill_bound_.isEmpty()) {
             auto pill = preset_pill_bound_.toFloat().reduced(.5f);
-            zlgui::glass::fillGlassSurface(g, pill, pill.getHeight() * .5f, .12f, .17f, .18f);
-            g.setColour(base_.getTextColour().withAlpha(.80f));
-            g.setFont(juce::FontOptions(base_.getFontSize() * .78f));
-            g.drawText("Presets", preset_pill_bound_.reduced(18, 0), juce::Justification::centred, false);
-            const auto cx = pill.getRight() - pill.getHeight() * .52f;
+            zlgui::glass::fillGlassSurface(g, pill, pill.getHeight() * .5f, .095f, .145f, .17f);
+            g.setColour(zlgui::glass::textPrimary().withAlpha(.82f));
+            g.setFont(juce::FontOptions(font * .76f));
+            auto text_bound = preset_pill_bound_.reduced(20, 0);
+            text_bound.removeFromRight(juce::roundToInt(pill.getHeight() * .28f));
+            const auto preset_name = preset_name_provider_ ? preset_name_provider_() : juce::String{"Default"};
+            g.drawFittedText(preset_name, text_bound, juce::Justification::centred, 1);
+
+            const auto cx = pill.getRight() - pill.getHeight() * .48f;
             const auto cy = pill.getCentreY();
             juce::Path chevron;
             chevron.startNewSubPath(cx - 3.f, cy - 1.f);
             chevron.lineTo(cx, cy + 2.f);
             chevron.lineTo(cx + 3.f, cy - 1.f);
-            g.setColour(juce::Colour(244, 251, 255).withAlpha(.48f));
-            g.strokePath(chevron, juce::PathStrokeType(1.f, juce::PathStrokeType::curved,
-                                                       juce::PathStrokeType::rounded));
+            g.setColour(zlgui::glass::textSecondary().withMultipliedAlpha(.78f));
+            g.strokePath(chevron, juce::PathStrokeType(.95f, juce::PathStrokeType::curved,
+                                                        juce::PathStrokeType::rounded));
         }
 
         if (!utility_cluster_bound_.isEmpty()) {
             for (const auto& component_bound : {match_button_.getBounds(), ext_button_.getBounds(),
                                                 bypass_button_.getBounds(), settings_button_.getBounds()}) {
-                auto circle = component_bound.toFloat().reduced(.75f);
-                zlgui::glass::fillGlassSurface(g, circle, circle.getHeight() * .5f, .10f, .17f, .16f);
+                auto circle = component_bound.toFloat().reduced(1.f);
+                zlgui::glass::fillGlassSurface(g, circle, circle.getHeight() * .5f, .075f, .125f, .14f);
             }
 
-            const auto iconStroke = juce::PathStrokeType(1.25f, juce::PathStrokeType::curved,
-                                                         juce::PathStrokeType::rounded);
+            const auto icon_stroke = juce::PathStrokeType(1.16f, juce::PathStrokeType::curved,
+                                                          juce::PathStrokeType::rounded);
 
-            // Match: a clean spectral trace with a reference point.
             {
                 auto mr = match_button_.getBounds().toFloat();
-                auto r = mr.reduced(base_.getFontSize() * .64f);
+                auto r = mr.reduced(font * .66f);
                 juce::Path p;
                 p.startNewSubPath(r.getX(), r.getBottom() - r.getHeight() * .22f);
                 p.cubicTo(r.getX() + r.getWidth() * .22f, r.getBottom() - r.getHeight() * .22f,
@@ -166,48 +170,47 @@ namespace zlpanel {
                 p.cubicTo(r.getX() + r.getWidth() * .64f, r.getY() + r.getHeight() * .16f,
                           r.getX() + r.getWidth() * .70f, r.getBottom() - r.getHeight() * .34f,
                           r.getRight(), r.getBottom() - r.getHeight() * .34f);
-                g.setColour(juce::Colour(243, 250, 255).withAlpha(match_button_.getToggleState() ? .92f : .55f));
-                g.strokePath(p, iconStroke);
-                g.fillEllipse(r.getX() + r.getWidth() * .42f, r.getY() + r.getHeight() * .10f, 2.4f, 2.4f);
+                g.setColour(zlgui::glass::textPrimary().withAlpha(match_button_.getToggleState() ? .92f : .52f));
+                g.strokePath(p, icon_stroke);
+                g.fillEllipse(r.getX() + r.getWidth() * .42f, r.getY() + r.getHeight() * .10f, 2.2f, 2.2f);
             }
 
-            // External sidechain: two interlocking links, sized from the same optical box.
             {
-                auto er = ext_button_.getBounds().toFloat().reduced(base_.getFontSize() * .66f);
-                const auto alpha = ext_button_.getToggleState() ? .90f : .48f;
-                g.setColour(juce::Colour(243, 250, 255).withAlpha(alpha));
-                juce::Path leftLink, rightLink;
+                auto er = ext_button_.getBounds().toFloat().reduced(font * .69f);
+                const auto alpha = ext_button_.getToggleState() ? .90f : .46f;
+                g.setColour(zlgui::glass::textPrimary().withAlpha(alpha));
+                juce::Path left_link, right_link;
                 auto link = juce::Rectangle<float>(er.getCentreX() - er.getWidth() * .48f,
                                                    er.getCentreY() - er.getHeight() * .23f,
                                                    er.getWidth() * .56f, er.getHeight() * .46f);
-                leftLink.addRoundedRectangle(link, link.getHeight() * .48f);
+                left_link.addRoundedRectangle(link, link.getHeight() * .48f);
                 link.translate(er.getWidth() * .40f, 0.f);
-                rightLink.addRoundedRectangle(link, link.getHeight() * .48f);
+                right_link.addRoundedRectangle(link, link.getHeight() * .48f);
                 const auto rotation = juce::AffineTransform::rotation(-.55f, er.getCentreX(), er.getCentreY());
-                g.strokePath(leftLink, iconStroke, rotation);
-                g.strokePath(rightLink, iconStroke, rotation);
+                g.strokePath(left_link, icon_stroke, rotation);
+                g.strokePath(right_link, icon_stroke, rotation);
             }
 
-            auto pr = bypass_button_.getBounds().toFloat().reduced(base_.getFontSize() * .50f);
-            g.setColour(juce::Colour(248, 252, 255).withAlpha(bypass_button_.getToggleState() ? .42f : .92f));
+            auto pr = bypass_button_.getBounds().toFloat().reduced(font * .52f);
+            g.setColour(zlgui::glass::textPrimary().withAlpha(bypass_button_.getToggleState() ? .38f : .90f));
             juce::Path power_arc;
             power_arc.addCentredArc(pr.getCentreX(), pr.getCentreY(), pr.getWidth() * .5f,
                                     pr.getHeight() * .5f, 0.f, .72f, 5.56f, true);
-            g.strokePath(power_arc, juce::PathStrokeType(1.5f, juce::PathStrokeType::curved,
+            g.strokePath(power_arc, juce::PathStrokeType(1.35f, juce::PathStrokeType::curved,
                                                          juce::PathStrokeType::rounded));
-            g.drawLine(pr.getCentreX(), pr.getY(), pr.getCentreX(), pr.getCentreY(), 1.5f);
+            g.drawLine(pr.getCentreX(), pr.getY(), pr.getCentreX(), pr.getCentreY(), 1.35f);
 
-            auto sr = settings_button_.getBounds().toFloat().reduced(base_.getFontSize() * .66f);
-            g.setColour(juce::Colour(248, 252, 255).withAlpha(.68f));
-            g.drawEllipse(sr.withSizeKeepingCentre(sr.getWidth() * .72f, sr.getHeight() * .72f), 1.05f);
-            g.drawEllipse(sr.withSizeKeepingCentre(sr.getWidth() * .24f, sr.getHeight() * .24f), 1.15f);
+            auto sr = settings_button_.getBounds().toFloat().reduced(font * .70f);
+            g.setColour(zlgui::glass::textPrimary().withAlpha(.60f));
+            g.drawEllipse(sr.withSizeKeepingCentre(sr.getWidth() * .72f, sr.getHeight() * .72f), .95f);
+            g.drawEllipse(sr.withSizeKeepingCentre(sr.getWidth() * .24f, sr.getHeight() * .24f), 1.0f);
             for (int tooth = 0; tooth < 8; ++tooth) {
                 const auto angle = juce::MathConstants<float>::twoPi * static_cast<float>(tooth) / 8.f;
                 const auto inner = sr.getWidth() * .37f;
                 const auto outer = sr.getWidth() * .49f;
                 const auto centre = sr.getCentre();
                 g.drawLine(centre.x + std::cos(angle) * inner, centre.y + std::sin(angle) * inner,
-                           centre.x + std::cos(angle) * outer, centre.y + std::sin(angle) * outer, 1.15f);
+                           centre.x + std::cos(angle) * outer, centre.y + std::sin(angle) * outer, 1.0f);
             }
         }
     }
@@ -228,21 +231,22 @@ namespace zlpanel {
         fstruct_box_.setBounds({});
         preset_button_.setBounds({});
 
-        const auto left_reserved = juce::jmax(225, juce::roundToInt(font_size * 15.4f));
+        const auto left_reserved = juce::jmax(210, juce::roundToInt(font_size * 14.4f));
         bound.removeFromLeft(left_reserved);
 
-        const auto preset_w = juce::jmax(132, juce::roundToInt(font_size * 8.9f));
-        preset_pill_bound_ = getLocalBounds().withSizeKeepingCentre(preset_w, button + padding / 2);
+        const auto preset_w = juce::jmax(172, juce::roundToInt(font_size * 11.3f));
+        preset_pill_bound_ = getLocalBounds().withSizeKeepingCentre(preset_w, button + padding / 3);
 
-        settings_button_.setBounds(bound.removeFromRight(button));
-        bound.removeFromRight(padding / 4);
-        bypass_button_.setBounds(bound.removeFromRight(button));
-        bound.removeFromRight(padding / 4);
-        ext_button_.setBounds(bound.removeFromRight(button));
-        bound.removeFromRight(padding / 4);
-        match_button_.setBounds(bound.removeFromRight(button));
+        const auto utility_button = juce::jmax(30, juce::roundToInt(button * .92f));
+        settings_button_.setBounds(bound.removeFromRight(utility_button).withSizeKeepingCentre(utility_button, utility_button));
         bound.removeFromRight(padding / 3);
-        const auto output_width = juce::jmax(72, juce::roundToInt(font_size * 5.0f));
+        bypass_button_.setBounds(bound.removeFromRight(utility_button).withSizeKeepingCentre(utility_button, utility_button));
+        bound.removeFromRight(padding / 3);
+        ext_button_.setBounds(bound.removeFromRight(utility_button).withSizeKeepingCentre(utility_button, utility_button));
+        bound.removeFromRight(padding / 3);
+        match_button_.setBounds(bound.removeFromRight(utility_button).withSizeKeepingCentre(utility_button, utility_button));
+        bound.removeFromRight(padding / 2);
+        const auto output_width = juce::jmax(68, juce::roundToInt(font_size * 4.7f));
         output_label_.setBounds(bound.removeFromRight(output_width));
 
         utility_cluster_bound_ = output_label_.getBounds()
@@ -250,7 +254,7 @@ namespace zlpanel {
             .getUnion(ext_button_.getBounds())
             .getUnion(bypass_button_.getBounds())
             .getUnion(settings_button_.getBounds())
-            .expanded(juce::jmax(3, padding / 2), juce::jmax(2, padding / 3));
+            .expanded(juce::jmax(2, padding / 3), juce::jmax(2, padding / 4));
 
         repaint();
     }
