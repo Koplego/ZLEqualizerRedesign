@@ -59,6 +59,13 @@ namespace zlpanel {
             juce::ColourGradient meter(juce::Colour(111, 238, 187), active.getCentreX(), active.getBottom(),
                                        juce::Colour(255, 197, 96), active.getCentreX(), active.getY(), false);
             meter.addColour(.72, juce::Colour(137, 224, 164));
+            if (active.getHeight() > 1.f) {
+                const juce::DropShadow meter_glow{juce::Colour(105, 231, 187).withAlpha(.22f),
+                                                   juce::jmax(2, juce::roundToInt(bar_w * .65f)), {0, 0}};
+                juce::Path glow_path;
+                glow_path.addRoundedRectangle(active, bar_w * .42f);
+                meter_glow.drawForPath(g, glow_path);
+            }
             g.setGradientFill(meter);
             g.fillRoundedRectangle(active, bar_w * .42f);
 

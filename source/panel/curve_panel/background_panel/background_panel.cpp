@@ -26,40 +26,76 @@ namespace zlpanel {
         auto panel = bounds.reduced(.5f);
         const auto radius = zlgui::glass::surfaceRadius(base_.getFontSize()) * 1.25f;
 
-        // The graph is a calm optical viewport, not a decorative glass object.
-        juce::ColourGradient glass(juce::Colour(58, 84, 103), panel.getCentreX(), panel.getY(),
-                                   juce::Colour(20, 41, 58), panel.getCentreX(), panel.getBottom(), false);
-        glass.addColour(.48, juce::Colour(34, 60, 79));
-        g.setGradientFill(glass);
-        g.fillRoundedRectangle(panel, radius);
+        juce::Path panel_clip;
+        panel_clip.addRoundedRectangle(panel, radius);
+        {
+            juce::Graphics::ScopedSaveState clip(g);
+            g.reduceClipRegion(panel_clip);
 
-        // Subtle center luminance keeps the response readable and gives the viewport depth.
-        juce::ColourGradient centerGlow(juce::Colour(190, 220, 238).withAlpha(.135f),
-                                        panel.getCentreX(), panel.getY() + panel.getHeight() * .32f,
-                                        juce::Colours::transparentBlack,
-                                        panel.getCentreX(), panel.getBottom(), true);
-        g.setGradientFill(centerGlow);
-        g.fillRoundedRectangle(panel, radius);
+            // A darker viewport lets the colored bands and analyzer provide the light,
+            // matching the contrast hierarchy of the reference.
+            juce::ColourGradient glass(juce::Colour(39, 65, 84), panel.getCentreX(), panel.getY(),
+                                       juce::Colour(8, 25, 39), panel.getCentreX(), panel.getBottom(), false);
+            glass.addColour(.43, juce::Colour(23, 49, 67));
+            g.setGradientFill(glass);
+            g.fillRect(panel.expanded(2.f));
 
-        // Broad frosted highlights echo the soft reflected ribbons in the reference
-        // while keeping the analyzer and response curves as the sharpest content.
-        juce::ColourGradient leftMist(juce::Colour(178, 213, 236).withAlpha(.15f),
-                                      panel.getX() + panel.getWidth() * .16f,
-                                      panel.getY() + panel.getHeight() * .08f,
-                                      juce::Colours::transparentBlack,
-                                      panel.getX() + panel.getWidth() * .46f,
-                                      panel.getY() + panel.getHeight() * .64f, true);
-        g.setGradientFill(leftMist);
-        g.fillRoundedRectangle(panel, radius);
+            juce::ColourGradient center_glow(juce::Colour(187, 221, 241).withAlpha(.10f),
+                                              panel.getCentreX(), panel.getY() + panel.getHeight() * .30f,
+                                              juce::Colours::transparentBlack,
+                                              panel.getCentreX(), panel.getBottom(), true);
+            g.setGradientFill(center_glow);
+            g.fillRect(panel);
 
-        juce::ColourGradient warmMist(juce::Colour(230, 205, 171).withAlpha(.095f),
-                                      panel.getX() + panel.getWidth() * .76f,
-                                      panel.getY() + panel.getHeight() * .26f,
-                                      juce::Colours::transparentBlack,
-                                      panel.getX() + panel.getWidth() * .48f,
-                                      panel.getBottom(), true);
-        g.setGradientFill(warmMist);
-        g.fillRoundedRectangle(panel, radius);
+            juce::ColourGradient left_mist(juce::Colour(174, 217, 245).withAlpha(.105f),
+                                            panel.getX() + panel.getWidth() * .13f,
+                                            panel.getY() + panel.getHeight() * .06f,
+                                            juce::Colours::transparentBlack,
+                                            panel.getX() + panel.getWidth() * .43f,
+                                            panel.getY() + panel.getHeight() * .62f, true);
+            g.setGradientFill(left_mist);
+            g.fillRect(panel);
+
+            juce::ColourGradient warm_mist(juce::Colour(233, 207, 174).withAlpha(.070f),
+                                            panel.getX() + panel.getWidth() * .76f,
+                                            panel.getY() + panel.getHeight() * .22f,
+                                            juce::Colours::transparentBlack,
+                                            panel.getX() + panel.getWidth() * .50f,
+                                            panel.getBottom(), true);
+            g.setGradientFill(warm_mist);
+            g.fillRect(panel);
+
+            // The faint displaced ribbon is the graph's refractive cue. Its broad soft
+            // edge remains behind the grid and response so it never competes with data.
+            juce::Path ribbon;
+            ribbon.startNewSubPath(panel.getX() - panel.getWidth() * .04f,
+                                   panel.getY() + panel.getHeight() * .23f);
+            ribbon.cubicTo(panel.getX() + panel.getWidth() * .18f,
+                           panel.getY() + panel.getHeight() * .06f,
+                           panel.getX() + panel.getWidth() * .29f,
+                           panel.getY() + panel.getHeight() * .37f,
+                           panel.getX() + panel.getWidth() * .48f,
+                           panel.getY() + panel.getHeight() * .22f);
+            ribbon.cubicTo(panel.getX() + panel.getWidth() * .66f,
+                           panel.getY() + panel.getHeight() * .09f,
+                           panel.getX() + panel.getWidth() * .78f,
+                           panel.getY() + panel.getHeight() * .34f,
+                           panel.getRight() + panel.getWidth() * .04f,
+                           panel.getY() + panel.getHeight() * .14f);
+            g.setColour(juce::Colour(1, 12, 23).withAlpha(.16f));
+            g.strokePath(ribbon, juce::PathStrokeType(panel.getHeight() * .13f,
+                                                      juce::PathStrokeType::curved,
+                                                      juce::PathStrokeType::rounded),
+                         juce::AffineTransform::translation(0.f, panel.getHeight() * .022f));
+            g.setColour(juce::Colour(207, 234, 250).withAlpha(.068f));
+            g.strokePath(ribbon, juce::PathStrokeType(panel.getHeight() * .105f,
+                                                      juce::PathStrokeType::curved,
+                                                      juce::PathStrokeType::rounded));
+            g.setColour(juce::Colour(250, 253, 255).withAlpha(.075f));
+            g.strokePath(ribbon, juce::PathStrokeType(1.f, juce::PathStrokeType::curved,
+                                                      juce::PathStrokeType::rounded),
+                         juce::AffineTransform::translation(0.f, -panel.getHeight() * .045f));
+        }
 
         g.setColour(zlgui::glass::rim().withMultipliedAlpha(.65f));
         g.drawRoundedRectangle(panel, radius, .75f);

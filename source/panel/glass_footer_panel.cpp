@@ -26,6 +26,37 @@ namespace zlpanel {
 
         analyzer_button_.getButton().setToggleable(true);
         analyzer_button_.getButton().setClickingTogglesState(false);
+        analyzer_button_.getButton().setButtonText("");
+        analyzer_button_.setBackgroundPainter([this](juce::Graphics& g, juce::Button& b,
+                                                      const bool highlighted, const bool down) {
+            const auto selected = b.getToggleState() || down;
+            auto local = b.getLocalBounds().toFloat();
+            g.setColour(zlgui::glass::textPrimary().withAlpha(selected ? .92f : highlighted ? .76f : .62f));
+            g.setFont(juce::FontOptions(base_.getFontSize() * .70f));
+            auto label = local.toNearestInt();
+            label.removeFromRight(juce::roundToInt(base_.getFontSize() * 2.65f));
+            g.drawText("Analyzer", label.reduced(2, 0), juce::Justification::centredLeft, false);
+
+            auto toggle = local.removeFromRight(base_.getFontSize() * 2.35f)
+                               .withSizeKeepingCentre(base_.getFontSize() * 2.10f,
+                                                      base_.getFontSize() * 1.06f);
+            g.setColour(juce::Colour(5, 20, 33).withAlpha(.54f));
+            g.fillRoundedRectangle(toggle, toggle.getHeight() * .5f);
+            g.setColour(juce::Colour(244, 251, 255).withAlpha(.17f));
+            g.drawRoundedRectangle(toggle, toggle.getHeight() * .5f, .8f);
+            if (selected) {
+                g.setColour(juce::Colour(105, 165, 255).withAlpha(.68f));
+                g.fillRoundedRectangle(toggle, toggle.getHeight() * .5f);
+            }
+            const auto knob = toggle.getHeight() * .78f;
+            const auto knob_x = selected ? toggle.getRight() - knob - toggle.getHeight() * .11f
+                                         : toggle.getX() + toggle.getHeight() * .11f;
+            juce::ColourGradient lens(juce::Colour(255, 255, 255).withAlpha(.95f), knob_x, toggle.getY(),
+                                      juce::Colour(165, 207, 245).withAlpha(.88f), knob_x + knob,
+                                      toggle.getBottom(), false);
+            g.setGradientFill(lens);
+            g.fillEllipse(knob_x, toggle.getCentreY() - knob * .5f, knob, knob);
+        });
         output_button_.getButton().setToggleable(true);
         output_button_.getButton().setClickingTogglesState(false);
         pre_button_.getButton().setToggleable(true);
@@ -87,15 +118,27 @@ namespace zlpanel {
 
     void GlassFooterPanel::paint(juce::Graphics& g) {
         auto strip = getLocalBounds().toFloat().reduced(.5f);
-        zlgui::glass::fillGlassSurface(g, strip, juce::jmax(9.f, strip.getHeight() * .34f),
-                                      .105f, .19f, .22f);
+        zlgui::glass::fillGlassSurface(g, strip, juce::jmax(9.f, strip.getHeight() * .43f),
+                                      .085f, .155f, .19f);
 
-        for (const auto group : {analyzer_group_bound_, tools_group_bound_, processing_group_bound_}) {
-            if (!group.isEmpty()) {
-                auto r = group.toFloat().reduced(.5f);
-                zlgui::glass::fillGlassSurface(g, r, r.getHeight() * .5f, .035f, .075f, .085f);
-            }
-        }
+        g.setColour(juce::Colour(243, 250, 255).withAlpha(.075f));
+        if (!analyzer_group_bound_.isEmpty())
+            g.drawVerticalLine(analyzer_group_bound_.getRight() + getPaddingSize(base_.getFontSize()) / 2,
+                               strip.getY() + strip.getHeight() * .24f,
+                               strip.getBottom() - strip.getHeight() * .24f);
+        if (!processing_group_bound_.isEmpty())
+            g.drawVerticalLine(processing_group_bound_.getX() - getPaddingSize(base_.getFontSize()) / 2,
+                               strip.getY() + strip.getHeight() * .24f,
+                               strip.getBottom() - strip.getHeight() * .24f);
+
+        auto sheen = strip.reduced(strip.getHeight() * .50f, 1.f);
+        sheen.setHeight(1.f);
+        juce::ColourGradient sheen_gradient(juce::Colours::transparentWhite, sheen.getX(), sheen.getY(),
+                                             juce::Colours::transparentWhite, sheen.getRight(), sheen.getY(), false);
+        sheen_gradient.addColour(.17, juce::Colour(255, 255, 255).withAlpha(.13f));
+        sheen_gradient.addColour(.66, juce::Colour(188, 224, 247).withAlpha(.055f));
+        g.setGradientFill(sheen_gradient);
+        g.fillRect(sheen);
 
         g.setColour(base_.getTextColour().withAlpha(.52f));
         g.setFont(juce::FontOptions(base_.getFontSize() * .68f));
