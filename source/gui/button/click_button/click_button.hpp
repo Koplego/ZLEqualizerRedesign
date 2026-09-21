@@ -44,6 +44,7 @@ namespace zlgui::button {
         }
 
         inline juce::DrawableButton& getButton() { return button_; }
+        inline const juce::DrawableButton& getButton() const { return button_; }
 
         void updateImages() {
             if (normal_ != nullptr) {
