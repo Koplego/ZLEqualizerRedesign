@@ -36,6 +36,10 @@ namespace zlpanel {
 
         const std::unique_ptr<juce::Drawable> bypass_drawable_;
         zlgui::button::ClickButton bypass_button_;
+        const std::unique_ptr<juce::Drawable> dynamic_drawable_;
+        zlgui::button::ClickButton dynamic_button_;
+        const std::unique_ptr<juce::Drawable> solo_drawable_;
+        zlgui::button::ClickButton solo_button_;
         zlgui::combobox::CompactCombobox ftype_box_;
         zlgui::combobox::CompactCombobox slope_box_;
         zlgui::slider::CompactLinearSlider<false, false, false> freq_slider_;
@@ -51,6 +55,7 @@ namespace zlpanel {
         std::atomic<float>* filter_status_ptr_{nullptr};
         std::atomic<float>* filter_type_ptr_{nullptr};
         std::atomic<float>* slope_ptr_{nullptr};
+        std::atomic<float>* dynamic_on_ptr_{nullptr};
         int current_filter_type_{-1};
         int current_slope_{-1};
         bool slope_supported_{true};
@@ -74,5 +79,6 @@ namespace zlpanel {
         void timerCallback() override;
         void drawFilterGlyph(juce::Graphics& g, juce::Rectangle<float> r, int type,
                              juce::Colour colour) const;
+        void drawQuickActionGlyphs(juce::Graphics& g) const;
     };
 }
