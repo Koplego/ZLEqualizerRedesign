@@ -31,11 +31,17 @@ namespace zlpanel {
 
         void mouseDown(const juce::MouseEvent& event) override;
 
+        void setPresetNameProvider(std::function<juce::String()> provider) {
+            preset_name_provider_ = std::move(provider);
+            repaint();
+        }
+
     private:
         PluginProcessor& p_ref_;
         zlgui::UIBase &base_;
         zlgui::attachment::ComponentUpdater updater_;
         std::function<void()> settings_callback_;
+        std::function<juce::String()> preset_name_provider_;
         zlgui::button::ClickTextButton settings_button_;
         LogoPanel logo_panel_;
         OutputLabel output_label_;
