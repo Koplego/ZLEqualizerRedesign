@@ -16,6 +16,7 @@ namespace zlpanel {
         tooltip_helper_(language),
         refresh_handler_(zlstate::PTargetRefreshSpeed::kRates[base_.getRefreshRateID()]),
         curve_panel_(p, base, tooltip_helper_),
+        band_hub_panel_(p, base, tooltip_helper_),
         control_panel_(p, base, curve_panel_.getMatchFFTPanel(), tooltip_helper_),
         extra_dynamic_panel_(p, base, tooltip_helper_),
         top_panel_(p, base, tooltip_helper_, [this]() { toggleSettingsSheet(); }),
@@ -41,10 +42,13 @@ namespace zlpanel {
         startTimerHz(1);
 
         addAndMakeVisible(curve_panel_);
+        addAndMakeVisible(band_hub_panel_);
+        band_hub_panel_.updateBand();
         addChildComponent(overlay_scrim_);
 
-        // Normal band editing lives in the contextual inspector. ControlPanel remains
-        // available only because its Match view is the dedicated EQ Match workspace.
+        // Normal band editing lives in the compact node bubble + contextual Band Hub.
+        // ControlPanel remains available only because its Match view is the dedicated
+        // EQ Match workspace.
         addChildComponent(control_panel_);
         control_panel_.setVisible(false);
 
@@ -160,6 +164,15 @@ namespace zlpanel {
         overlay_scrim_.setBounds(curve_panel_.getBounds());
 
         const auto padding = getPaddingSize(font_size);
+        const auto graph = curve_panel_.getBounds();
+        const auto hub_w = juce::jmax(0, juce::jmin(band_hub_panel_.getIdealWidth(),
+                                                    graph.getWidth() - 4 * padding));
+        const auto hub_h = juce::jmax(0, juce::jmin(band_hub_panel_.getIdealHeight(),
+                                                    graph.getHeight() - 3 * padding));
+        auto hub = juce::Rectangle<int>(0, 0, hub_w, hub_h);
+        hub.setCentre(graph.getCentreX(), graph.getBottom() - padding - hub_h / 2);
+        band_hub_panel_.setBounds(hub);
+
         const auto match_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel)) > .5;
         if (match_open) {
             const auto max_w = juce::jmax(0, curve_panel_.getWidth() - 4 * padding);
@@ -221,13 +234,19 @@ namespace zlpanel {
         const auto match_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel)) > .5;
         const auto settings_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel)) > .5;
         const auto preset_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kPresetBrowser)) > .5;
+        const auto analyzer_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel)) > .5;
+        const auto output_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kOutputPanel)) > .5;
 
         const auto scrim_visible = settings_open || preset_open;
+        const auto suppress_hub = match_open || settings_open || preset_open || analyzer_open || output_open;
+
         overlay_scrim_.setVisible(scrim_visible);
+        band_hub_panel_.setSuppressed(suppress_hub);
         control_panel_.setVisible(match_open);
         ui_setting_panel_.setVisible(settings_open);
         preset_browser_.setVisible(preset_open);
 
+        if (!suppress_hub && band_hub_panel_.isVisible()) band_hub_panel_.toFront(false);
         if (scrim_visible) overlay_scrim_.toFront(false);
         if (control_panel_.isVisible()) control_panel_.toFront(false);
         if (settings_open) ui_setting_panel_.toFront(false);
@@ -248,6 +267,7 @@ namespace zlpanel {
                 extra_dynamic_panel_.updateBand();
                 control_panel_.updateBand();
                 curve_panel_.updateBand();
+                band_hub_panel_.updateBand();
             }
             if (ui_setting_panel_.isVisible()) ui_setting_panel_.flushPendingScroll();
             if (preset_browser_.isVisible()) preset_browser_.flushPendingScroll();
@@ -313,6 +333,7 @@ namespace zlpanel {
         extra_dynamic_panel_.repaintCallBackSlow();
         control_panel_.repaintCallBackSlow();
         curve_panel_.repaintCallBackSlow();
+        band_hub_panel_.repaintCallbackSlow();
         top_panel_.repaintCallbackSlow();
         footer_panel_.repaintCallbackSlow();
     }
