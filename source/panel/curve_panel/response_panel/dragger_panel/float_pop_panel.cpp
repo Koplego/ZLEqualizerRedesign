@@ -14,6 +14,12 @@ namespace zlpanel {
         bypass_drawable_(juce::Drawable::createFromImageData(BinaryData::bypass_svg, BinaryData::bypass_svgSize)),
         bypass_button_(base, bypass_drawable_.get(), bypass_drawable_.get(),
                        tooltip_helper.getToolTipText(multilingual::kBandBypass)),
+        dynamic_drawable_(juce::Drawable::createFromImageData(BinaryData::dynamic_svg, BinaryData::dynamic_svgSize)),
+        dynamic_button_(base, dynamic_drawable_.get(), dynamic_drawable_.get(),
+                        tooltip_helper.getToolTipText(multilingual::kBandDynamic)),
+        solo_drawable_(juce::Drawable::createFromImageData(BinaryData::solo_svg, BinaryData::solo_svgSize)),
+        solo_button_(base, solo_drawable_.get(), solo_drawable_.get(),
+                     tooltip_helper.getToolTipText(multilingual::kBandSolo)),
         ftype_box_(juce::StringArray{"Bell", "Low Shelf", "High Cut", "High Shelf", "Low Cut", "Notch",
                                      "Band Pass", "Tilt", "Flat Tilt", "All Pass", "Gain"}, base, ""),
         slope_box_(zlp::POrder::kChoices, base, ""),
@@ -27,6 +33,36 @@ namespace zlpanel {
             if (const auto band = base_.getSelectedBand(); band < zlp::kBandNum) {
                 updateValue(p_ref_.parameters_.getParameter(zlp::PFilterStatus::kID + std::to_string(band)),
                             bypass_button_.getToggleState() ? 1.f : .5f);
+            }
+        };
+
+        dynamic_button_.setImageAlpha(0.f, 0.f, 0.f, 0.f);
+        dynamic_button_.getButton().setToggleable(true);
+        dynamic_button_.getButton().setClickingTogglesState(false);
+        addAndMakeVisible(dynamic_button_);
+        dynamic_button_.getButton().onClick = [this]() {
+            if (const auto band = base_.getSelectedBand(); band < zlp::kBandNum) {
+                const auto next = !(dynamic_on_ptr_ != nullptr
+                    && dynamic_on_ptr_->load(std::memory_order::relaxed) > .5f);
+                const auto max_idx = std::round(p_ref_.parameters_NA_.getRawParameterValue(
+                    zlstate::PEQMaxDB::kID)->load(std::memory_order::relaxed));
+                band_helper::turnOnOffDynamic(p_ref_, band, next,
+                                              base_.getCurveDBScale(static_cast<size_t>(max_idx)));
+                dynamic_button_.getButton().setToggleState(next, juce::dontSendNotification);
+                repaint();
+            }
+        };
+
+        solo_button_.setImageAlpha(0.f, 0.f, 0.f, 0.f);
+        solo_button_.getButton().setToggleable(true);
+        solo_button_.getButton().setClickingTogglesState(false);
+        addAndMakeVisible(solo_button_);
+        solo_button_.getButton().onClick = [this]() {
+            if (const auto band = base_.getSelectedBand(); band < zlp::kBandNum) {
+                const auto active = base_.getSoloWholeIdx() == band;
+                base_.setSoloWholeIdx(active ? 2 * zlp::kBandNum : band);
+                solo_button_.getButton().setToggleState(!active, juce::dontSendNotification);
+                repaint();
             }
         };
 
@@ -116,6 +152,39 @@ namespace zlpanel {
         g.strokePath(p, juce::PathStrokeType(1.2f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     }
 
+    void FloatPopPanel::drawQuickActionGlyphs(juce::Graphics& g) const {
+        const auto primary = zlgui::glass::textPrimary();
+
+        auto dyn = dynamic_button_.getBounds().toFloat().reduced(dynamic_button_.getHeight() * .27f);
+        const auto dynActive = dynamic_button_.getButton().getToggleState();
+        g.setColour(primary.withAlpha(dynActive ? .95f : .48f));
+        juce::Path dp;
+        dp.startNewSubPath(dyn.getX(), dyn.getCentreY() + dyn.getHeight() * .18f);
+        dp.cubicTo(dyn.getX() + dyn.getWidth() * .25f, dyn.getBottom(),
+                   dyn.getX() + dyn.getWidth() * .32f, dyn.getY(),
+                   dyn.getCentreX(), dyn.getCentreY());
+        dp.cubicTo(dyn.getX() + dyn.getWidth() * .68f, dyn.getBottom(),
+                   dyn.getX() + dyn.getWidth() * .75f, dyn.getY(),
+                   dyn.getRight(), dyn.getCentreY() - dyn.getHeight() * .18f);
+        g.strokePath(dp, juce::PathStrokeType(1.35f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        if (dynActive) {
+            g.drawLine(dyn.getX(), dyn.getBottom() - .5f, dyn.getRight(), dyn.getBottom() - .5f, 1.f);
+        }
+
+        auto solo = solo_button_.getBounds().toFloat().reduced(solo_button_.getHeight() * .28f);
+        const auto soloActive = solo_button_.getButton().getToggleState();
+        g.setColour(primary.withAlpha(soloActive ? .95f : .48f));
+        juce::Path hp;
+        hp.addCentredArc(solo.getCentreX(), solo.getCentreY() + solo.getHeight() * .08f,
+                         solo.getWidth() * .42f, solo.getHeight() * .42f,
+                         0.f, 4.02f, 5.40f, true);
+        g.strokePath(hp, juce::PathStrokeType(1.35f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        const auto padW = solo.getWidth() * .16f;
+        const auto padH = solo.getHeight() * .38f;
+        g.drawRoundedRectangle({solo.getX(), solo.getCentreY(), padW, padH}, padW * .4f, 1.2f);
+        g.drawRoundedRectangle({solo.getRight() - padW, solo.getCentreY(), padW, padH}, padW * .4f, 1.2f);
+    }
+
     void FloatPopPanel::paint(juce::Graphics& g) {
         static constexpr std::array<const char*, 11> names{
             "Bell", "Low Shelf", "High Cut", "High Shelf", "Low Cut", "Notch",
@@ -161,6 +230,8 @@ namespace zlpanel {
             g.setColour(zlgui::glass::rim().withMultipliedAlpha(.16f)); g.drawRoundedRectangle(cell, cell.getHeight() * .34f, .65f);
         }
 
+        drawQuickActionGlyphs(g);
+
         auto power = bypass_button_.getBounds().toFloat().reduced(bypass_button_.getHeight() * .28f);
         g.setColour(zlgui::glass::textPrimary().withAlpha(bypass_button_.getToggleState() ? .92f : .40f));
         juce::Path pp;
@@ -177,6 +248,8 @@ namespace zlpanel {
         ftype_box_.setBounds(header.removeFromLeft(button));
         filter_name_bound_ = header.removeFromLeft(juce::jmax(button*2, juce::roundToInt(base_.getFontSize()*4.2f)));
         bypass_button_.setBounds(header.removeFromRight(button));
+        solo_button_.setBounds(header.removeFromRight(button));
+        dynamic_button_.setBounds(header.removeFromRight(button));
         header.removeFromRight(juce::jmax(2, padding/4));
         slope_name_bound_ = header.removeFromRight(juce::jmin(juce::jmax(button*2, juce::roundToInt(base_.getFontSize()*4.4f)), header.getWidth()));
         slope_box_.setBounds(slope_name_bound_); slope_box_.setVisible(slope_supported_);
@@ -207,6 +280,7 @@ namespace zlpanel {
             filter_status_ptr_ = p_ref_.parameters_.getRawParameterValue(zlp::PFilterStatus::kID+s);
             filter_type_ptr_ = p_ref_.parameters_.getRawParameterValue(zlp::PFilterType::kID+s);
             slope_ptr_ = p_ref_.parameters_.getRawParameterValue(zlp::POrder::kID+s);
+            dynamic_on_ptr_ = p_ref_.parameters_.getRawParameterValue(zlp::PDynamicON::kID+s);
             current_filter_type_ = current_slope_ = -1;
             updateFilterCapabilities();
             transform_initialized_ = false;
@@ -214,8 +288,10 @@ namespace zlpanel {
             repaintCallBackSlow();
         } else {
             ftype_attachment_.reset(); slope_attachment_.reset(); freq_attachment_.reset(); gain_attachment_.reset(); q_attachment_.reset();
-            filter_status_ptr_ = filter_type_ptr_ = slope_ptr_ = nullptr;
+            filter_status_ptr_ = filter_type_ptr_ = slope_ptr_ = dynamic_on_ptr_ = nullptr;
             current_filter_type_ = current_slope_ = -1;
+            dynamic_button_.getButton().setToggleState(false, juce::dontSendNotification);
+            solo_button_.getButton().setToggleState(false, juce::dontSendNotification);
             stopTimer(); setVisible(false);
         }
     }
@@ -226,6 +302,10 @@ namespace zlpanel {
         freq_slider_.updateDisplayValue(); gain_slider_.updateDisplayValue(); q_slider_.updateDisplayValue();
         bypass_button_.getButton().setToggleState(filter_status_ptr_->load(std::memory_order::relaxed) > 1.5f,
                                                    juce::dontSendNotification);
+        dynamic_button_.getButton().setToggleState(dynamic_on_ptr_ != nullptr
+            && dynamic_on_ptr_->load(std::memory_order::relaxed) > .5f, juce::dontSendNotification);
+        solo_button_.getButton().setToggleState(base_.getSelectedBand() < zlp::kBandNum
+            && base_.getSoloWholeIdx() == base_.getSelectedBand(), juce::dontSendNotification);
         updateFilterCapabilities(); repaint();
     }
 
@@ -246,12 +326,14 @@ namespace zlpanel {
             || type == static_cast<int>(zldsp::filter::kFlatTilt) || type == static_cast<int>(zldsp::filter::kFlatGain);
         gain_slider_.setEditable(gainEnabled);
         q_slider_.setEditable(slope_supported_ && slope != 0);
+        dynamic_button_.getButton().setEnabled(gainEnabled);
+        dynamic_button_.setAlpha(gainEnabled ? 1.f : .34f);
         resized(); repaint();
     }
 
     int FloatPopPanel::getIdealWidth() const {
         const auto p = getPaddingSize(base_.getFontSize()); const auto b = getButtonSize(base_.getFontSize());
-        return juce::roundToInt(8.15f * static_cast<float>(b) + 4.2f * static_cast<float>(p));
+        return juce::roundToInt(10.15f * static_cast<float>(b) + 4.2f * static_cast<float>(p));
     }
     int FloatPopPanel::getIdealHeight() const {
         const auto p = getPaddingSize(base_.getFontSize()); const auto b = getButtonSize(base_.getFontSize());
