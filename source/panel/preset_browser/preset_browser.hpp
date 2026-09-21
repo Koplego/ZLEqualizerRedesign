@@ -44,7 +44,10 @@ namespace zlpanel {
 
         int getIdealHeight() const;
 
-        juce::String getDisplayPresetName() const;
+        juce::String getDisplayPresetName() const {
+            const auto name = selected_preset_file_.getFileNameWithoutExtension();
+            return name.isNotEmpty() ? name : juce::String{"Default"};
+        }
 
     private:
         PluginProcessor& processor_;
