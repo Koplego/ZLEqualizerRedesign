@@ -93,7 +93,6 @@ namespace zlpanel {
         std::array<juce::Rectangle<int>, 4> primary_label_bounds_{};
         std::array<juce::Rectangle<int>, 4> detail_label_bounds_{};
         juce::Rectangle<int> title_bound_{};
-        juce::Rectangle<int> collapsed_bound_{};
         juce::Rectangle<int> page_title_bound_{};
 
         void setExpanded(bool expanded);
