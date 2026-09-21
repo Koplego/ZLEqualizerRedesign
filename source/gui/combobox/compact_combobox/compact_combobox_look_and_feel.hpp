@@ -150,6 +150,9 @@ namespace zlgui::combobox {
             if (option.getMinimumWidth() == 0) {
                 option = option.withMinimumWidth(juce::jmax(box.getWidth(), juce::roundToInt(base_.getFontSize() * 9.f)));
             }
+            // v1.2 system-integrity rule: compact controls never explode into multi-column
+            // matrices. Keep every menu in one readable column and let JUCE flip/scroll it.
+            option = option.withMinimumNumColumns(1).withMaximumNumColumns(1);
             return option.withTargetComponent(&box)
                          .withInitiallySelectedItem(box.getSelectedId())
                          .withStandardItemHeight(juce::jmax(label.getHeight(), juce::roundToInt(base_.getFontSize() * 2.15f)));
