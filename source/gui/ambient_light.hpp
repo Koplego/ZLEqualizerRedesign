@@ -46,17 +46,18 @@ namespace zlgui::glass {
                                        const float alpha) {
         if (alpha <= .0001f || source.radius <= 1.f || clip_bounds.isEmpty()) return;
 
-        // Header/footer/Hub are very wide, shallow pieces of glass. A circular field makes
-        // every distant lamp overlap almost equally and the colours collapse into blue-grey.
-        // Instead, preserve the real horizontal position of each node while allowing its
-        // light to travel vertically to the receiver, like an ambient-video glow.
+        // Wide/shallow glass should behave more like YouTube ambient lighting than a row of
+        // spotlights. The source intensity is unchanged; only the reach is extended so the
+        // colour survives the vertical trip from graph to header/footer and spreads gently
+        // across neighbouring controls before fading away.
         const auto vertical_distance = std::abs(source.point.y - clip_bounds.getCentreY());
-        const auto t = juce::jlimit(0.f, 1.f, vertical_distance / source.radius);
-        const auto vertical_gain = std::pow(juce::jmax(0.f, 1.f - t), .72f);
+        const auto vertical_reach = source.radius * 1.62f;
+        const auto t = juce::jlimit(0.f, 1.f, vertical_distance / vertical_reach);
+        const auto vertical_gain = std::pow(juce::jmax(0.f, 1.f - t), .46f);
         if (vertical_gain <= .001f) return;
 
-        const auto half_width = juce::jmax(clip_bounds.getHeight() * 2.8f,
-                                          source.radius * .43f);
+        const auto half_width = juce::jmax(clip_bounds.getHeight() * 4.2f,
+                                          source.radius * .68f);
         const auto effective_alpha = alpha * vertical_gain;
 
         juce::Graphics::ScopedSaveState state(g);
@@ -65,14 +66,16 @@ namespace zlgui::glass {
         juce::ColourGradient spread(
             source.colour.withAlpha(0.f), source.point.x - half_width, 0.f,
             source.colour.withAlpha(0.f), source.point.x + half_width, 0.f, false);
-        spread.addColour(.10, source.colour.withAlpha(effective_alpha * .04f));
-        spread.addColour(.24, source.colour.withAlpha(effective_alpha * .20f));
-        spread.addColour(.38, source.colour.withAlpha(effective_alpha * .66f));
-        spread.addColour(.50, source.colour.interpolatedWith(juce::Colours::white, .012f)
+        spread.addColour(.035, source.colour.withAlpha(effective_alpha * .018f));
+        spread.addColour(.12, source.colour.withAlpha(effective_alpha * .075f));
+        spread.addColour(.23, source.colour.withAlpha(effective_alpha * .24f));
+        spread.addColour(.36, source.colour.withAlpha(effective_alpha * .63f));
+        spread.addColour(.50, source.colour.interpolatedWith(juce::Colours::white, .010f)
                                       .withAlpha(effective_alpha));
-        spread.addColour(.62, source.colour.withAlpha(effective_alpha * .66f));
-        spread.addColour(.76, source.colour.withAlpha(effective_alpha * .20f));
-        spread.addColour(.90, source.colour.withAlpha(effective_alpha * .04f));
+        spread.addColour(.64, source.colour.withAlpha(effective_alpha * .63f));
+        spread.addColour(.77, source.colour.withAlpha(effective_alpha * .24f));
+        spread.addColour(.88, source.colour.withAlpha(effective_alpha * .075f));
+        spread.addColour(.965, source.colour.withAlpha(effective_alpha * .018f));
         g.setGradientFill(spread);
         g.fillRect(clip_bounds);
     }
