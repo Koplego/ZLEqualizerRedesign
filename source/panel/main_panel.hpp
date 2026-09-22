@@ -88,6 +88,7 @@ namespace zlpanel {
         void closeGlobalOverlaysExcept(zlgui::PanelSettingIdx keep);
         void closeGlobalSheetsForUtility(zlgui::PanelSettingIdx utility);
         void updateOverlayState();
+        void updateAmbientReceivers();
 
         void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property) override;
         void timerCallback() override;
