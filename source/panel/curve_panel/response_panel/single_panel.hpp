@@ -44,15 +44,16 @@ namespace zlpanel {
 
     private:
         static constexpr size_t kNumPoints = 400;
-        // The band is the stained glass receiving the node light. Keep enough optical density
-        // that colour remains visible even when no band is selected; selection should change
-        // emphasis, not make the stained-glass material disappear from the graph.
-        static constexpr float kFillingAlpha = .168f;
-        static constexpr float kDynamicFillingAlpha = .185f;
+        // The reference uses the band itself as a clearly visible sheet of coloured glass.
+        // Earlier builds had the right hue but too little optical density, especially when no
+        // band was selected. Keep the material present at all times and let selection alter
+        // focus rather than whether the fill can be seen at all.
+        static constexpr float kFillingAlpha = .240f;
+        static constexpr float kDynamicFillingAlpha = .255f;
         static constexpr float kNotSelectedAlphaMultiplier = .50f;
         static constexpr float kBypassAlphaMultiplier = .75f;
         static constexpr float kDiffStereoAlphaMultiplier = .33333f;
-        static constexpr float kNoBandSelectedAlphaMultiplier = .90f;
+        static constexpr float kNoBandSelectedAlphaMultiplier = 1.0f;
         static constexpr float kThickMultiplier = 1.06f;
 
         PluginProcessor& p_ref_;
