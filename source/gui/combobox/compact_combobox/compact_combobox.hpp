@@ -49,6 +49,17 @@ namespace zlgui::combobox {
             setInterceptsMouseClicks(x, false);
         }
 
+        // Some Glass controls use CompactCombobox only as an invisible interaction/
+        // parameter host while drawing their own face in the parent component. Setting
+        // those wrappers to ~1% alpha used to leave the JUCE ComboBox label visible as
+        // a faint truncated string (for example "1...") above the custom slope chip.
+        // Keep the wrapper's requested alpha for hit-testing/layout, but completely
+        // suppress the inner JUCE face when the wrapper is intentionally near-invisible.
+        inline void setAlpha(const float alpha) {
+            juce::Component::setAlpha(alpha);
+            combo_box_.setAlpha(alpha <= .011f ? 0.f : 1.f);
+        }
+
         inline juce::ComboBox& getBox() {
             return combo_box_;
         }
