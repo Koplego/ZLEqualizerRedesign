@@ -2,10 +2,6 @@
 // This file is part of ZLEqualizer
 //
 // ZLEqualizer is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License Version 3 as published by the Free Software Foundation.
-//
-// ZLEqualizer is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License along with ZLEqualizer. If not, see <https://www.gnu.org/licenses/>.
 
 #include "background_panel.hpp"
 #include "../../../gui/glass_tokens.hpp"
@@ -32,89 +28,81 @@ namespace zlpanel {
             juce::Graphics::ScopedSaveState clip(g);
             g.reduceClipRegion(panel_clip);
 
-            // Locked to the approved screenshot: the graph is a medium-dark steel/blue
-            // pane, not near-black. It stays dark enough for the curves to glow, while
-            // retaining the clearly visible blue body seen in the reference.
-            juce::ColourGradient glass(juce::Colour(35, 73, 108), panel.getCentreX(), panel.getY(),
-                                       juce::Colour(18, 43, 69), panel.getCentreX(), panel.getBottom(), false);
-            glass.addColour(.42, juce::Colour(29, 66, 101));
-            glass.addColour(.78, juce::Colour(22, 50, 78));
-            g.setGradientFill(glass);
+            // Reference lock: use the actual broad colour field visible in the approved
+            // image as the graph material instead of a generic navy pane. This is opaque on
+            // purpose; later light pools and band illumination are layered on top of it.
+            juce::ColourGradient horizontal(juce::Colour(86, 99, 94), panel.getX(), panel.getCentreY(),
+                                            juce::Colour(46, 48, 91), panel.getRight(), panel.getCentreY(), false);
+            horizontal.addColour(.14, juce::Colour(78, 92, 91));
+            horizontal.addColour(.25, juce::Colour(42, 83, 105));
+            horizontal.addColour(.36, juce::Colour(38, 88, 109));
+            horizontal.addColour(.50, juce::Colour(31, 69, 107));
+            horizontal.addColour(.62, juce::Colour(35, 69, 111));
+            horizontal.addColour(.76, juce::Colour(35, 61, 96));
+            horizontal.addColour(.88, juce::Colour(48, 61, 107));
+            g.setGradientFill(horizontal);
             g.fillRect(panel.expanded(2.f));
 
-            // Broad colour transmission is deliberately obvious in the target. The left
-            // third is amber/olive, the middle crosses teal into blue and the right side
-            // carries a violet wash. These are background light fields, not band fills.
-            juce::ColourGradient transmitted(
-                juce::Colour(236, 186, 108).withAlpha(.115f), panel.getX(), panel.getCentreY(),
-                juce::Colour(160, 120, 239).withAlpha(.100f), panel.getRight(), panel.getCentreY(), false);
-            transmitted.addColour(.20, juce::Colour(80, 186, 177).withAlpha(.100f));
-            transmitted.addColour(.46, juce::Colour(69, 145, 219).withAlpha(.090f));
-            transmitted.addColour(.73, juce::Colour(91, 124, 221).withAlpha(.085f));
-            g.setGradientFill(transmitted);
+            // Match the reference's stronger vertical falloff: brighter / hazier at the top,
+            // considerably darker toward the frequency labels at the bottom.
+            juce::ColourGradient vertical(juce::Colour(126, 156, 179).withAlpha(.105f),
+                                          panel.getCentreX(), panel.getY(),
+                                          juce::Colour(3, 14, 28).withAlpha(.43f),
+                                          panel.getCentreX(), panel.getBottom(), false);
+            vertical.addColour(.40, juce::Colours::transparentBlack);
+            vertical.addColour(.74, juce::Colour(4, 17, 31).withAlpha(.16f));
+            g.setGradientFill(vertical);
             g.fillRect(panel);
 
-            juce::ColourGradient cool_light(
-                juce::Colour(91, 174, 231).withAlpha(.105f),
-                panel.getX() + panel.getWidth() * .47f,
-                panel.getY() + panel.getHeight() * .17f,
-                juce::Colours::transparentBlack,
-                panel.getX() + panel.getWidth() * .67f,
-                panel.getY() + panel.getHeight() * .78f,
-                true);
-            cool_light.addColour(.40, juce::Colour(69, 144, 207).withAlpha(.040f));
-            g.setGradientFill(cool_light);
+            // Large optical pools measured from the target image. They are deliberately
+            // much stronger than v1.8 because the reference visibly changes the graph's
+            // colour hundreds of pixels away from the control points.
+            juce::ColourGradient warm(juce::Colour(244, 193, 107).withAlpha(.34f),
+                                      panel.getX() + panel.getWidth() * .075f,
+                                      panel.getY() + panel.getHeight() * .36f,
+                                      juce::Colours::transparentBlack,
+                                      panel.getX() + panel.getWidth() * .27f,
+                                      panel.getY() + panel.getHeight() * .67f, true);
+            warm.addColour(.42, juce::Colour(218, 174, 92).withAlpha(.13f));
+            warm.addColour(.72, juce::Colour(188, 150, 79).withAlpha(.035f));
+            g.setGradientFill(warm);
             g.fillRect(panel);
 
-            juce::ColourGradient warm_light(
-                juce::Colour(246, 196, 116).withAlpha(.105f),
-                panel.getX() + panel.getWidth() * .075f,
-                panel.getY() + panel.getHeight() * .30f,
-                juce::Colours::transparentBlack,
-                panel.getX() + panel.getWidth() * .31f,
-                panel.getY() + panel.getHeight() * .78f,
-                true);
-            warm_light.addColour(.45, juce::Colour(211, 174, 100).withAlpha(.034f));
-            g.setGradientFill(warm_light);
+            juce::ColourGradient teal(juce::Colour(70, 205, 180).withAlpha(.20f),
+                                      panel.getX() + panel.getWidth() * .27f,
+                                      panel.getY() + panel.getHeight() * .53f,
+                                      juce::Colours::transparentBlack,
+                                      panel.getX() + panel.getWidth() * .48f,
+                                      panel.getY() + panel.getHeight() * .88f, true);
+            teal.addColour(.46, juce::Colour(62, 176, 163).withAlpha(.075f));
+            g.setGradientFill(teal);
             g.fillRect(panel);
 
-            juce::ColourGradient teal_light(
-                juce::Colour(68, 203, 180).withAlpha(.060f),
-                panel.getX() + panel.getWidth() * .28f,
-                panel.getY() + panel.getHeight() * .48f,
-                juce::Colours::transparentBlack,
-                panel.getX() + panel.getWidth() * .45f,
-                panel.getY() + panel.getHeight() * .88f,
-                true);
-            g.setGradientFill(teal_light);
+            juce::ColourGradient blue(juce::Colour(69, 145, 231).withAlpha(.22f),
+                                      panel.getX() + panel.getWidth() * .54f,
+                                      panel.getY() + panel.getHeight() * .29f,
+                                      juce::Colours::transparentBlack,
+                                      panel.getX() + panel.getWidth() * .72f,
+                                      panel.getY() + panel.getHeight() * .73f, true);
+            blue.addColour(.45, juce::Colour(58, 122, 204).withAlpha(.080f));
+            g.setGradientFill(blue);
             g.fillRect(panel);
 
-            juce::ColourGradient violet_light(
-                juce::Colour(164, 121, 240).withAlpha(.085f),
-                panel.getX() + panel.getWidth() * .88f,
-                panel.getY() + panel.getHeight() * .43f,
-                juce::Colours::transparentBlack,
-                panel.getX() + panel.getWidth() * .70f,
-                panel.getY() + panel.getHeight() * .84f,
-                true);
-            g.setGradientFill(violet_light);
-            g.fillRect(panel);
-
-            // Only a very slight edge falloff is present in the screenshot.
-            juce::ColourGradient edge_absorption(
-                juce::Colour(3, 14, 25).withAlpha(.035f), panel.getX(), panel.getCentreY(),
-                juce::Colours::transparentBlack, panel.getX() + panel.getWidth() * .15f,
-                panel.getCentreY(), false);
-            g.setGradientFill(edge_absorption);
+            juce::ColourGradient violet(juce::Colour(161, 118, 238).withAlpha(.22f),
+                                        panel.getX() + panel.getWidth() * .88f,
+                                        panel.getY() + panel.getHeight() * .43f,
+                                        juce::Colours::transparentBlack,
+                                        panel.getX() + panel.getWidth() * .69f,
+                                        panel.getY() + panel.getHeight() * .82f, true);
+            violet.addColour(.46, juce::Colour(132, 103, 214).withAlpha(.085f));
+            g.setGradientFill(violet);
             g.fillRect(panel);
         }
 
-        g.setColour(zlgui::glass::rim().withMultipliedAlpha(.66f));
+        g.setColour(juce::Colour(220, 238, 248).withAlpha(.12f));
         g.drawRoundedRectangle(panel, radius, .72f);
 
-        if (freq_max_ <= 10.0) {
-            return;
-        }
+        if (freq_max_ <= 10.0) return;
         drawFreqs(g);
         drawDBs(g);
     }
@@ -140,7 +128,7 @@ namespace zlpanel {
                                 0.f, thickness * .50f, bound.getHeight());
             }
         }
-        g.setColour(zlgui::glass::gridMinor().withMultipliedAlpha(1.10f));
+        g.setColour(juce::Colour(210, 232, 247).withAlpha(.030f));
         g.fillRectList(minor_rects);
 
         juce::RectangleList<float> rect_list;
@@ -148,27 +136,13 @@ namespace zlpanel {
             const auto p = std::log(static_cast<double>(freq) * .1) / std::log(freq_max_ * .1);
             const auto rect = juce::Rectangle(static_cast<float>(p) * bound.getWidth() - thickness * .5f, 0.f,
                                               thickness, bound.getHeight());
-            if (rect.getRight() > full_width) {
-                break;
-            }
+            if (rect.getRight() > full_width) break;
             rect_list.add(rect);
         }
         g.setColour(grid_colour_);
         g.fillRectList(rect_list);
 
-        juce::ColourGradient edge_fade;
-        edge_fade.point1 = juce::Point<float>(bound.getX(), bound.getY());
-        edge_fade.point2 = juce::Point<float>(bound.getX(), bound.getBottom());
-        edge_fade.isRadial = false;
-        edge_fade.clearColours();
-        edge_fade.addColour(0.0, juce::Colour(10, 28, 45).withAlpha(.060f));
-        edge_fade.addColour(.12, juce::Colours::transparentBlack);
-        edge_fade.addColour(.86, juce::Colours::transparentBlack);
-        edge_fade.addColour(1.0, juce::Colour(7, 22, 38).withAlpha(.080f));
-        g.setGradientFill(edge_fade);
-        g.fillRect(getLocalBounds());
-
-        g.setColour(zlgui::glass::textTertiary().withMultipliedAlpha(.96f));
+        g.setColour(juce::Colour(232, 241, 247).withAlpha(.39f));
         g.setFont(base_.getFontSize() * .98f);
         const auto label_y0 = bound.getBottom() - base_.getFontSize() * 1.15f;
         const auto label_height = base_.getFontSize() * 1.1f;
@@ -180,9 +154,7 @@ namespace zlpanel {
             const auto p = std::log(static_cast<double>(freq) * .1) / std::log(freq_max_ * .1);
             const auto rect = juce::Rectangle(static_cast<float>(p) * bound.getWidth() - label_width * .5f, label_y0,
                                               label_width, label_height);
-            if (rect.getRight() > full_width) {
-                break;
-            }
+            if (rect.getRight() > full_width) break;
             g.drawText(label, rect, juce::Justification::centredBottom, false);
         }
     }
@@ -193,7 +165,6 @@ namespace zlpanel {
         auto y0 = base_.getFontSize() - thickness * .5f;
         const auto unit_height = (bound.getHeight() - 2.f * base_.getFontSize() * kDraggerScale
             - static_cast<float>(getBottomAreaHeight(base_.getFontSize()))) / 6.f;
-
         juce::RectangleList<float> rect_list;
         while (y0 + thickness < bound.getHeight() - base_.getFontSize() * 3.f) {
             rect_list.add(0.f, y0, bound.getWidth(), thickness);
@@ -204,6 +175,6 @@ namespace zlpanel {
     }
 
     void BackgroundPanel::lookAndFeelChanged() {
-        grid_colour_ = zlgui::glass::gridMajor().withMultipliedAlpha(1.04f);
+        grid_colour_ = juce::Colour(210, 232, 247).withAlpha(.052f);
     }
 }
