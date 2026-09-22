@@ -43,16 +43,18 @@ namespace zlpanel {
             const auto transparent = colour.withAlpha(0.f);
             juce::ColourGradient gradient(transparent, centre_x - radius, 0.f,
                                           transparent, centre_x + radius, 0.f, false);
-            gradient.addColour(.18, colour.withAlpha(alpha * .02f));
-            gradient.addColour(.33, colour.withAlpha(alpha * .14f));
-            gradient.addColour(.44, colour.interpolatedWith(juce::Colours::white, white_mix * .46f)
-                                           .withAlpha(alpha * .48f));
+            gradient.addColour(.08, colour.withAlpha(alpha * .008f));
+            gradient.addColour(.22, colour.withAlpha(alpha * .045f));
+            gradient.addColour(.36, colour.withAlpha(alpha * .18f));
+            gradient.addColour(.46, colour.interpolatedWith(juce::Colours::white, white_mix * .40f)
+                                           .withAlpha(alpha * .52f));
             gradient.addColour(.50, colour.interpolatedWith(juce::Colours::white, white_mix)
                                            .withAlpha(alpha));
-            gradient.addColour(.56, colour.interpolatedWith(juce::Colours::white, white_mix * .46f)
-                                           .withAlpha(alpha * .48f));
-            gradient.addColour(.67, colour.withAlpha(alpha * .14f));
-            gradient.addColour(.82, colour.withAlpha(alpha * .02f));
+            gradient.addColour(.54, colour.interpolatedWith(juce::Colours::white, white_mix * .40f)
+                                           .withAlpha(alpha * .52f));
+            gradient.addColour(.64, colour.withAlpha(alpha * .18f));
+            gradient.addColour(.78, colour.withAlpha(alpha * .045f));
+            gradient.addColour(.92, colour.withAlpha(alpha * .008f));
             return gradient;
         }
 
@@ -88,18 +90,19 @@ namespace zlpanel {
                                                         juce::PathStrokeType::rounded));
             }
 
-            // Stained-glass response: colour spreads wider than white. The outer pass is
-            // a soft coloured reflection; the thin core catches only a small pale lift.
+            // The selected node lights a long section of the blended response. The glow is
+            // wider than before but slightly lower-energy, so it reads as reflection through
+            // glass rather than a bright strip pasted onto the line.
             if (node_light_x >= 0.f && node_light_radius > 1.f && node_light_colour.getAlpha() > 0) {
                 g.setGradientFill(makeNodeLineLight(node_light_x, node_light_radius,
-                                                    node_light_colour, .22f * alpha, .24f));
-                g.strokePath(path, juce::PathStrokeType(thickness * 2.45f,
+                                                    node_light_colour, .18f * alpha, .18f));
+                g.strokePath(path, juce::PathStrokeType(thickness * 2.55f,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
 
-                g.setGradientFill(makeNodeLineLight(node_light_x, node_light_radius * .63f,
-                                                    node_light_colour, .68f * alpha, .48f));
-                g.strokePath(path, juce::PathStrokeType(thickness * 1.07f,
+                g.setGradientFill(makeNodeLineLight(node_light_x, node_light_radius * .58f,
+                                                    node_light_colour, .62f * alpha, .42f));
+                g.strokePath(path, juce::PathStrokeType(thickness * 1.06f,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
             }
@@ -123,7 +126,7 @@ namespace zlpanel {
                     const auto portion = static_cast<float>(kFFTSizeOverWidth) * std::log(freq * .1f) / denominator;
                     node_light_x = juce::jlimit(0.f, static_cast<float>(getWidth()),
                                                static_cast<float>(getWidth()) * portion);
-                    node_light_radius = juce::jmax(base_.getFontSize() * 5.25f, 60.f);
+                    node_light_radius = juce::jmax(base_.getFontSize() * 7.40f, 86.f);
                     node_light_colour = base_.getColourMap1(selected_band);
                 }
             }
@@ -162,9 +165,7 @@ namespace zlpanel {
                        const std::span<size_t> on_indices,
                        const std::span<float> xs, float k, float b,
                        std::array<zldsp::vector::aligned_vector<float>, zlp::kBandNum>& dynamic_mags) {
-        if (!to_update) {
-            return;
-        }
+        if (!to_update) return;
 
         auto& path{paths_[lr].getWriter()};
         path.clear();
@@ -199,9 +200,7 @@ namespace zlpanel {
             }
             for (; i < temp_db_.size(); ++i) {
                 float sum = 0.0f;
-                for (const size_t on_index : on_indices) {
-                    sum += dynamic_mags[on_index][i];
-                }
+                for (const size_t on_index : on_indices) sum += dynamic_mags[on_index][i];
                 temp_db_[i] = std::fma(k, sum, b);
             }
         }
