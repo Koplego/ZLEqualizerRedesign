@@ -1,11 +1,5 @@
 // Copyright (C) 2026 - zsliu98
 // This file is part of ZLEqualizer
-//
-// ZLEqualizer is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License Version 3 as published by the Free Software Foundation.
-//
-// ZLEqualizer is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License along with ZLEqualizer. If not, see <https://www.gnu.org/licenses/>.
 
 #include "sum_panel.hpp"
 #include "../../../gui/glass_tokens.hpp"
@@ -20,8 +14,7 @@ namespace zlpanel {
     }
 
     namespace {
-        juce::ColourGradient makeResponseGradient(const SumPanel::GradientData& data,
-                                                  const float alpha) {
+        juce::ColourGradient makeResponseGradient(const SumPanel::GradientData& data, const float alpha) {
             juce::ColourGradient gradient(data.colours.front().withMultipliedAlpha(alpha),
                                            data.xs.front(), 0.f,
                                            data.colours.back().withMultipliedAlpha(alpha),
@@ -41,28 +34,31 @@ namespace zlpanel {
             if (path.isEmpty()) return;
 
             if (!data.valid || data.xs.back() <= data.xs.front() + 1.f) {
-                g.setColour(zlgui::glass::neutralResponse().withAlpha(.040f * alpha));
-                g.strokePath(path, juce::PathStrokeType(thickness * 2.1f,
+                g.setColour(zlgui::glass::neutralResponse().withAlpha(.10f * alpha));
+                g.strokePath(path, juce::PathStrokeType(thickness * 3.4f,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
-                g.setColour(zlgui::glass::neutralResponse().withAlpha(.91f * alpha));
+                g.setColour(zlgui::glass::neutralResponse().withAlpha(.26f * alpha));
+                g.strokePath(path, juce::PathStrokeType(thickness * 1.8f,
+                                                        juce::PathStrokeType::curved,
+                                                        juce::PathStrokeType::rounded));
+                g.setColour(zlgui::glass::neutralResponse().withAlpha(.98f * alpha));
                 g.strokePath(path, juce::PathStrokeType(thickness,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
                 return;
             }
 
-            // The final response is the sharp luminous thread that ties all bands together.
-            // Keep its centre extremely crisp, with only a restrained optical bloom.
-            g.setGradientFill(makeResponseGradient(data, .030f * alpha));
-            g.strokePath(path, juce::PathStrokeType(thickness * 3.05f,
+            // The target's combined response is a bright, continuous luminous thread with
+            // a visible soft halo. v1.8 was too restrained and read like ordinary vector UI.
+            g.setGradientFill(makeResponseGradient(data, .095f * alpha));
+            g.strokePath(path, juce::PathStrokeType(thickness * 3.65f,
                                                     juce::PathStrokeType::curved,
                                                     juce::PathStrokeType::rounded));
-            g.setGradientFill(makeResponseGradient(data, .105f * alpha));
-            g.strokePath(path, juce::PathStrokeType(thickness * 1.55f,
+            g.setGradientFill(makeResponseGradient(data, .24f * alpha));
+            g.strokePath(path, juce::PathStrokeType(thickness * 1.85f,
                                                     juce::PathStrokeType::curved,
                                                     juce::PathStrokeType::rounded));
-
             g.setGradientFill(makeResponseGradient(data, 1.0f * alpha));
             g.strokePath(path, juce::PathStrokeType(thickness,
                                                     juce::PathStrokeType::curved,
@@ -76,9 +72,8 @@ namespace zlpanel {
             paths_[i].pull();
             gradients_[i].pull();
             const auto& path{paths_[i].getReader()};
-            if (!path.isEmpty() && is_same_stereo_[i]) {
+            if (!path.isEmpty() && is_same_stereo_[i])
                 strokeBlendedResponse(g, path, gradients_[i].getReader(), curve_thickness_, 1.f);
-            }
         }
     }
 
@@ -88,28 +83,22 @@ namespace zlpanel {
             paths_[i].pull();
             gradients_[i].pull();
             const auto& path{paths_[i].getReader()};
-            if (!path.isEmpty() && !is_same_stereo_[i]) {
+            if (!path.isEmpty() && !is_same_stereo_[i])
                 strokeBlendedResponse(g, path, gradients_[i].getReader(), curve_thickness_,
                                       kDiffStereoAlphaMultiplier);
-            }
         }
     }
 
-    void SumPanel::resized() {
-        lookAndFeelChanged();
-    }
+    void SumPanel::resized() { lookAndFeelChanged(); }
 
     void SumPanel::run(const size_t lr, const bool to_update, const bool is_not_off,
                        const std::span<size_t> on_indices,
                        const std::span<float> xs, float k, float b,
                        std::array<zldsp::vector::aligned_vector<float>, zlp::kBandNum>& dynamic_mags) {
-        if (!to_update) {
-            return;
-        }
+        if (!to_update) return;
 
         auto& path{paths_[lr].getWriter()};
         path.clear();
-
         if (on_indices.empty()) {
             if (is_not_off) {
                 path.startNewSubPath(xs[0], b);
@@ -126,7 +115,6 @@ namespace zlpanel {
             namespace hn = hwy::HWY_NAMESPACE;
             static constexpr hn::ScalableTag<float> d;
             static constexpr size_t lanes = hn::MaxLanes(d);
-
             const auto vk = hn::Set(d, k);
             const auto vb = hn::Set(d, b);
             size_t i = 0;
@@ -140,14 +128,11 @@ namespace zlpanel {
             }
             for (; i < temp_db_.size(); ++i) {
                 float sum = 0.0f;
-                for (const size_t on_index : on_indices) {
-                    sum += dynamic_mags[on_index][i];
-                }
+                for (const size_t on_index : on_indices) sum += dynamic_mags[on_index][i];
                 temp_db_[i] = std::fma(k, sum, b);
             }
         }
 
-        // Build the response colour field from each band's actual local contribution.
         auto& gradient = gradients_[lr].getWriter();
         gradient.valid = !on_indices.empty() && xs.size() >= kGradientStops;
         if (gradient.valid) {
@@ -156,7 +141,6 @@ namespace zlpanel {
                 const auto idx = juce::jmin(xs.size() - 1,
                     (stop * (xs.size() - 1)) / (kGradientStops - 1));
                 gradient.xs[stop] = xs[idx];
-
                 float total = 0.f, rr = 0.f, gg = 0.f, bb = 0.f;
                 for (const auto band : on_indices) {
                     const auto influence = std::pow(std::abs(dynamic_mags[band][idx]), .72f);
@@ -167,12 +151,11 @@ namespace zlpanel {
                     bb += c.getFloatBlue() * influence;
                     total += influence;
                 }
-
                 juce::Colour mixed = neutral;
                 if (total > 1.0e-4f) {
                     mixed = juce::Colour::fromFloatRGBA(rr / total, gg / total, bb / total, 1.f)
-                                .interpolatedWith(juce::Colours::white, .065f);
-                    const auto tint = juce::jlimit(.86f, .995f, .89f + total * .045f);
+                                .interpolatedWith(juce::Colours::white, .10f);
+                    const auto tint = juce::jlimit(.88f, 1.f, .91f + total * .042f);
                     mixed = neutral.interpolatedWith(mixed, tint);
                 }
                 gradient.colours[stop] = mixed.withAlpha(1.f);
@@ -190,6 +173,6 @@ namespace zlpanel {
     }
 
     void SumPanel::lookAndFeelChanged() {
-        curve_thickness_ = base_.getFontSize() * .092f * base_.getSumEQCurveThickness();
+        curve_thickness_ = base_.getFontSize() * .112f * base_.getSumEQCurveThickness();
     }
 }
