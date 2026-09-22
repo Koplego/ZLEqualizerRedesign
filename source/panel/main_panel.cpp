@@ -75,36 +75,60 @@ namespace zlpanel {
             juce::Graphics::ScopedSaveState clip(g);
             g.reduceClipRegion(shell_clip);
 
-            juce::ColourGradient body(juce::Colour(42, 65, 83), shell.getCentreX(), shell.getY(),
-                                      juce::Colour(9, 25, 39), shell.getCentreX(), shell.getBottom(), false);
-            body.addColour(.38, juce::Colour(29, 53, 71));
-            body.addColour(.74, juce::Colour(15, 35, 51));
+            // The reference is dark, saturated blue glass rather than pale frosted glass.
+            // This shell remains visible through the translucent header and footer.
+            juce::ColourGradient body(juce::Colour(36, 68, 93), shell.getCentreX(), shell.getY(),
+                                      juce::Colour(7, 23, 39), shell.getCentreX(), shell.getBottom(), false);
+            body.addColour(.36, juce::Colour(24, 52, 75));
+            body.addColour(.72, juce::Colour(12, 34, 53));
             g.setGradientFill(body);
             g.fillRect(shell.expanded(2.f));
 
-            // The shell carries the glass impression with broad environmental light only.
-            // Visible ribbons/caustics were removed because the mockup keeps the UI plane
-            // calm and lets controls and EQ colours provide the sharp visual information.
+            // Broad transmitted colour is part of the reference, but it must behave like
+            // light travelling through dark glass, not an opaque rainbow layer.  Keep it
+            // saturated and low-alpha so the UI stays blue while receiving warm/cool hints.
+            juce::ColourGradient transmitted(
+                juce::Colour(235, 183, 105).withAlpha(.070f),
+                shell.getX(), shell.getCentreY(),
+                juce::Colour(157, 119, 235).withAlpha(.065f),
+                shell.getRight(), shell.getCentreY(), false);
+            transmitted.addColour(.20, juce::Colour(77, 182, 177).withAlpha(.070f));
+            transmitted.addColour(.43, juce::Colour(71, 146, 220).withAlpha(.055f));
+            transmitted.addColour(.68, juce::Colour(69, 119, 207).withAlpha(.048f));
+            g.setGradientFill(transmitted);
+            g.fillRect(shell);
+
             juce::ColourGradient cool_bloom(
-                juce::Colour(187, 222, 246).withAlpha(.105f),
-                shell.getX() + shell.getWidth() * .16f,
-                shell.getY() + shell.getHeight() * .04f,
+                juce::Colour(88, 174, 226).withAlpha(.060f),
+                shell.getX() + shell.getWidth() * .34f,
+                shell.getY() + shell.getHeight() * .06f,
                 juce::Colours::transparentBlack,
-                shell.getX() + shell.getWidth() * .52f,
-                shell.getY() + shell.getHeight() * .66f,
+                shell.getX() + shell.getWidth() * .58f,
+                shell.getY() + shell.getHeight() * .62f,
                 true);
             g.setGradientFill(cool_bloom);
             g.fillRect(shell);
 
             juce::ColourGradient warm_bloom(
-                juce::Colour(226, 204, 180).withAlpha(.044f),
-                shell.getX() + shell.getWidth() * .78f,
-                shell.getY() + shell.getHeight() * .17f,
+                juce::Colour(242, 192, 112).withAlpha(.042f),
+                shell.getX() + shell.getWidth() * .06f,
+                shell.getY() + shell.getHeight() * .20f,
                 juce::Colours::transparentBlack,
-                shell.getX() + shell.getWidth() * .54f,
-                shell.getBottom(),
+                shell.getX() + shell.getWidth() * .30f,
+                shell.getY() + shell.getHeight() * .72f,
                 true);
             g.setGradientFill(warm_bloom);
+            g.fillRect(shell);
+
+            juce::ColourGradient violet_bloom(
+                juce::Colour(159, 120, 236).withAlpha(.038f),
+                shell.getX() + shell.getWidth() * .94f,
+                shell.getY() + shell.getHeight() * .28f,
+                juce::Colours::transparentBlack,
+                shell.getX() + shell.getWidth() * .73f,
+                shell.getY() + shell.getHeight() * .76f,
+                true);
+            g.setGradientFill(violet_bloom);
             g.fillRect(shell);
         }
 
@@ -118,8 +142,8 @@ namespace zlpanel {
         top_specular.setHeight(1.f);
         juce::ColourGradient top_line(juce::Colours::transparentWhite, top_specular.getX(), top_specular.getY(),
                                       juce::Colours::transparentWhite, top_specular.getRight(), top_specular.getY(), false);
-        top_line.addColour(.20, juce::Colour(255, 255, 255).withAlpha(.19f));
-        top_line.addColour(.64, juce::Colour(202, 232, 250).withAlpha(.075f));
+        top_line.addColour(.20, juce::Colour(255, 255, 255).withAlpha(.16f));
+        top_line.addColour(.64, juce::Colour(188, 225, 249).withAlpha(.065f));
         g.setGradientFill(top_line);
         g.fillRect(top_specular);
     }
