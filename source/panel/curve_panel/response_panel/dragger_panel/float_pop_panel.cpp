@@ -78,7 +78,7 @@ namespace zlpanel {
         slope_box_.setScrollEnabled(true);
 
         auto setup = [this](auto& slider) {
-            slider.setFontScale(.86f);
+            slider.setFontScale(.72f);
             slider.getSlider().setSliderSnapsToMousePosition(false);
             slider.setBufferedToImage(true);
             addAndMakeVisible(slider);
@@ -107,7 +107,7 @@ namespace zlpanel {
 
     void FloatPopPanel::drawFilterGlyph(juce::Graphics& g, juce::Rectangle<float> r,
                                         const int type, const juce::Colour colour) const {
-        r = r.reduced(r.getHeight() * .20f);
+        r = r.reduced(r.getHeight() * .22f);
         const auto y = r.getCentreY();
         juce::Path p;
         switch (type) {
@@ -149,123 +149,134 @@ namespace zlpanel {
                 p.startNewSubPath(r.getX(), y); p.lineTo(r.getRight(), y); break;
         }
         g.setColour(colour);
-        g.strokePath(p, juce::PathStrokeType(1.2f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        g.strokePath(p, juce::PathStrokeType(1.15f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     }
 
     void FloatPopPanel::drawQuickActionGlyphs(juce::Graphics& g) const {
         const auto primary = zlgui::glass::textPrimary();
 
-        auto dyn = dynamic_button_.getBounds().toFloat().reduced(dynamic_button_.getHeight() * .27f);
-        const auto dynActive = dynamic_button_.getButton().getToggleState();
-        g.setColour(primary.withAlpha(dynActive ? .95f : .48f));
+        auto dyn = dynamic_button_.getBounds().toFloat().reduced(static_cast<float>(dynamic_button_.getHeight()) * .25f);
+        const auto dynActive = dynamic_button_.getToggleState();
+        g.setColour(primary.withAlpha(dynActive ? .95f : .46f));
         juce::Path dp;
         dp.startNewSubPath(dyn.getX(), dyn.getCentreY() + dyn.getHeight() * .18f);
         dp.cubicTo(dyn.getX() + dyn.getWidth() * .25f, dyn.getBottom(),
-                   dyn.getX() + dyn.getWidth() * .32f, dyn.getY(),
-                   dyn.getCentreX(), dyn.getCentreY());
+                   dyn.getX() + dyn.getWidth() * .32f, dyn.getY(), dyn.getCentreX(), dyn.getCentreY());
         dp.cubicTo(dyn.getX() + dyn.getWidth() * .68f, dyn.getBottom(),
-                   dyn.getX() + dyn.getWidth() * .75f, dyn.getY(),
-                   dyn.getRight(), dyn.getCentreY() - dyn.getHeight() * .18f);
-        g.strokePath(dp, juce::PathStrokeType(1.35f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-        if (dynActive) {
-            g.drawLine(dyn.getX(), dyn.getBottom() - .5f, dyn.getRight(), dyn.getBottom() - .5f, 1.f);
-        }
+                   dyn.getX() + dyn.getWidth() * .75f, dyn.getY(), dyn.getRight(), dyn.getCentreY() - dyn.getHeight() * .18f);
+        g.strokePath(dp, juce::PathStrokeType(1.25f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        if (dynActive) g.drawLine(dyn.getX(), dyn.getBottom() - .5f, dyn.getRight(), dyn.getBottom() - .5f, .9f);
 
-        auto solo = solo_button_.getBounds().toFloat().reduced(solo_button_.getHeight() * .28f);
-        const auto soloActive = solo_button_.getButton().getToggleState();
-        g.setColour(primary.withAlpha(soloActive ? .95f : .48f));
+        auto solo = solo_button_.getBounds().toFloat().reduced(static_cast<float>(solo_button_.getHeight()) * .26f);
+        const auto soloActive = solo_button_.getToggleState();
+        g.setColour(primary.withAlpha(soloActive ? .95f : .46f));
         juce::Path hp;
         hp.addCentredArc(solo.getCentreX(), solo.getCentreY() + solo.getHeight() * .08f,
-                         solo.getWidth() * .42f, solo.getHeight() * .42f,
-                         0.f, 4.02f, 5.40f, true);
-        g.strokePath(hp, juce::PathStrokeType(1.35f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+                         solo.getWidth() * .42f, solo.getHeight() * .42f, 0.f, 4.02f, 5.40f, true);
+        g.strokePath(hp, juce::PathStrokeType(1.25f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
         const auto padW = solo.getWidth() * .16f;
         const auto padH = solo.getHeight() * .38f;
-        g.drawRoundedRectangle({solo.getX(), solo.getCentreY(), padW, padH}, padW * .4f, 1.2f);
-        g.drawRoundedRectangle({solo.getRight() - padW, solo.getCentreY(), padW, padH}, padW * .4f, 1.2f);
+        g.drawRoundedRectangle({solo.getX(), solo.getCentreY(), padW, padH}, padW * .4f, 1.1f);
+        g.drawRoundedRectangle({solo.getRight() - padW, solo.getCentreY(), padW, padH}, padW * .4f, 1.1f);
     }
 
     void FloatPopPanel::paint(juce::Graphics& g) {
         static constexpr std::array<const char*, 11> names{
             "Bell", "Low Shelf", "High Cut", "High Shelf", "Low Cut", "Notch",
             "Band Pass", "Tilt", "Flat Tilt", "All Pass", "Gain"};
+
         auto card = getLocalBounds().toFloat().reduced(.5f);
-        zlgui::glass::fillGlassSurface(g, card, juce::jmax(10.f, card.getHeight() * .18f), .095f, .15f, .17f);
+        zlgui::glass::fillGlassSurface(g, card, juce::jmax(9.f, card.getHeight() * .20f), .085f, .135f, .15f);
 
         if (const auto band = base_.getSelectedBand(); band < zlp::kBandNum) {
             const auto accent = base_.getColourMap1(band);
-            auto glint = card.reduced(base_.getFontSize() * .72f, 0.f); glint.setHeight(1.f);
+            auto glint = card.reduced(base_.getFontSize() * .58f, 0.f);
+            glint.setHeight(1.f);
             juce::ColourGradient grad(accent.withAlpha(.0f), glint.getX(), glint.getY(),
-                                      accent.interpolatedWith(juce::Colours::white, .30f).withAlpha(.42f),
+                                      accent.interpolatedWith(juce::Colours::white, .30f).withAlpha(.36f),
                                       glint.getCentreX(), glint.getY(), false);
-            grad.addColour(.86, accent.withAlpha(.10f));
-            g.setGradientFill(grad); g.fillRoundedRectangle(glint, .5f);
+            grad.addColour(.86, accent.withAlpha(.08f));
+            g.setGradientFill(grad);
+            g.fillRoundedRectangle(glint, .5f);
         }
 
         const auto type = ftype_box_.getBox().getSelectedItemIndex();
-        auto typePill = ftype_box_.getBounds().getUnion(filter_name_bound_).toFloat().expanded(1.f, .5f);
-        zlgui::glass::fillGlassSurface(g, typePill, typePill.getHeight() * .5f, .05f, .085f, .095f);
-        drawFilterGlyph(g, ftype_box_.getBounds().toFloat(), type, zlgui::glass::textPrimary().withAlpha(.88f));
+        const auto typePill = ftype_box_.getBounds().getUnion(filter_name_bound_).toFloat().expanded(.5f, .2f);
+        zlgui::glass::fillGlassSurface(g, typePill, typePill.getHeight() * .5f, .045f, .075f, .085f);
+        drawFilterGlyph(g, ftype_box_.getBounds().toFloat(), type, zlgui::glass::textPrimary().withAlpha(.86f));
         if (type >= 0 && type < static_cast<int>(names.size())) {
-            g.setColour(zlgui::glass::textPrimary().withAlpha(.92f));
-            g.setFont(juce::FontOptions(base_.getFontSize() * .78f));
-            g.drawText(names[static_cast<size_t>(type)], filter_name_bound_, juce::Justification::centredLeft, false);
+            g.setColour(zlgui::glass::textPrimary().withAlpha(.91f));
+            g.setFont(juce::FontOptions(base_.getFontSize() * .68f));
+            g.drawFittedText(names[static_cast<size_t>(type)], filter_name_bound_, juce::Justification::centredLeft, 1);
         }
 
         if (slope_supported_ && !slope_name_bound_.isEmpty()) {
-            auto slopePill = slope_name_bound_.toFloat().reduced(.5f);
-            zlgui::glass::fillGlassSurface(g, slopePill, slopePill.getHeight() * .5f, .04f, .075f, .085f);
+            auto slopePill = slope_name_bound_.toFloat().reduced(.35f);
+            zlgui::glass::fillGlassSurface(g, slopePill, slopePill.getHeight() * .5f, .035f, .065f, .075f);
             const auto idx = slope_box_.getBox().getSelectedItemIndex();
             const auto label = idx >= 0 && idx < static_cast<int>(zlp::POrder::kChoices.size())
                 ? zlp::POrder::kChoices[static_cast<size_t>(idx)] : juce::String{};
-            g.setColour(zlgui::glass::textSecondary().withAlpha(.86f));
-            g.setFont(juce::FontOptions(base_.getFontSize() * .62f));
+            g.setColour(zlgui::glass::textSecondary().withAlpha(.83f));
+            g.setFont(juce::FontOptions(base_.getFontSize() * .53f));
             g.drawFittedText(label, slope_name_bound_, juce::Justification::centred, 1);
         }
 
         for (const auto& r : value_bounds_) {
             if (r.isEmpty()) continue;
-            auto cell = r.toFloat().reduced(.5f);
-            g.setColour(juce::Colour(228, 243, 255).withAlpha(.035f)); g.fillRoundedRectangle(cell, cell.getHeight() * .34f);
-            g.setColour(zlgui::glass::rim().withMultipliedAlpha(.16f)); g.drawRoundedRectangle(cell, cell.getHeight() * .34f, .65f);
+            auto cell = r.toFloat().reduced(.35f);
+            g.setColour(juce::Colour(228, 243, 255).withAlpha(.028f));
+            g.fillRoundedRectangle(cell, cell.getHeight() * .34f);
+            g.setColour(zlgui::glass::rim().withMultipliedAlpha(.13f));
+            g.drawRoundedRectangle(cell, cell.getHeight() * .34f, .55f);
         }
 
         drawQuickActionGlyphs(g);
 
-        auto power = bypass_button_.getBounds().toFloat().reduced(bypass_button_.getHeight() * .28f);
+        auto power = bypass_button_.getBounds().toFloat().reduced(static_cast<float>(bypass_button_.getHeight()) * .26f);
         g.setColour(zlgui::glass::textPrimary().withAlpha(bypass_button_.getToggleState() ? .92f : .40f));
         juce::Path pp;
-        pp.addCentredArc(power.getCentreX(), power.getCentreY(), power.getWidth()*.5f, power.getHeight()*.5f, 0.f, .72f, 5.56f, true);
-        g.strokePath(pp, juce::PathStrokeType(1.35f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-        g.drawLine(power.getCentreX(), power.getY(), power.getCentreX(), power.getCentreY(), 1.35f);
+        pp.addCentredArc(power.getCentreX(), power.getCentreY(), power.getWidth()*.5f, power.getHeight()*.5f,
+                         0.f, .72f, 5.56f, true);
+        g.strokePath(pp, juce::PathStrokeType(1.25f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        g.drawLine(power.getCentreX(), power.getY(), power.getCentreX(), power.getCentreY(), 1.25f);
     }
 
     void FloatPopPanel::resized() {
-        const auto padding = getPaddingSize(base_.getFontSize());
-        const auto button = getButtonSize(base_.getFontSize());
-        auto b = getLocalBounds().reduced(padding + padding/2, padding + padding/2);
-        auto header = b.removeFromTop(button);
-        ftype_box_.setBounds(header.removeFromLeft(button));
-        filter_name_bound_ = header.removeFromLeft(juce::jmax(button*2, juce::roundToInt(base_.getFontSize()*4.2f)));
-        bypass_button_.setBounds(header.removeFromRight(button));
-        solo_button_.setBounds(header.removeFromRight(button));
-        dynamic_button_.setBounds(header.removeFromRight(button));
-        header.removeFromRight(juce::jmax(2, padding/4));
-        slope_name_bound_ = header.removeFromRight(juce::jmin(juce::jmax(button*2, juce::roundToInt(base_.getFontSize()*4.4f)), header.getWidth()));
-        slope_box_.setBounds(slope_name_bound_); slope_box_.setVisible(slope_supported_);
+        const auto font = base_.getFontSize();
+        const auto padding = juce::jmax(4, juce::roundToInt(font * .30f));
+        const auto rowH = juce::jmax(20, juce::roundToInt(font * 1.42f));
+        const auto gap = juce::jmax(2, juce::roundToInt(font * .20f));
 
-        b.removeFromTop(juce::jmax(2, padding/3));
-        auto values = b.removeFromTop(button);
-        const auto gap = juce::jmax(2, padding/3);
-        const auto cell = (values.getWidth() - 2*gap) / 3;
+        auto b = getLocalBounds().reduced(padding);
+        auto header = b.removeFromTop(rowH);
+
+        ftype_box_.setBounds(header.removeFromLeft(rowH));
+        filter_name_bound_ = header.removeFromLeft(juce::roundToInt(font * 3.45f));
+
+        bypass_button_.setBounds(header.removeFromRight(rowH));
+        solo_button_.setBounds(header.removeFromRight(rowH));
+        dynamic_button_.setBounds(header.removeFromRight(rowH));
+        header.removeFromRight(gap);
+
+        const auto slopeW = juce::jmin(juce::roundToInt(font * 3.35f), header.getWidth());
+        slope_name_bound_ = header.removeFromRight(slopeW);
+        slope_box_.setBounds(slope_name_bound_);
+        slope_box_.setVisible(slope_supported_);
+
+        b.removeFromTop(gap);
+        auto values = b.removeFromTop(rowH);
+        const auto cell = juce::jmax(1, (values.getWidth() - 2 * gap) / 3);
         value_bounds_[0] = values.removeFromLeft(cell); values.removeFromLeft(gap);
         value_bounds_[1] = values.removeFromLeft(cell); values.removeFromLeft(gap);
         value_bounds_[2] = values;
-        freq_slider_.setBounds(value_bounds_[0]); gain_slider_.setBounds(value_bounds_[1]); q_slider_.setBounds(value_bounds_[2]);
+        freq_slider_.setBounds(value_bounds_[0]);
+        gain_slider_.setBounds(value_bounds_[1]);
+        q_slider_.setBounds(value_bounds_[2]);
     }
 
     void FloatPopPanel::mouseUp(const juce::MouseEvent& event) {
-        if (filter_name_bound_.contains(event.getPosition())) ftype_box_.getBox().showPopup();
+        const auto typeArea = ftype_box_.getBounds().getUnion(filter_name_bound_);
+        if (typeArea.contains(event.getPosition())) ftype_box_.getBox().showPopup();
     }
 
     void FloatPopPanel::updateBand() {
@@ -292,7 +303,8 @@ namespace zlpanel {
             current_filter_type_ = current_slope_ = -1;
             dynamic_button_.getButton().setToggleState(false, juce::dontSendNotification);
             solo_button_.getButton().setToggleState(false, juce::dontSendNotification);
-            stopTimer(); setVisible(false);
+            stopTimer();
+            setVisible(false);
         }
     }
 
@@ -306,7 +318,8 @@ namespace zlpanel {
             && dynamic_on_ptr_->load(std::memory_order::relaxed) > .5f, juce::dontSendNotification);
         solo_button_.getButton().setToggleState(base_.getSelectedBand() < zlp::kBandNum
             && base_.getSoloWholeIdx() == base_.getSelectedBand(), juce::dontSendNotification);
-        updateFilterCapabilities(); repaint();
+        updateFilterCapabilities();
+        repaint();
     }
 
     void FloatPopPanel::updateFilterCapabilities() {
@@ -314,74 +327,103 @@ namespace zlpanel {
         const auto type = static_cast<int>(std::round(filter_type_ptr_->load(std::memory_order::relaxed)));
         const auto slope = static_cast<int>(std::round(slope_ptr_->load(std::memory_order::relaxed)));
         if (type == current_filter_type_ && slope == current_slope_) return;
-        current_filter_type_ = type; current_slope_ = slope;
-        slope_supported_ = type != static_cast<int>(zldsp::filter::kFlatTilt) && type != static_cast<int>(zldsp::filter::kFlatGain);
+        current_filter_type_ = type;
+        current_slope_ = slope;
+        slope_supported_ = type != static_cast<int>(zldsp::filter::kFlatTilt)
+            && type != static_cast<int>(zldsp::filter::kFlatGain);
         const auto slope6 = type != static_cast<int>(zldsp::filter::kPeak)
-            && type != static_cast<int>(zldsp::filter::kBandPass) && type != static_cast<int>(zldsp::filter::kNotch);
-        if (!slope6 && slope_box_.getBox().getSelectedId() == 1) slope_box_.getBox().setSelectedId(2, juce::sendNotificationSync);
+            && type != static_cast<int>(zldsp::filter::kBandPass)
+            && type != static_cast<int>(zldsp::filter::kNotch);
+        if (!slope6 && slope_box_.getBox().getSelectedId() == 1)
+            slope_box_.getBox().setSelectedId(2, juce::sendNotificationSync);
         slope_box_.getBox().setItemEnabled(1, slope6);
-        slope_box_.setEditable(slope_supported_); slope_box_.setVisible(slope_supported_);
-        const auto gainEnabled = type == static_cast<int>(zldsp::filter::kPeak) || type == static_cast<int>(zldsp::filter::kLowShelf)
-            || type == static_cast<int>(zldsp::filter::kHighShelf) || type == static_cast<int>(zldsp::filter::kTiltShelf)
-            || type == static_cast<int>(zldsp::filter::kFlatTilt) || type == static_cast<int>(zldsp::filter::kFlatGain);
+        slope_box_.setEditable(slope_supported_);
+        slope_box_.setVisible(slope_supported_);
+
+        const auto gainEnabled = type == static_cast<int>(zldsp::filter::kPeak)
+            || type == static_cast<int>(zldsp::filter::kLowShelf)
+            || type == static_cast<int>(zldsp::filter::kHighShelf)
+            || type == static_cast<int>(zldsp::filter::kTiltShelf)
+            || type == static_cast<int>(zldsp::filter::kFlatTilt)
+            || type == static_cast<int>(zldsp::filter::kFlatGain);
         gain_slider_.setEditable(gainEnabled);
         q_slider_.setEditable(slope_supported_ && slope != 0);
         dynamic_button_.getButton().setEnabled(gainEnabled);
         dynamic_button_.setAlpha(gainEnabled ? 1.f : .34f);
-        resized(); repaint();
+        resized();
+        repaint();
     }
 
     int FloatPopPanel::getIdealWidth() const {
-        const auto p = getPaddingSize(base_.getFontSize()); const auto b = getButtonSize(base_.getFontSize());
-        return juce::roundToInt(10.15f * static_cast<float>(b) + 4.2f * static_cast<float>(p));
+        return juce::jmax(210, juce::roundToInt(base_.getFontSize() * 15.2f));
     }
+
     int FloatPopPanel::getIdealHeight() const {
-        const auto p = getPaddingSize(base_.getFontSize()); const auto b = getButtonSize(base_.getFontSize());
-        return 2*b + 3*p;
+        return juce::jmax(58, juce::roundToInt(base_.getFontSize() * 4.05f));
     }
 
     void FloatPopPanel::updatePosition(const juce::Point<float> position, const juce::Point<float> target_position) {
-        position_ = position; target_position_ = target_position; updateTransformationTarget();
+        position_ = position;
+        target_position_ = target_position;
+        updateTransformationTarget();
     }
+
     void FloatPopPanel::setTargetVisible(const bool visible) { target_visible_ = visible; }
-    void FloatPopPanel::updateFloatingBound(const juce::Rectangle<float> bound) { floating_bound_ = bound; updateTransformationTarget(); }
+
+    void FloatPopPanel::updateFloatingBound(const juce::Rectangle<float> bound) {
+        floating_bound_ = bound;
+        updateTransformationTarget();
+    }
 
     void FloatPopPanel::updateTransformationTarget() {
         if (floating_bound_.isEmpty() || !isVisible()) return;
         const auto width = static_cast<float>(getIdealWidth());
         const auto height = static_cast<float>(getIdealHeight());
-        const auto safeMargin = juce::jmax(7.f, base_.getFontSize() * .72f);
-        const auto gap = juce::jmax(10.f, base_.getFontSize() * .82f);
-        const auto hysteresis = juce::jmax(10.f, base_.getFontSize() * .80f);
+        const auto safeMargin = juce::jmax(6.f, base_.getFontSize() * .55f);
+        const auto gap = juce::jmax(8.f, base_.getFontSize() * .58f);
+        const auto hysteresis = juce::jmax(9.f, base_.getFontSize() * .70f);
         const auto safe = floating_bound_.reduced(safeMargin);
         const auto aboveY = position_.y - gap - height;
         const auto belowY = position_.y + gap;
         const auto aboveFits = aboveY >= safe.getY();
         const auto belowFits = belowY + height <= safe.getBottom();
+
         if (placement_ == Placement::above) {
             if (!aboveFits && belowFits) placement_ = Placement::below;
         } else if ((!belowFits && aboveFits) || (aboveFits && aboveY >= safe.getY() + hysteresis)) {
             placement_ = Placement::above;
         }
-        auto x = juce::jlimit(safe.getX(), juce::jmax(safe.getX(), safe.getRight()-width), position_.x-width*.5f);
+
+        const auto maxX = juce::jmax(safe.getX(), safe.getRight() - width);
+        auto x = juce::jlimit(safe.getX(), maxX, position_.x - width * .5f);
         auto y = placement_ == Placement::above ? aboveY : belowY;
-        y = juce::jlimit(safe.getY(), juce::jmax(safe.getY(), safe.getBottom()-height), y);
-        target_x_ = x; target_y_ = y;
+        y = juce::jlimit(safe.getY(), juce::jmax(safe.getY(), safe.getBottom() - height), y);
+        target_x_ = x;
+        target_y_ = y;
+
         if (!transform_initialized_) {
-            current_x_ = target_x_; current_y_ = target_y_; transform_initialized_ = true; applyCurrentTransform(); return;
+            current_x_ = target_x_;
+            current_y_ = target_y_;
+            transform_initialized_ = true;
+            applyCurrentTransform();
+            return;
         }
-        if (std::abs(current_x_-target_x_) > .25f || std::abs(current_y_-target_y_) > .25f) startTimerHz(60);
+        if (std::abs(current_x_ - target_x_) > .25f || std::abs(current_y_ - target_y_) > .25f)
+            startTimerHz(60);
     }
 
     void FloatPopPanel::timerCallback() {
         constexpr float response = .34f;
-        current_x_ += (target_x_-current_x_) * response;
-        current_y_ += (target_y_-current_y_) * response;
-        if (std::abs(current_x_-target_x_) < .20f && std::abs(current_y_-target_y_) < .20f) {
-            current_x_ = target_x_; current_y_ = target_y_; stopTimer();
+        current_x_ += (target_x_ - current_x_) * response;
+        current_y_ += (target_y_ - current_y_) * response;
+        if (std::abs(current_x_ - target_x_) < .20f && std::abs(current_y_ - target_y_) < .20f) {
+            current_x_ = target_x_;
+            current_y_ = target_y_;
+            stopTimer();
         }
         applyCurrentTransform();
     }
+
     void FloatPopPanel::applyCurrentTransform() {
         setTransform(juce::AffineTransform::translation(current_x_, current_y_));
     }
