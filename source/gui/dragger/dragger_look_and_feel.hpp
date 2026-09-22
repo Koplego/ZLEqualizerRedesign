@@ -35,58 +35,62 @@ namespace zlgui::dragger {
             const auto hover = should_draw_button_as_highlighted && !active;
             const auto visibility = juce::jlimit(0.f, 1.f, alpha_);
 
-            // Mockup convergence: band nodes are tiny illuminated pieces of glass, not
-            // animated neon buttons. Keep the hue in the core, use a cool-white optical
-            // rim, and reserve the larger halo for the selected band.
+            // The node is the emitter, not a glossy bead. The larger environmental light
+            // pool is painted by Dragger::paint(); this face is kept small, hot and bright
+            // so it reads as the physical origin of that light.
             if (dragger_shape_ == kRound) {
-                const juce::DropShadow halo{
-                    colour_.withAlpha((active ? .24f : hover ? .12f : .065f) * visibility),
-                    juce::jmax(2, juce::roundToInt(base_.getFontSize() * (active ? .82f : .38f))),
+                const juce::DropShadow closeBloom{
+                    colour_.withAlpha((active ? .42f : hover ? .26f : .17f) * visibility),
+                    juce::jmax(2, juce::roundToInt(base_.getFontSize() * (active ? .72f : .48f))),
                     {0, 0}};
-                halo.drawForPath(g, outline_path_);
+                closeBloom.drawForPath(g, outline_path_);
             }
 
-            g.setColour(juce::Colour(9, 27, 42).withAlpha((active ? .42f : .28f) * visibility));
-            g.fillPath(outline_path_);
-
-            g.setColour(colour_.interpolatedWith(juce::Colours::white, .20f)
-                        .withAlpha((active ? .30f : hover ? .21f : .14f) * visibility));
-            g.fillPath(outline_path_);
-
-            g.setColour(glass::textPrimary().withAlpha((active ? .82f : hover ? .58f : .42f) * visibility));
-            g.strokePath(outline_path_, juce::PathStrokeType(juce::jmax(.75f, base_.getFontSize() * .080f)));
-
             const auto innerBounds = inner_path_.getBounds();
-            juce::ColourGradient lens(
-                colour_.interpolatedWith(juce::Colours::white, active ? .42f : .30f)
-                    .withAlpha((active ? .98f : .90f) * visibility),
-                innerBounds.getX() + innerBounds.getWidth() * .30f,
-                innerBounds.getY() + innerBounds.getHeight() * .24f,
-                colour_.interpolatedWith(juce::Colours::black, .10f)
-                    .withAlpha((active ? .98f : .88f) * visibility),
-                innerBounds.getRight(), innerBounds.getBottom(), true);
-            lens.addColour(.52, colour_.interpolatedWith(juce::Colours::white, .12f)
-                                      .withAlpha((active ? .98f : .91f) * visibility));
-            g.setGradientFill(lens);
+            const auto centre = innerBounds.getCentre();
+            const auto radius = juce::jmax(1.f, innerBounds.getWidth() * .52f);
+
+            // Quiet dark carrier underneath the emitter keeps the edge readable against
+            // very bright FFT content without making the node look like a shaded sphere.
+            g.setColour(juce::Colour(7, 22, 34).withAlpha((active ? .34f : .24f) * visibility));
+            g.fillPath(outline_path_);
+
+            // Coloured emission ring. Keep it translucent so the centre remains the hot spot.
+            g.setColour(colour_.withAlpha((active ? .72f : hover ? .56f : .42f) * visibility));
+            g.fillPath(outline_path_);
+
+            // Radial emitter: near-white centre -> band colour -> transparent-ish edge.
+            juce::ColourGradient emission(
+                colour_.interpolatedWith(juce::Colours::white, active ? .88f : .76f)
+                    .withAlpha((active ? 1.f : .96f) * visibility),
+                centre.x, centre.y,
+                colour_.withAlpha((active ? .94f : .84f) * visibility),
+                centre.x + radius, centre.y, true);
+            emission.addColour(.38, colour_.interpolatedWith(juce::Colours::white, .46f)
+                                          .withAlpha((active ? .99f : .93f) * visibility));
+            emission.addColour(.78, colour_.withAlpha((active ? .86f : .72f) * visibility));
+            g.setGradientFill(emission);
             g.fillPath(inner_path_);
 
-            g.setColour(juce::Colours::white.withAlpha((active ? .90f : .58f) * visibility));
-            g.strokePath(inner_path_, juce::PathStrokeType(juce::jmax(.8f, base_.getFontSize() * .075f)));
+            // A single luminous rim is enough. No offset specular glint: the brightness is
+            // energy coming out of the node, not light reflecting off a shiny ball.
+            g.setColour(colour_.interpolatedWith(juce::Colours::white, .72f)
+                        .withAlpha((active ? .92f : hover ? .76f : .62f) * visibility));
+            g.strokePath(outline_path_, juce::PathStrokeType(juce::jmax(.72f, base_.getFontSize() * .070f)));
 
-            if (active && dragger_shape_ == kRound) {
-                auto glint = innerBounds.withSizeKeepingCentre(innerBounds.getWidth() * .44f,
-                                                               innerBounds.getHeight() * .28f);
-                glint.translate(-innerBounds.getWidth() * .12f, -innerBounds.getHeight() * .18f);
-                g.setColour(juce::Colours::white.withAlpha(.26f * visibility));
-                g.fillEllipse(glint);
+            if (dragger_shape_ == kRound) {
+                auto hotCore = innerBounds.withSizeKeepingCentre(innerBounds.getWidth() * (active ? .28f : .22f),
+                                                                 innerBounds.getHeight() * (active ? .28f : .22f));
+                g.setColour(juce::Colours::white.withAlpha((active ? .84f : .64f) * visibility));
+                g.fillEllipse(hotCore);
             }
 
             if (label_.length() > 0) {
-                g.setColour(base_.getTextColour().withAlpha(.88f * visibility));
+                g.setColour(base_.getTextColour().withAlpha(.90f * visibility));
                 g.setFont(base_.getFontSize() * label_scale_);
                 auto bound = button.getLocalBounds().toFloat();
-                const auto radius = std::min(bound.getHeight(), bound.getWidth());
-                bound = bound.withSizeKeepingCentre(radius, radius);
+                const auto d = std::min(bound.getHeight(), bound.getWidth());
+                bound = bound.withSizeKeepingCentre(d, d);
                 g.drawText(label_, bound, juce::Justification::centred);
             }
         }
@@ -95,6 +99,10 @@ namespace zlgui::dragger {
             colour_ = c;
             filling_colour_ = base_.getColourBlendedWithBackground(c, alpha_);
         }
+
+        [[nodiscard]] juce::Colour getColour() const { return colour_; }
+        [[nodiscard]] float getAlpha() const { return alpha_; }
+        [[nodiscard]] DraggerShape getDraggerShape() const { return dragger_shape_; }
 
         void setIsSelected(const bool f) { is_selected_ = f; }
 
