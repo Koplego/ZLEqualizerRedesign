@@ -10,15 +10,15 @@ namespace zlpanel {
     BandHubPanel::BandHubPanel(PluginProcessor& p, zlgui::UIBase& base,
                                const multilingual::TooltipHelper& tooltip_helper) :
         p_ref_(p), base_(base),
-        collapse_button_(base, "—"),
-        dynamic_button_(base, "Dynamic EQ"),
+        collapse_button_(base, "⌄"),
+        dynamic_button_(base, "Dynamic"),
         dynamics_page_button_(base, "Dynamics"),
         detector_page_button_(base, "Detector"),
         sidechain_page_button_(base, "Sidechain"),
         channel_box_(juce::StringArray{"Stereo", "Left", "Right", "Mid", "Side"}, base, ""),
         threshold_slider_("", base), range_slider_("", base), attack_slider_("", base), release_slider_("", base),
         knee_slider_("", base), rms_length_slider_("", base), rms_mix_slider_("", base), smooth_slider_("", base),
-        learn_button_(base, "Learn"), relative_button_(base, "Relative"), dyn_bypass_button_(base, "Dyn Bypass"),
+        learn_button_(base, "Learn"), relative_button_(base, "Relative"), dyn_bypass_button_(base, "Bypass"),
         side_type_box_(zlp::PSideFilterType::kChoices, base, ""),
         side_order_box_(zlp::PSideOrder::kChoices, base, ""),
         side_freq_slider_("", base), side_q_slider_("", base),
@@ -30,11 +30,11 @@ namespace zlpanel {
         for (auto* button : {&collapse_button_, &dynamic_button_, &dynamics_page_button_, &detector_page_button_,
                              &sidechain_page_button_, &learn_button_, &relative_button_, &dyn_bypass_button_,
                              &side_link_button_, &side_swap_button_}) {
-            stylePill(*button);
+            stylePill(*button, .60f);
             addAndMakeVisible(*button);
         }
 
-        collapse_button_.getLAF().setFontScale(.78f);
+        collapse_button_.getLAF().setFontScale(.72f);
         collapse_button_.getButton().onClick = [this]() { setExpanded(false); };
 
         dynamic_button_.getButton().setToggleable(true);
@@ -65,22 +65,20 @@ namespace zlpanel {
             button->getButton().setClickingTogglesState(true);
         }
 
-        channel_box_.getLAF().setFontScale(.72f);
-        channel_box_.getLAF().setBoxAlpha(.26f);
+        channel_box_.getLAF().setFontScale(.62f);
+        channel_box_.getLAF().setBoxAlpha(.20f);
         channel_box_.getLAF().setLabelJustification(juce::Justification::centred);
         channel_box_.setScrollEnabled(true);
         addAndMakeVisible(channel_box_);
 
-        side_type_box_.getLAF().setFontScale(.70f);
-        side_type_box_.getLAF().setBoxAlpha(.28f);
-        side_type_box_.getLAF().setLabelJustification(juce::Justification::centred);
-        addAndMakeVisible(side_type_box_);
-        side_order_box_.getLAF().setFontScale(.70f);
-        side_order_box_.getLAF().setBoxAlpha(.28f);
-        side_order_box_.getLAF().setLabelJustification(juce::Justification::centred);
-        addAndMakeVisible(side_order_box_);
+        for (auto* box : {&side_type_box_, &side_order_box_}) {
+            box->getLAF().setFontScale(.60f);
+            box->getLAF().setBoxAlpha(.21f);
+            box->getLAF().setLabelJustification(juce::Justification::centred);
+            addAndMakeVisible(*box);
+        }
 
-        auto setupSlider = [this](auto& slider, float scale = .82f) {
+        auto setupSlider = [this](auto& slider, const float scale = .68f) {
             slider.setFontScale(scale);
             slider.getSlider().setSliderSnapsToMousePosition(false);
             slider.setBufferedToImage(true);
@@ -168,9 +166,9 @@ namespace zlpanel {
             const auto active = b.getToggleState() || down;
             if (active || highlighted) {
                 zlgui::glass::fillGlassSurface(g, r, r.getHeight() * .5f,
-                                               active ? .10f : .045f,
-                                               active ? .15f : .075f,
-                                               active ? .16f : .08f);
+                                               active ? .095f : .038f,
+                                               active ? .14f : .065f,
+                                               active ? .15f : .07f);
             }
         });
     }
@@ -181,8 +179,8 @@ namespace zlpanel {
 
     juce::Rectangle<float> BandHubPanel::collapsedSurface() const {
         const auto full = getLocalBounds().toFloat();
-        const auto h = juce::jmax(34.f, base_.getFontSize() * 2.15f);
-        const auto w = juce::jmin(full.getWidth() * .44f, juce::jmax(210.f, base_.getFontSize() * 15.5f));
+        const auto h = juce::jmax(27.f, base_.getFontSize() * 1.75f);
+        const auto w = juce::jmin(full.getWidth() * .42f, juce::jmax(176.f, base_.getFontSize() * 11.5f));
         return {full.getCentreX() - w * .5f, full.getBottom() - h - .5f, w, h};
     }
 
@@ -196,66 +194,65 @@ namespace zlpanel {
 
     void BandHubPanel::paint(juce::Graphics& g) {
         if (suppressed_ || attached_band_ >= zlp::kBandNum) return;
+
         auto surface = currentSurface();
-        const auto radius = juce::jmax(11.f, surface.getHeight() * (reveal_ < .35f ? .48f : .10f));
-        zlgui::glass::fillGlassSurface(g, surface, radius, .085f, .145f, .17f);
+        const auto radius = reveal_ < .30f
+            ? surface.getHeight() * .50f
+            : juce::jmax(10.f, base_.getFontSize() * .76f);
+        zlgui::glass::fillGlassSurface(g, surface, radius, .078f, .13f, .15f);
 
         const auto accent = base_.getColourMap1(attached_band_);
-        auto rim = surface.reduced(base_.getFontSize() * .72f, 0.f);
-        rim.setHeight(1.1f);
+        auto rim = surface.reduced(base_.getFontSize() * .58f, 0.f);
+        rim.setHeight(1.f);
         juce::ColourGradient glow(accent.withAlpha(.0f), rim.getX(), rim.getY(),
-                                  accent.interpolatedWith(juce::Colours::white, .35f).withAlpha(.48f),
+                                  accent.interpolatedWith(juce::Colours::white, .34f).withAlpha(.40f),
                                   rim.getCentreX(), rim.getY(), false);
-        glow.addColour(.86, accent.withAlpha(.10f));
+        glow.addColour(.86, accent.withAlpha(.08f));
         g.setGradientFill(glow);
-        g.fillRoundedRectangle(rim, .6f);
+        g.fillRoundedRectangle(rim, .5f);
 
-        if (reveal_ < .42f) {
-            static constexpr std::array<const char*, 11> names{
-                "Bell", "Low Shelf", "High Cut", "High Shelf", "Low Cut", "Notch",
-                "Band Pass", "Tilt", "Flat Tilt", "All Pass", "Gain"
-            };
-            auto* typeValue = p_ref_.parameters_.getRawParameterValue(zlp::PFilterType::kID + std::to_string(attached_band_));
-            const auto type = typeValue ? static_cast<int>(std::round(typeValue->load(std::memory_order::relaxed))) : 0;
+        static constexpr std::array<const char*, 11> names{
+            "Bell", "Low Shelf", "High Cut", "High Shelf", "Low Cut", "Notch",
+            "Band Pass", "Tilt", "Flat Tilt", "All Pass", "Gain"
+        };
+        auto* typeValue = p_ref_.parameters_.getRawParameterValue(zlp::PFilterType::kID + std::to_string(attached_band_));
+        const auto type = typeValue ? static_cast<int>(std::round(typeValue->load(std::memory_order::relaxed))) : 0;
+
+        if (reveal_ < .38f) {
             juce::String title = "Band " + juce::String(static_cast<int>(attached_band_ + 1));
             if (type >= 0 && type < static_cast<int>(names.size())) title += "  ·  " + juce::String(names[static_cast<size_t>(type)]);
             if (dynamic_on_) title += "  ·  Dynamic";
             g.setColour(zlgui::glass::textPrimary().withAlpha(.90f));
-            g.setFont(juce::FontOptions(base_.getFontSize() * .74f));
-            g.drawText(title, surface.toNearestInt().reduced(18, 0), juce::Justification::centred, false);
+            g.setFont(juce::FontOptions(base_.getFontSize() * .68f));
+            g.drawFittedText(title, surface.toNearestInt().reduced(12, 0), juce::Justification::centred, 1);
             return;
         }
 
-        const auto childAlpha = juce::jlimit(0.f, 1.f, (reveal_ - .28f) / .72f);
-        g.setColour(zlgui::glass::textPrimary().withAlpha(.94f * childAlpha));
-        g.setFont(juce::FontOptions(base_.getFontSize() * .88f));
-        g.drawText("Band " + juce::String(static_cast<int>(attached_band_ + 1)), title_bound_,
-                   juce::Justification::centredLeft, false);
-
-        g.setColour(accent.interpolatedWith(juce::Colours::white, .24f).withAlpha(.90f * childAlpha));
-        g.setFont(juce::FontOptions(base_.getFontSize() * .68f));
-        g.drawText(page_ == Page::dynamics ? "Dynamic EQ" : page_ == Page::detector ? "Detector" : "Sidechain",
-                   page_title_bound_, juce::Justification::centredLeft, false);
+        const auto childAlpha = juce::jlimit(0.f, 1.f, (reveal_ - .24f) / .76f);
+        juce::String bandTitle = "B" + juce::String(static_cast<int>(attached_band_ + 1));
+        if (type >= 0 && type < static_cast<int>(names.size())) bandTitle += " · " + juce::String(names[static_cast<size_t>(type)]);
+        g.setColour(zlgui::glass::textPrimary().withAlpha(.92f * childAlpha));
+        g.setFont(juce::FontOptions(base_.getFontSize() * .67f));
+        g.drawFittedText(bandTitle, title_bound_, juce::Justification::centredLeft, 1);
 
         static constexpr std::array<const char*, 4> dynamics{"THRESHOLD", "RANGE", "ATTACK", "RELEASE"};
         static constexpr std::array<const char*, 4> detector{"KNEE", "RMS LENGTH", "RMS MIX", "SMOOTH"};
         static constexpr std::array<const char*, 4> side{"FILTER", "SLOPE", "FREQUENCY", "Q"};
         const auto& labels = page_ == Page::dynamics ? dynamics : page_ == Page::detector ? detector : side;
-        if (dynamic_on_) {
-            g.setColour(zlgui::glass::textSecondary().withAlpha(.72f * childAlpha));
-            g.setFont(juce::FontOptions(base_.getFontSize() * .54f));
-            for (size_t i = 0; i < labels.size(); ++i)
-                g.drawText(labels[i], page_ == Page::dynamics ? primary_label_bounds_[i] : detail_label_bounds_[i],
-                           juce::Justification::centredBottom, false);
-        }
 
-        if (!dynamic_on_) {
-            auto message = surface.toNearestInt().reduced(24, 18);
-            message.removeFromTop(juce::roundToInt(base_.getFontSize() * 4.2f));
-            g.setColour(zlgui::glass::textSecondary().withAlpha(.74f * childAlpha));
-            g.setFont(juce::FontOptions(base_.getFontSize() * .66f));
-            g.drawText("Enable Dynamic EQ to reveal range, timing, detector and sidechain controls.",
-                       message, juce::Justification::centred, true);
+        if (dynamic_on_) {
+            g.setColour(zlgui::glass::textSecondary().withAlpha(.67f * childAlpha));
+            g.setFont(juce::FontOptions(base_.getFontSize() * .47f));
+            const auto& bounds = page_ == Page::dynamics ? primary_label_bounds_ : detail_label_bounds_;
+            for (size_t i = 0; i < labels.size(); ++i)
+                g.drawText(labels[i], bounds[i], juce::Justification::centredBottom, false);
+        } else {
+            auto message = currentSurface().toNearestInt().reduced(16, 8);
+            message.removeFromTop(juce::jmax(22, juce::roundToInt(base_.getFontSize() * 1.65f)));
+            g.setColour(zlgui::glass::textSecondary().withAlpha(.72f * childAlpha));
+            g.setFont(juce::FontOptions(base_.getFontSize() * .58f));
+            g.drawFittedText("Dynamic EQ is off — enable it to edit dynamics, detector and sidechain.",
+                             message, juce::Justification::centred, 1);
         }
     }
 }
