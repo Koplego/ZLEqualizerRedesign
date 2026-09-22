@@ -34,8 +34,6 @@ namespace zlpanel {
             base_.setPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel, open < .5 ? 1. : 0.);
         };
 
-        // The switch is its own hit target. This is intentionally not the menu button:
-        // it means exactly one thing — whether the spectrum analyzer is active.
         analyzer_toggle_button_.getButton().setToggleable(true);
         analyzer_toggle_button_.getButton().setClickingTogglesState(false);
         analyzer_toggle_button_.getButton().setButtonText("");
@@ -47,26 +45,26 @@ namespace zlpanel {
                                                      base_.getFontSize() * 1.04f);
             if (highlighted || down) {
                 const auto halo = toggle.expanded(2.f);
-                g.setColour(juce::Colour(173, 215, 248).withAlpha(down ? .10f : .055f));
+                g.setColour(juce::Colour(173, 215, 248).withAlpha(down ? .12f : .07f));
                 g.fillRoundedRectangle(halo, halo.getHeight() * .5f);
             }
-            g.setColour(juce::Colour(5, 20, 33).withAlpha(.44f));
+            g.setColour(juce::Colour(5, 20, 33).withAlpha(.38f));
             g.fillRoundedRectangle(toggle, toggle.getHeight() * .5f);
             if (active) {
-                juce::ColourGradient on(juce::Colour(123, 190, 255).withAlpha(.66f), toggle.getX(), toggle.getY(),
-                                        juce::Colour(73, 134, 218).withAlpha(.48f), toggle.getRight(),
+                juce::ColourGradient on(juce::Colour(105, 182, 255).withAlpha(.84f), toggle.getX(), toggle.getY(),
+                                        juce::Colour(63, 127, 213).withAlpha(.68f), toggle.getRight(),
                                         toggle.getBottom(), false);
                 g.setGradientFill(on);
                 g.fillRoundedRectangle(toggle, toggle.getHeight() * .5f);
             }
-            g.setColour(zlgui::glass::rim().withMultipliedAlpha(active ? .84f : .62f));
+            g.setColour(juce::Colour(238, 247, 253).withAlpha(active ? .48f : .24f));
             g.drawRoundedRectangle(toggle, toggle.getHeight() * .5f, .72f);
 
             const auto knob = toggle.getHeight() * .76f;
             const auto knob_x = active ? toggle.getRight() - knob - toggle.getHeight() * .12f
                                        : toggle.getX() + toggle.getHeight() * .12f;
-            juce::ColourGradient lens(juce::Colour(255, 255, 255).withAlpha(.94f), knob_x, toggle.getY(),
-                                      juce::Colour(169, 205, 236).withAlpha(.84f), knob_x + knob,
+            juce::ColourGradient lens(juce::Colour(255, 255, 255).withAlpha(.98f), knob_x, toggle.getY(),
+                                      juce::Colour(175, 209, 236).withAlpha(.91f), knob_x + knob,
                                       toggle.getBottom(), false);
             g.setGradientFill(lens);
             g.fillEllipse(knob_x, toggle.getCentreY() - knob * .5f, knob, knob);
@@ -106,21 +104,19 @@ namespace zlpanel {
             auto r = b.getLocalBounds().toFloat().reduced(.75f);
             const auto selected = b.getToggleState() || down;
             if (selected || highlighted) {
-                zlgui::glass::fillGlassSurface(g, r, r.getHeight() * .5f,
-                                               selected ? .11f : .055f,
-                                               selected ? .17f : .090f,
-                                               selected ? .18f : .095f);
+                g.setColour(juce::Colour(236, 247, 253).withAlpha(selected ? .090f : .045f));
+                g.fillRoundedRectangle(r, r.getHeight() * .5f);
+                g.setColour(juce::Colour(244, 251, 255).withAlpha(selected ? .22f : .11f));
+                g.drawRoundedRectangle(r, r.getHeight() * .5f, .76f);
             }
             if (selected) {
-                g.setColour(juce::Colour(116, 181, 245).withAlpha(.095f));
-                g.fillRoundedRectangle(r.reduced(r.getHeight() * .12f), r.getHeight() * .42f);
+                g.setColour(juce::Colour(115, 180, 245).withAlpha(.080f));
+                g.fillRoundedRectangle(r.reduced(r.getHeight() * .10f), r.getHeight() * .42f);
             }
         });
     }
 
-    bool GlassFooterPanel::isAnalyzerEnabled() const {
-        return getAnalyzerMask() != 0u;
-    }
+    bool GlassFooterPanel::isAnalyzerEnabled() const { return getAnalyzerMask() != 0u; }
 
     unsigned int GlassFooterPanel::getAnalyzerMask() const {
         unsigned int mask = 0u;
@@ -162,10 +158,37 @@ namespace zlpanel {
 
     void GlassFooterPanel::paint(juce::Graphics& g) {
         auto strip = getLocalBounds().toFloat().reduced(.5f);
-        zlgui::glass::fillGlassSurface(g, strip, juce::jmax(9.f, strip.getHeight() * .43f),
-                                      .060f, .110f, .145f);
+        const auto radius = juce::jmax(9.f, strip.getHeight() * .43f);
 
-        g.setColour(zlgui::glass::rim().withMultipliedAlpha(.36f));
+        // Direct colour field sampled from the approved reference. The old footer's dark
+        // glass fill was hiding the shell transmission and was the main reason the bottom
+        // bar looked like a separate navy widget.
+        juce::Path clip;
+        clip.addRoundedRectangle(strip, radius);
+        {
+            juce::Graphics::ScopedSaveState state(g);
+            g.reduceClipRegion(clip);
+            juce::ColourGradient footer(juce::Colour(88, 84, 80), strip.getX(), strip.getCentreY(),
+                                        juce::Colour(45, 64, 108), strip.getRight(), strip.getCentreY(), false);
+            footer.addColour(.17, juce::Colour(61, 90, 105));
+            footer.addColour(.29, juce::Colour(43, 111, 107));
+            footer.addColour(.48, juce::Colour(31, 73, 111));
+            footer.addColour(.68, juce::Colour(27, 60, 94));
+            footer.addColour(.84, juce::Colour(57, 65, 123));
+            footer.addColour(.93, juce::Colour(67, 71, 130));
+            g.setGradientFill(footer);
+            g.fillRect(strip.expanded(1.f));
+
+            juce::ColourGradient sheen(juce::Colour(226, 242, 251).withAlpha(.13f), strip.getCentreX(), strip.getY(),
+                                       juce::Colours::transparentBlack, strip.getCentreX(), strip.getBottom(), false);
+            sheen.addColour(.34, juce::Colour(183, 219, 237).withAlpha(.045f));
+            g.setGradientFill(sheen);
+            g.fillRect(strip);
+        }
+        g.setColour(juce::Colour(239, 248, 253).withAlpha(.18f));
+        g.drawRoundedRectangle(strip, radius, .78f);
+
+        g.setColour(juce::Colour(233, 245, 252).withAlpha(.075f));
         if (!analyzer_group_bound_.isEmpty())
             g.drawVerticalLine(analyzer_group_bound_.getRight() + getPaddingSize(base_.getFontSize()) / 2,
                                strip.getY() + strip.getHeight() * .29f,
@@ -175,7 +198,7 @@ namespace zlpanel {
                                strip.getY() + strip.getHeight() * .29f,
                                strip.getBottom() - strip.getHeight() * .29f);
 
-        g.setColour(zlgui::glass::textSecondary().withMultipliedAlpha(.70f));
+        g.setColour(juce::Colour(236, 244, 249).withAlpha(.52f));
         g.setFont(juce::FontOptions(base_.getFontSize() * .63f));
         g.drawText("Spectrum", spectrum_label_bound_, juce::Justification::centred, false);
         g.drawText("Processing", processing_label_bound_, juce::Justification::centredRight, false);
@@ -229,7 +252,6 @@ namespace zlpanel {
         updater_.updateComponents();
         const auto mask = getAnalyzerMask();
         if (mask != 0u) analyzer_restore_mask_ = mask;
-
         analyzer_toggle_button_.getButton().setToggleState(mask != 0u, juce::dontSendNotification);
         analyzer_menu_button_.getButton().setToggleState(
             static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel)) > .5,
