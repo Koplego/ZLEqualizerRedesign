@@ -3,9 +3,12 @@
 #pragma once
 
 #include <array>
+#include <utility>
+#include <vector>
 
 #include "../PluginProcessor.hpp"
 #include "../gui/gui.hpp"
+#include "../gui/ambient_light.hpp"
 #include "helper/helper.hpp"
 #include "multilingual/tooltip_helper.hpp"
 
@@ -28,12 +31,18 @@ namespace zlpanel {
         void repaintCallbackSlow();
         void setSuppressed(bool suppressed);
 
+        void setAmbientSources(std::vector<zlgui::glass::AmbientLightSource> sources) {
+            ambient_sources_ = std::move(sources);
+            repaint();
+        }
+
     private:
         enum class Page { dynamics, detector, sidechain };
 
         PluginProcessor& p_ref_;
         zlgui::UIBase& base_;
         zlgui::attachment::ComponentUpdater updater_{};
+        std::vector<zlgui::glass::AmbientLightSource> ambient_sources_{};
 
         Page page_{Page::dynamics};
         size_t attached_band_{zlp::kBandNum};
