@@ -54,47 +54,47 @@ namespace zlpanel {
             g.setGradientFill(vertical);
             g.fillRect(panel);
 
-            // Large optical pools measured from the target image. They are deliberately
-            // much stronger than v1.8 because the reference visibly changes the graph's
-            // colour hundreds of pixels away from the control points.
-            juce::ColourGradient warm(juce::Colour(244, 193, 107).withAlpha(.34f),
+            // Keep a broad stained-glass field, but do not double-count the local light now
+            // painted by SinglePanel. These pools set the ambient hue; the strong saturation
+            // at each filter point comes from the real band position and moves with the node.
+            juce::ColourGradient warm(juce::Colour(244, 193, 107).withAlpha(.16f),
                                       panel.getX() + panel.getWidth() * .075f,
                                       panel.getY() + panel.getHeight() * .36f,
                                       juce::Colours::transparentBlack,
                                       panel.getX() + panel.getWidth() * .27f,
                                       panel.getY() + panel.getHeight() * .67f, true);
-            warm.addColour(.42, juce::Colour(218, 174, 92).withAlpha(.13f));
-            warm.addColour(.72, juce::Colour(188, 150, 79).withAlpha(.035f));
+            warm.addColour(.42, juce::Colour(218, 174, 92).withAlpha(.065f));
+            warm.addColour(.72, juce::Colour(188, 150, 79).withAlpha(.018f));
             g.setGradientFill(warm);
             g.fillRect(panel);
 
-            juce::ColourGradient teal(juce::Colour(70, 205, 180).withAlpha(.20f),
+            juce::ColourGradient teal(juce::Colour(70, 205, 180).withAlpha(.095f),
                                       panel.getX() + panel.getWidth() * .27f,
                                       panel.getY() + panel.getHeight() * .53f,
                                       juce::Colours::transparentBlack,
                                       panel.getX() + panel.getWidth() * .48f,
                                       panel.getY() + panel.getHeight() * .88f, true);
-            teal.addColour(.46, juce::Colour(62, 176, 163).withAlpha(.075f));
+            teal.addColour(.46, juce::Colour(62, 176, 163).withAlpha(.034f));
             g.setGradientFill(teal);
             g.fillRect(panel);
 
-            juce::ColourGradient blue(juce::Colour(69, 145, 231).withAlpha(.22f),
+            juce::ColourGradient blue(juce::Colour(69, 145, 231).withAlpha(.10f),
                                       panel.getX() + panel.getWidth() * .54f,
                                       panel.getY() + panel.getHeight() * .29f,
                                       juce::Colours::transparentBlack,
                                       panel.getX() + panel.getWidth() * .72f,
                                       panel.getY() + panel.getHeight() * .73f, true);
-            blue.addColour(.45, juce::Colour(58, 122, 204).withAlpha(.080f));
+            blue.addColour(.45, juce::Colour(58, 122, 204).withAlpha(.038f));
             g.setGradientFill(blue);
             g.fillRect(panel);
 
-            juce::ColourGradient violet(juce::Colour(161, 118, 238).withAlpha(.22f),
+            juce::ColourGradient violet(juce::Colour(161, 118, 238).withAlpha(.105f),
                                         panel.getX() + panel.getWidth() * .88f,
                                         panel.getY() + panel.getHeight() * .43f,
                                         juce::Colours::transparentBlack,
                                         panel.getX() + panel.getWidth() * .69f,
                                         panel.getY() + panel.getHeight() * .82f, true);
-            violet.addColour(.46, juce::Colour(132, 103, 214).withAlpha(.085f));
+            violet.addColour(.46, juce::Colour(132, 103, 214).withAlpha(.040f));
             g.setGradientFill(violet);
             g.fillRect(panel);
         }
