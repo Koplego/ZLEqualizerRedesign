@@ -3,27 +3,28 @@
 #include <juce_graphics/juce_graphics.h>
 
 namespace zlgui::glass {
-    // Reference-locked palette. The target is not near-black glass: it is a readable,
-    // medium-dark blue pane with warm/teal/violet light visibly transmitted through it.
-    inline juce::Colour canvasTop() { return juce::Colour(43, 78, 116); }
-    inline juce::Colour canvasMid() { return juce::Colour(27, 61, 94); }
-    inline juce::Colour canvasBottom() { return juce::Colour(17, 39, 63); }
-    inline juce::Colour shellTop() { return juce::Colour(47, 82, 119); }
-    inline juce::Colour shellBottom() { return juce::Colour(18, 42, 68); }
+    // The glass itself is neutral. Colour belongs to light sources (the EQ nodes), not to
+    // the material. A very slight cool bias keeps the transparent surfaces readable without
+    // turning the interface into an inherently blue or rainbow object.
+    inline juce::Colour canvasTop() { return juce::Colour(48, 57, 64); }
+    inline juce::Colour canvasMid() { return juce::Colour(31, 41, 50); }
+    inline juce::Colour canvasBottom() { return juce::Colour(19, 29, 39); }
+    inline juce::Colour shellTop() { return juce::Colour(52, 61, 68); }
+    inline juce::Colour shellBottom() { return juce::Colour(20, 30, 40); }
     inline juce::Colour textPrimary() { return juce::Colour(246, 250, 254); }
     inline juce::Colour textSecondary() { return textPrimary().withAlpha(.66f); }
     inline juce::Colour textTertiary() { return textPrimary().withAlpha(.42f); }
     inline juce::Colour rim() { return juce::Colour(246, 251, 255).withAlpha(.19f); }
     inline juce::Colour rimStrong() { return juce::Colour(252, 254, 255).withAlpha(.31f); }
-    inline juce::Colour gridMajor() { return juce::Colour(210, 232, 247).withAlpha(.058f); }
-    inline juce::Colour gridMinor() { return juce::Colour(210, 232, 247).withAlpha(.026f); }
-    inline juce::Colour neutralResponse() { return juce::Colour(225, 241, 252); }
+    inline juce::Colour gridMajor() { return juce::Colour(226, 237, 244).withAlpha(.058f); }
+    inline juce::Colour gridMinor() { return juce::Colour(226, 237, 244).withAlpha(.026f); }
+    inline juce::Colour neutralResponse() { return juce::Colour(232, 241, 247); }
 
     inline juce::Colour surfaceTop(const float alpha = .11f) {
-        return juce::Colour(150, 199, 231).withAlpha(alpha);
+        return juce::Colour(222, 234, 241).withAlpha(alpha);
     }
     inline juce::Colour surfaceBottom(const float alpha = .19f) {
-        return juce::Colour(28, 64, 96).withAlpha(alpha);
+        return juce::Colour(28, 38, 48).withAlpha(alpha);
     }
 
     inline float shellRadius(const float font) { return juce::jmax(18.f, font * 1.45f); }
@@ -38,27 +39,28 @@ namespace zlgui::glass {
             juce::Graphics::ScopedSaveState state(g);
             g.reduceClipRegion(clip);
 
-            // A visible blue body is part of the approved reference. Keep it translucent,
-            // but never let utility cards collapse into near-black rectangles.
-            g.setColour(juce::Colour(14, 32, 50).withAlpha(bottomAlpha * .58f));
+            // Smoked neutral body. It adds density but does not invent hue.
+            g.setColour(juce::Colour(10, 18, 25).withAlpha(bottomAlpha * .58f));
             g.fillRect(bounds.expanded(1.f));
 
             juce::ColourGradient fill(surfaceTop(topAlpha), bounds.getCentreX(), bounds.getY(),
                                       surfaceBottom(bottomAlpha), bounds.getCentreX(), bounds.getBottom(), false);
-            fill.addColour(.46, juce::Colour(57, 105, 143)
-                                      .withAlpha((topAlpha + bottomAlpha) * .18f));
+            fill.addColour(.46, juce::Colour(112, 128, 138)
+                                      .withAlpha((topAlpha + bottomAlpha) * .16f));
             g.setGradientFill(fill);
             g.fillRect(bounds.expanded(1.f));
 
+            // Colourless specular/transmitted reflection. Any actual colour visible through
+            // this surface must come from whatever is behind it — notably the live EQ nodes.
             juce::ColourGradient transmitted(
-                juce::Colour(210, 235, 249).withAlpha(topAlpha * .28f),
+                juce::Colour(240, 248, 252).withAlpha(topAlpha * .28f),
                 bounds.getX() + bounds.getWidth() * .12f,
                 bounds.getY() + bounds.getHeight() * .04f,
                 juce::Colours::transparentBlack,
                 bounds.getX() + bounds.getWidth() * .68f,
                 bounds.getY() + bounds.getHeight() * .82f,
                 true);
-            transmitted.addColour(.34, juce::Colour(91, 157, 199).withAlpha(topAlpha * .075f));
+            transmitted.addColour(.34, juce::Colour(207, 222, 230).withAlpha(topAlpha * .060f));
             g.setGradientFill(transmitted);
             g.fillRect(bounds.expanded(radius * .12f));
         }
