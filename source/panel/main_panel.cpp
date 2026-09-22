@@ -62,7 +62,9 @@ namespace zlpanel {
                     gain_value->load(std::memory_order_relaxed) * gain_scale);
                 const auto y_portion = juce::jlimit(0.f, 1.f, .5f - gain / (2.f * max_db));
 
-                auto strength = band == selected_band ? 1.f : .20f;
+                // Selected light dominates, but the rest of the active bands still colour
+                // their nearby glass just enough to make the whole interface feel alive.
+                auto strength = band == selected_band ? 1.f : .26f;
                 if (status == zlp::FilterStatus::kBypass) strength *= .42f;
 
                 result[band] = {
@@ -84,15 +86,17 @@ namespace zlpanel {
             juce::Graphics::ScopedSaveState state(g);
             g.reduceClipRegion(clip_bounds.toNearestInt());
 
+            // YouTube-style ambient light: broad colour, no rays, no hard hotspot.
             juce::ColourGradient ambient(
-                colour.interpolatedWith(juce::Colours::white, .055f).withAlpha(alpha),
+                colour.interpolatedWith(juce::Colours::white, .035f).withAlpha(alpha),
                 source.x, source.y,
                 colour.withAlpha(0.f),
                 source.x + radius, source.y, true);
-            ambient.addColour(.24, colour.withAlpha(alpha * .82f));
-            ambient.addColour(.52, colour.withAlpha(alpha * .40f));
-            ambient.addColour(.76, colour.withAlpha(alpha * .13f));
-            ambient.addColour(.94, colour.withAlpha(alpha * .018f));
+            ambient.addColour(.20, colour.withAlpha(alpha * .90f));
+            ambient.addColour(.46, colour.withAlpha(alpha * .54f));
+            ambient.addColour(.70, colour.withAlpha(alpha * .24f));
+            ambient.addColour(.88, colour.withAlpha(alpha * .065f));
+            ambient.addColour(.98, colour.withAlpha(0.f));
             g.setGradientFill(ambient);
             g.fillEllipse(source.x - radius, source.y - radius, radius * 2.f, radius * 2.f);
         }
@@ -133,9 +137,6 @@ namespace zlpanel {
         band_hub_panel_.updateBand();
         addChildComponent(overlay_scrim_);
 
-        // Normal band editing lives in the compact node bubble + contextual Band Hub.
-        // ControlPanel remains available only because its Match view is the dedicated
-        // EQ Match workspace.
         addChildComponent(control_panel_);
         control_panel_.setVisible(false);
 
@@ -173,19 +174,16 @@ namespace zlpanel {
             g.setGradientFill(body);
             g.fillRect(shell.expanded(2.f));
 
-            // There is no independent decorative light field anymore. Active EQ nodes are
-            // the lighting system: broad, low-energy colour diffuses into the shell like
-            // YouTube ambient light, while the curve/fill handle the brighter local optics.
             const auto sample_rate = c_sample_rate_ > 1000.0 ? c_sample_rate_ : p_ref_.getSampleRate();
             const auto nodes = collectAmbientNodes(p_ref_, base_, curve_panel_.getBounds().toFloat(), sample_rate);
             for (const auto& node : nodes) {
                 if (!node.valid) continue;
-                const auto broad_radius = juce::jmax(base_.getFontSize() * 15.f, shell.getWidth() * .145f);
-                const auto near_radius = juce::jmax(base_.getFontSize() * 7.5f, shell.getWidth() * .072f);
+                const auto broad_radius = juce::jmax(base_.getFontSize() * 18.f, shell.getWidth() * .18f);
+                const auto near_radius = juce::jmax(base_.getFontSize() * 8.f, shell.getWidth() * .080f);
                 paintAmbientField(g, node.point, node.colour, broad_radius,
-                                  .030f * node.strength, shell);
+                                  .032f * node.strength, shell);
                 paintAmbientField(g, node.point, node.colour, near_radius,
-                                  .038f * node.strength, shell);
+                                  .036f * node.strength, shell);
             }
         }
 
@@ -206,23 +204,20 @@ namespace zlpanel {
     }
 
     void MainPanel::paintOverChildren(juce::Graphics& g) {
-        // A very faint surface response ensures the translucent top/footer glass and the
-        // Band Hub visibly pick up nearby node colour. This is intentionally much weaker
-        // than the graph illumination so labels and controls stay clean and readable.
         const auto sample_rate = c_sample_rate_ > 1000.0 ? c_sample_rate_ : p_ref_.getSampleRate();
         const auto nodes = collectAmbientNodes(p_ref_, base_, curve_panel_.getBounds().toFloat(), sample_rate);
-        const auto surface_radius = juce::jmax(base_.getFontSize() * 20.f, getWidth() * .22f);
+        const auto surface_radius = juce::jmax(base_.getFontSize() * 28.f, getWidth() * .32f);
 
         for (const auto& node : nodes) {
             if (!node.valid) continue;
-            const auto alpha = .017f * node.strength;
+            const auto alpha = .028f * node.strength;
             paintAmbientField(g, node.point, node.colour, surface_radius, alpha,
                               top_panel_.getBounds().toFloat());
             paintAmbientField(g, node.point, node.colour, surface_radius, alpha,
                               footer_panel_.getBounds().toFloat());
             if (band_hub_panel_.isVisible()) {
-                paintAmbientField(g, node.point, node.colour, surface_radius * .74f,
-                                  .026f * node.strength,
+                paintAmbientField(g, node.point, node.colour, surface_radius * .78f,
+                                  .040f * node.strength,
                                   band_hub_panel_.getBounds().toFloat());
             }
         }
@@ -233,9 +228,7 @@ namespace zlpanel {
         {
             const auto height = static_cast<float>(full.getHeight());
             const auto width = static_cast<float>(full.getWidth());
-            if (height < width * kHoWMin) {
-                full.setHeight(static_cast<int>(std::ceil(width * kHoWMin)));
-            }
+            if (height < width * kHoWMin) full.setHeight(static_cast<int>(std::ceil(width * kHoWMin)));
         }
         const auto max_font_size = static_cast<float>(full.getWidth()) * kFontSizeOverWidth;
         const auto min_font_size = max_font_size * .25f;
@@ -261,10 +254,8 @@ namespace zlpanel {
 
         const auto padding = getPaddingSize(font_size);
         const auto graph = curve_panel_.getBounds();
-        const auto hub_w = juce::jmax(0, juce::jmin(band_hub_panel_.getIdealWidth(),
-                                                    graph.getWidth() - 4 * padding));
-        const auto hub_h = juce::jmax(0, juce::jmin(band_hub_panel_.getIdealHeight(),
-                                                    graph.getHeight() - 3 * padding));
+        const auto hub_w = juce::jmax(0, juce::jmin(band_hub_panel_.getIdealWidth(), graph.getWidth() - 4 * padding));
+        const auto hub_h = juce::jmax(0, juce::jmin(band_hub_panel_.getIdealHeight(), graph.getHeight() - 3 * padding));
         auto hub = juce::Rectangle<int>(0, 0, hub_w, hub_h);
         hub.setCentre(graph.getCentreX(), graph.getBottom() - padding - hub_h / 2);
         band_hub_panel_.setBounds(hub);
@@ -276,23 +267,18 @@ namespace zlpanel {
             const auto sheet_w = juce::jmin(control_panel_.getActiveIdealWidth(), max_w);
             const auto sheet_h = juce::jmin(control_panel_.getActiveIdealHeight(), max_h);
             auto sheet = juce::Rectangle<int>(0, 0, sheet_w, sheet_h);
-            sheet.setCentre(curve_panel_.getBounds().getCentreX(),
-                            curve_panel_.getY() + padding + sheet_h / 2);
+            sheet.setCentre(curve_panel_.getBounds().getCentreX(), curve_panel_.getY() + padding + sheet_h / 2);
             control_panel_.setBounds(sheet);
         } else {
             control_panel_.setBounds({});
         }
 
-        const auto setting_width = juce::jmax(0, juce::jmin(ui_setting_panel_.getIdealWidth(),
-                                                            main_bound.getWidth() - 4 * padding));
-        const auto setting_height = juce::jmax(0, juce::jmin(ui_setting_panel_.getIdealHeight(),
-                                                             main_bound.getHeight() - 4 * padding));
+        const auto setting_width = juce::jmax(0, juce::jmin(ui_setting_panel_.getIdealWidth(), main_bound.getWidth() - 4 * padding));
+        const auto setting_height = juce::jmax(0, juce::jmin(ui_setting_panel_.getIdealHeight(), main_bound.getHeight() - 4 * padding));
         ui_setting_panel_.setBounds(main_bound.withSizeKeepingCentre(setting_width, setting_height));
 
-        const auto preset_width = juce::jmax(0, juce::jmin(preset_browser_.getIdealWidth(),
-                                                           main_bound.getWidth() - 4 * padding));
-        const auto preset_height = juce::jmax(0, juce::jmin(preset_browser_.getIdealHeight(),
-                                                            main_bound.getHeight() - 4 * padding));
+        const auto preset_width = juce::jmax(0, juce::jmin(preset_browser_.getIdealWidth(), main_bound.getWidth() - 4 * padding));
+        const auto preset_height = juce::jmax(0, juce::jmin(preset_browser_.getIdealHeight(), main_bound.getHeight() - 4 * padding));
         preset_browser_.setBounds(main_bound.withSizeKeepingCentre(preset_width, preset_height));
 
         updateOverlayState();
@@ -306,12 +292,9 @@ namespace zlpanel {
     }
 
     void MainPanel::closeGlobalOverlaysExcept(const zlgui::PanelSettingIdx keep) {
-        if (keep != zlgui::PanelSettingIdx::kPresetBrowser)
-            base_.setPanelProperty(zlgui::PanelSettingIdx::kPresetBrowser, 0.0);
-        if (keep != zlgui::PanelSettingIdx::kUISettingPanel)
-            base_.setPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel, 0.0);
-        if (keep != zlgui::PanelSettingIdx::kMatchPanel)
-            base_.setPanelProperty(zlgui::PanelSettingIdx::kMatchPanel, 0.0);
+        if (keep != zlgui::PanelSettingIdx::kPresetBrowser) base_.setPanelProperty(zlgui::PanelSettingIdx::kPresetBrowser, 0.0);
+        if (keep != zlgui::PanelSettingIdx::kUISettingPanel) base_.setPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel, 0.0);
+        if (keep != zlgui::PanelSettingIdx::kMatchPanel) base_.setPanelProperty(zlgui::PanelSettingIdx::kMatchPanel, 0.0);
         base_.setPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel, 0.0);
         base_.setPanelProperty(zlgui::PanelSettingIdx::kOutputPanel, 0.0);
     }
@@ -320,10 +303,8 @@ namespace zlpanel {
         base_.setPanelProperty(zlgui::PanelSettingIdx::kPresetBrowser, 0.0);
         base_.setPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel, 0.0);
         base_.setPanelProperty(zlgui::PanelSettingIdx::kMatchPanel, 0.0);
-        if (utility != zlgui::PanelSettingIdx::kAnalyzerPanel)
-            base_.setPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel, 0.0);
-        if (utility != zlgui::PanelSettingIdx::kOutputPanel)
-            base_.setPanelProperty(zlgui::PanelSettingIdx::kOutputPanel, 0.0);
+        if (utility != zlgui::PanelSettingIdx::kAnalyzerPanel) base_.setPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel, 0.0);
+        if (utility != zlgui::PanelSettingIdx::kOutputPanel) base_.setPanelProperty(zlgui::PanelSettingIdx::kOutputPanel, 0.0);
     }
 
     void MainPanel::updateOverlayState() {
@@ -370,9 +351,6 @@ namespace zlpanel {
             curve_panel_.repaintCallBack();
             control_panel_.repaintCallBack();
 
-            // Keep ambient reflections attached to moving nodes without repainting every
-            // pixel of the plugin. Only the glass surfaces that receive the distant light
-            // need the additional parent repaint.
             auto ambient_dirty = top_panel_.getBounds().getUnion(footer_panel_.getBounds());
             if (band_hub_panel_.isVisible()) ambient_dirty = ambient_dirty.getUnion(band_hub_panel_.getBounds());
             repaint(ambient_dirty.expanded(3));
@@ -388,35 +366,24 @@ namespace zlpanel {
     void MainPanel::valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property) {
         if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kUISettingPanel, property)) {
             const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel)) > .5;
-            if (open) {
-                closeGlobalOverlaysExcept(zlgui::PanelSettingIdx::kUISettingPanel);
-            }
-            updateOverlayState();
-            resized();
+            if (open) closeGlobalOverlaysExcept(zlgui::PanelSettingIdx::kUISettingPanel);
+            updateOverlayState(); resized();
         } else if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kPresetBrowser, property)) {
             const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kPresetBrowser)) > .5;
-            if (open) {
-                closeGlobalOverlaysExcept(zlgui::PanelSettingIdx::kPresetBrowser);
-            }
-            updateOverlayState();
-            resized();
+            if (open) closeGlobalOverlaysExcept(zlgui::PanelSettingIdx::kPresetBrowser);
+            updateOverlayState(); resized();
         } else if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kMatchPanel, property)) {
             const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel)) > .5;
-            if (open) {
-                closeGlobalOverlaysExcept(zlgui::PanelSettingIdx::kMatchPanel);
-            }
-            updateOverlayState();
-            resized();
+            if (open) closeGlobalOverlaysExcept(zlgui::PanelSettingIdx::kMatchPanel);
+            updateOverlayState(); resized();
         } else if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kAnalyzerPanel, property)) {
             const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel)) > .5;
             if (open) closeGlobalSheetsForUtility(zlgui::PanelSettingIdx::kAnalyzerPanel);
-            updateOverlayState();
-            resized();
+            updateOverlayState(); resized();
         } else if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kOutputPanel, property)) {
             const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kOutputPanel)) > .5;
             if (open) closeGlobalSheetsForUtility(zlgui::PanelSettingIdx::kOutputPanel);
-            updateOverlayState();
-            resized();
+            updateOverlayState(); resized();
         }
     }
 
