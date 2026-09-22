@@ -45,13 +45,15 @@ namespace zlpanel {
 
     private:
         static constexpr size_t kNumPoints = 400;
-        static constexpr float kFillingAlpha = .082f;
-        static constexpr float kDynamicFillingAlpha = .100f;
-        static constexpr float kNotSelectedAlphaMultiplier = .58f;
+        // Reference-match fills are intentionally restrained.  The colour should read as
+        // light transmitted through the graph glass, not as a flat translucent paint layer.
+        static constexpr float kFillingAlpha = .060f;
+        static constexpr float kDynamicFillingAlpha = .078f;
+        static constexpr float kNotSelectedAlphaMultiplier = .55f;
         static constexpr float kBypassAlphaMultiplier = .75f;
         static constexpr float kDiffStereoAlphaMultiplier = .33333f;
-        static constexpr float kNoBandSelectedAlphaMultiplier = .62f;
-        static constexpr float kThickMultiplier = 1.04f;
+        static constexpr float kNoBandSelectedAlphaMultiplier = .58f;
+        static constexpr float kThickMultiplier = 1.03f;
 
         PluginProcessor& p_ref_;
         zlgui::UIBase& base_;
