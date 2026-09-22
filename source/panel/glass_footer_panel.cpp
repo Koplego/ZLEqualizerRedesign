@@ -162,15 +162,18 @@ namespace zlpanel {
 
     void GlassFooterPanel::paint(juce::Graphics& g) {
         auto strip = getLocalBounds().toFloat().reduced(.5f);
+
+        // The agreed lighting reference has a brighter translucent shelf than the runtime
+        // build: it is still dark glass, but it has enough optical density to visibly carry
+        // amber, cyan, blue and violet from the nodes above it.
         zlgui::glass::fillGlassSurface(g, strip, juce::jmax(9.f, strip.getHeight() * .43f),
-                                      .060f, .110f, .145f);
+                                      .085f, .148f, .165f);
 
-        // The footer is a receiver, not a light source. Node colour is injected into the
-        // translucent material before separators and labels are drawn so typography stays
-        // clean while the glass itself takes on the wide spatial ambience from the graph.
-        zlgui::glass::paintAmbientSources(g, ambient_sources_, strip, .020f);
+        // Inject the node field after the neutral material so the footer reads like one piece
+        // of glass sitting in the same ambient room as the graph, not separate blue chrome.
+        zlgui::glass::paintAmbientSources(g, ambient_sources_, strip, .024f);
 
-        g.setColour(zlgui::glass::rim().withMultipliedAlpha(.36f));
+        g.setColour(zlgui::glass::rim().withMultipliedAlpha(.40f));
         if (!analyzer_group_bound_.isEmpty())
             g.drawVerticalLine(analyzer_group_bound_.getRight() + getPaddingSize(base_.getFontSize()) / 2,
                                strip.getY() + strip.getHeight() * .29f,
@@ -180,7 +183,7 @@ namespace zlpanel {
                                strip.getY() + strip.getHeight() * .29f,
                                strip.getBottom() - strip.getHeight() * .29f);
 
-        g.setColour(zlgui::glass::textSecondary().withMultipliedAlpha(.70f));
+        g.setColour(zlgui::glass::textSecondary().withMultipliedAlpha(.74f));
         g.setFont(juce::FontOptions(base_.getFontSize() * .63f));
         g.drawText("Spectrum", spectrum_label_bound_, juce::Justification::centred, false);
         g.drawText("Processing", processing_label_bound_, juce::Justification::centredRight, false);
