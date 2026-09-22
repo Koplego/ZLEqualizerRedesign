@@ -1,12 +1,12 @@
-name: Glass EQ v1.7 Verify
+name: Glass EQ Reference Verify
 
 on:
   push:
-    branches: [glass-eq-v1.7-reference-rebuild]
+    branches: [glass-eq-v1.7-reference-rebuild, glass-eq-v1.8-reference-lock]
   workflow_dispatch:
 
 concurrency:
-  group: glass-eq-v17-${{ github.ref }}
+  group: glass-eq-reference-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -14,7 +14,7 @@ permissions:
 
 env:
   BUILD_TYPE: Release
-  BUILD_DIR: BuildsGlassV17CI
+  BUILD_DIR: BuildsGlassReferenceCI
 
 jobs:
   macos-vst3:
