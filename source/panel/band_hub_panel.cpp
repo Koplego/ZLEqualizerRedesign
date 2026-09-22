@@ -10,7 +10,7 @@ namespace zlpanel {
     BandHubPanel::BandHubPanel(PluginProcessor& p, zlgui::UIBase& base,
                                const multilingual::TooltipHelper& tooltip_helper) :
         p_ref_(p), base_(base),
-        collapse_button_(base, "⌄"),
+        collapse_button_(base, "v"),
         dynamic_button_(base, "Dynamic"),
         dynamics_page_button_(base, "Dynamics"),
         detector_page_button_(base, "Detector"),
@@ -214,8 +214,9 @@ namespace zlpanel {
 
         if (reveal_ < .38f) {
             juce::String title = "Band " + juce::String(static_cast<int>(attached_band_ + 1));
-            if (type >= 0 && type < static_cast<int>(names.size())) title += "  ·  " + juce::String(names[static_cast<size_t>(type)]);
-            if (dynamic_on_) title += "  ·  Dynamic";
+            if (type >= 0 && type < static_cast<int>(names.size()))
+                title += " / " + juce::String(names[static_cast<size_t>(type)]);
+            if (dynamic_on_) title += " / Dynamic";
             g.setColour(zlgui::glass::textPrimary().withAlpha(.90f));
             g.setFont(juce::FontOptions(base_.getFontSize() * .68f));
             g.drawFittedText(title, surface.toNearestInt().reduced(12, 0), juce::Justification::centred, 1);
@@ -224,7 +225,8 @@ namespace zlpanel {
 
         const auto childAlpha = juce::jlimit(0.f, 1.f, (reveal_ - .24f) / .76f);
         juce::String bandTitle = "B" + juce::String(static_cast<int>(attached_band_ + 1));
-        if (type >= 0 && type < static_cast<int>(names.size())) bandTitle += " · " + juce::String(names[static_cast<size_t>(type)]);
+        if (type >= 0 && type < static_cast<int>(names.size()))
+            bandTitle += " / " + juce::String(names[static_cast<size_t>(type)]);
         g.setColour(zlgui::glass::textPrimary().withAlpha(.92f * childAlpha));
         g.setFont(juce::FontOptions(base_.getFontSize() * .67f));
         g.drawFittedText(bandTitle, title_bound_, juce::Justification::centredLeft, 1);
@@ -245,7 +247,7 @@ namespace zlpanel {
             message.removeFromTop(juce::jmax(22, juce::roundToInt(base_.getFontSize() * 1.65f)));
             g.setColour(zlgui::glass::textSecondary().withAlpha(.72f * childAlpha));
             g.setFont(juce::FontOptions(base_.getFontSize() * .58f));
-            g.drawFittedText("Dynamic EQ is off — enable it to edit dynamics, detector and sidechain.",
+            g.drawFittedText("Dynamic EQ is off - enable it to edit dynamics, detector and sidechain.",
                              message, juce::Justification::centred, 1);
         }
     }
