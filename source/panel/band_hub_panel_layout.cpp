@@ -45,7 +45,6 @@ namespace zlpanel {
         if (surface.getHeight() > contentH)
             content.setY(surface.getY() + (surface.getHeight() - contentH) / 2);
 
-        // Dynamics gets the full width: four dense value cells.
         auto dynRegion = content;
         const auto dynCellW = juce::jmax(1, (dynRegion.getWidth() - 3 * gap) / 4);
         auto dynLabels = dynRegion.removeFromTop(labelH);
@@ -59,8 +58,6 @@ namespace zlpanel {
         attack_slider_.setBounds(dynValues.removeFromLeft(dynCellW)); dynValues.removeFromLeft(gap);
         release_slider_.setBounds(dynValues);
 
-        // Detector and sidechain share one compact value strip. Their extra toggles
-        // live in a narrow action cluster on the right instead of consuming a third row.
         const auto flagW = juce::jmax(42, juce::roundToInt(font * 3.05f));
         const auto actionW = 3 * flagW + 2 * gap;
         auto detailRegion = content;
@@ -113,11 +110,11 @@ namespace zlpanel {
     }
 
     int BandHubPanel::getIdealWidth() const {
-        return juce::roundToInt(base_.getFontSize() * 34.f);
+        return juce::roundToInt(base_.getFontSize() * 31.5f);
     }
 
     int BandHubPanel::getIdealHeight() const {
-        return juce::roundToInt(base_.getFontSize() * 6.0f);
+        return juce::jmax(72, juce::roundToInt(base_.getFontSize() * 4.85f));
     }
 
     void BandHubPanel::setExpanded(const bool expanded) {
