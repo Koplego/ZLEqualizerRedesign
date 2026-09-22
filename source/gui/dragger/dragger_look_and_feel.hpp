@@ -37,11 +37,11 @@ namespace zlgui::dragger {
 
             if (dragger_shape_ == kRound) {
                 // Treat the node as the lamp, not as another piece of glass. The body stays
-                // saturated and calm; the thick optical perimeter is the luminous source.
+                // saturated and calm; the broad optical perimeter is the luminous source.
                 const juce::DropShadow edgeBloom{
-                    colour_.interpolatedWith(juce::Colours::white, .18f)
-                           .withAlpha((active ? .30f : hover ? .21f : .13f) * visibility),
-                    juce::jmax(2, juce::roundToInt(base_.getFontSize() * (active ? .54f : .40f))),
+                    colour_.interpolatedWith(juce::Colours::white, .15f)
+                           .withAlpha((active ? .24f : hover ? .17f : .105f) * visibility),
+                    juce::jmax(2, juce::roundToInt(base_.getFontSize() * (active ? .48f : .36f))),
                     {0, 0}};
                 edgeBloom.drawForPath(g, outline_path_);
 
@@ -64,21 +64,21 @@ namespace zlgui::dragger {
                 g.setGradientFill(body);
                 g.fillPath(outline_path_);
 
-                // A quiet coloured cushion sits behind the bright edge. It softens the
-                // transition into the surrounding bloom without creating visible rings.
-                g.setColour(colour_.withAlpha((active ? .15f : hover ? .11f : .065f) * visibility));
+                // A quiet coloured cushion behind the edge softens the transfer into the
+                // surrounding light field without creating another visible ring.
+                g.setColour(colour_.withAlpha((active ? .13f : hover ? .095f : .055f) * visibility));
                 g.strokePath(outline_path_, juce::PathStrokeType(
-                    juce::jmax(2.2f, base_.getFontSize() * .20f),
+                    juce::jmax(2.5f, base_.getFontSize() * .225f),
                     juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
-                // The edge itself is intentionally substantial. In the reference it is a
-                // small sun-like perimeter that has enough area to feel luminous rather
-                // than a one-pixel outline.
-                const auto rimThickness = juce::jmax(active ? 1.9f : 1.55f,
-                    base_.getFontSize() * (active ? .145f : hover ? .128f : .112f));
+                // This is deliberately thicker than a normal UI outline. It is the lamp's
+                // emitting surface, analogous to the bright edge of the sun in the visual
+                // metaphor, while the coloured band behaves like stained glass around it.
+                const auto rimThickness = juce::jmax(active ? 2.4f : 2.0f,
+                    base_.getFontSize() * (active ? .180f : hover ? .160f : .145f));
                 g.setColour(colour_.interpolatedWith(juce::Colours::white,
-                                                     active ? .80f : hover ? .74f : .67f)
-                            .withAlpha((active ? .99f : hover ? .91f : .82f) * visibility));
+                                                     active ? .79f : hover ? .73f : .66f)
+                            .withAlpha((active ? .99f : hover ? .91f : .83f) * visibility));
                 g.strokePath(outline_path_, juce::PathStrokeType(
                     rimThickness, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
             } else {
