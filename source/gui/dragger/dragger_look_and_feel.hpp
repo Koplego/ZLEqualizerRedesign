@@ -36,45 +36,59 @@ namespace zlgui::dragger {
             const auto visibility = juce::jlimit(0.f, 1.f, alpha_);
 
             if (dragger_shape_ == kRound) {
+                const auto node_bounds = outline_path_.getBounds();
+                auto glow_bounds = node_bounds.expanded(base_.getFontSize() * (active ? .31f : .22f));
+                juce::ColourGradient bloom(
+                    colour_.interpolatedWith(juce::Colours::white, .10f)
+                        .withAlpha((active ? .19f : hover ? .13f : .085f) * visibility),
+                    node_bounds.getCentreX(), node_bounds.getCentreY(),
+                    juce::Colours::transparentBlack,
+                    glow_bounds.getRight(), node_bounds.getCentreY(), true);
+                bloom.addColour(.46, colour_.withAlpha((active ? .085f : .038f) * visibility));
+                bloom.addColour(.78, colour_.withAlpha(.006f * visibility));
+                g.setGradientFill(bloom);
+                g.fillEllipse(glow_bounds);
+
                 const juce::DropShadow halo{
-                    colour_.withAlpha((active ? .145f : hover ? .080f : .040f) * visibility),
-                    juce::jmax(2, juce::roundToInt(base_.getFontSize() * (active ? .44f : .25f))),
+                    colour_.withAlpha((active ? .18f : hover ? .11f : .065f) * visibility),
+                    juce::jmax(2, juce::roundToInt(base_.getFontSize() * (active ? .50f : .31f))),
                     {0, 0}};
                 halo.drawForPath(g, outline_path_);
             }
 
-            g.setColour(juce::Colour(4, 18, 31).withAlpha((active ? .38f : .28f) * visibility));
+            // Dark outer glass keeps the node compact. The colour lives in the inner lens and
+            // in the bloom around it, rather than turning the entire control into a pastel dot.
+            g.setColour(juce::Colour(3, 16, 29).withAlpha((active ? .58f : .46f) * visibility));
             g.fillPath(outline_path_);
 
-            g.setColour(colour_.interpolatedWith(juce::Colours::white, .10f)
-                        .withAlpha((active ? .125f : hover ? .085f : .055f) * visibility));
+            g.setColour(colour_.withAlpha((active ? .115f : hover ? .075f : .045f) * visibility));
             g.fillPath(outline_path_);
 
-            g.setColour(glass::textPrimary().withAlpha((active ? .90f : hover ? .70f : .56f) * visibility));
-            g.strokePath(outline_path_, juce::PathStrokeType(juce::jmax(.8f, base_.getFontSize() * .070f)));
+            g.setColour(glass::textPrimary().withAlpha((active ? .94f : hover ? .78f : .67f) * visibility));
+            g.strokePath(outline_path_, juce::PathStrokeType(juce::jmax(.88f, base_.getFontSize() * .073f)));
 
             const auto innerBounds = inner_path_.getBounds();
             juce::ColourGradient lens(
-                colour_.interpolatedWith(juce::Colours::white, active ? .29f : .22f)
-                    .withAlpha((active ? .94f : .86f) * visibility),
-                innerBounds.getX() + innerBounds.getWidth() * .26f,
-                innerBounds.getY() + innerBounds.getHeight() * .18f,
-                colour_.interpolatedWith(juce::Colours::black, .10f)
-                    .withAlpha((active ? .95f : .87f) * visibility),
+                colour_.interpolatedWith(juce::Colours::white, active ? .36f : .28f)
+                    .withAlpha((active ? .97f : .91f) * visibility),
+                innerBounds.getX() + innerBounds.getWidth() * .24f,
+                innerBounds.getY() + innerBounds.getHeight() * .16f,
+                colour_.interpolatedWith(juce::Colours::black, .13f)
+                    .withAlpha((active ? .98f : .92f) * visibility),
                 innerBounds.getRight(), innerBounds.getBottom(), true);
-            lens.addColour(.52, colour_.interpolatedWith(juce::Colours::white, .06f)
-                                      .withAlpha((active ? .95f : .89f) * visibility));
+            lens.addColour(.50, colour_.interpolatedWith(juce::Colours::white, .09f)
+                                      .withAlpha((active ? .98f : .93f) * visibility));
             g.setGradientFill(lens);
             g.fillPath(inner_path_);
 
-            g.setColour(juce::Colours::white.withAlpha((active ? .96f : hover ? .76f : .64f) * visibility));
-            g.strokePath(inner_path_, juce::PathStrokeType(juce::jmax(.82f, base_.getFontSize() * .066f)));
+            g.setColour(juce::Colours::white.withAlpha((active ? .98f : hover ? .84f : .77f) * visibility));
+            g.strokePath(inner_path_, juce::PathStrokeType(juce::jmax(.90f, base_.getFontSize() * .070f)));
 
-            if (active && dragger_shape_ == kRound) {
-                auto glint = innerBounds.withSizeKeepingCentre(innerBounds.getWidth() * .34f,
-                                                               innerBounds.getHeight() * .18f);
-                glint.translate(-innerBounds.getWidth() * .12f, -innerBounds.getHeight() * .20f);
-                g.setColour(juce::Colours::white.withAlpha(.16f * visibility));
+            if (dragger_shape_ == kRound) {
+                auto glint = innerBounds.withSizeKeepingCentre(innerBounds.getWidth() * .42f,
+                                                               innerBounds.getHeight() * .21f);
+                glint.translate(-innerBounds.getWidth() * .13f, -innerBounds.getHeight() * .20f);
+                g.setColour(juce::Colours::white.withAlpha((active ? .25f : .14f) * visibility));
                 g.fillEllipse(glint);
             }
 
@@ -129,9 +143,13 @@ namespace zlgui::dragger {
         }
 
         void updateRoundPaths(juce::Rectangle<float>& bound) {
-            const auto radius = bound.getWidth();
+            // Preserve the existing hit target but use only part of it for the visible node.
+            // The remaining margin is deliberate: it gives the optical bloom room to exist
+            // without making the actual control look oversized.
+            const auto diameter = bound.getWidth() * .79f;
+            bound = bound.withSizeKeepingCentre(diameter, diameter);
             outline_path_.addEllipse(bound);
-            bound = bound.withSizeKeepingCentre(radius * .76f, radius * .76f);
+            bound = bound.withSizeKeepingCentre(diameter * .70f, diameter * .70f);
             inner_path_.addEllipse(bound);
         }
 
