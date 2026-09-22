@@ -80,5 +80,13 @@ namespace zlpanel {
         void drawFilterGlyph(juce::Graphics& g, juce::Rectangle<float> r, int type,
                              juce::Colour colour) const;
         void drawQuickActionGlyphs(juce::Graphics& g) const;
+
+        // The real ComboBox widgets are retained only as invisible hit targets/parameter
+        // hosts. Their text/arrow used to be rendered at 1% alpha underneath the custom
+        // Glass chip, which produced the faint "1..." ghost over the dB/oct control.
+        void visibilityChanged() override {
+            ftype_box_.setAlpha(0.f);
+            slope_box_.setAlpha(0.f);
+        }
     };
 }
