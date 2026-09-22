@@ -86,6 +86,14 @@ namespace zlpanel {
             }
             return local;
         }
+
+        std::vector<zlgui::glass::AmbientLightSource> withAmbientRadius(
+            const std::vector<zlgui::glass::AmbientLightSource>& sources,
+            const float radius) {
+            auto result = sources;
+            for (auto& source : result) source.radius = radius;
+            return result;
+        }
     }
 
     MainPanel::MainPanel(PluginProcessor& p, zlgui::UIBase& base, const multilingual::TooltipLanguage language) :
@@ -153,25 +161,35 @@ namespace zlpanel {
             juce::Graphics::ScopedSaveState clip(g);
             g.reduceClipRegion(shell_clip);
 
-            // The old hard-coded blue shell was masking the ambient system. Use a much more
-            // neutral smoked-glass substrate and let the nodes provide the actual colour.
-            juce::ColourGradient body(juce::Colour(39, 51, 60), shell.getCentreX(), shell.getY(),
-                                      juce::Colour(10, 20, 28), shell.getCentreX(), shell.getBottom(), false);
-            body.addColour(.38, juce::Colour(31, 43, 53));
-            body.addColour(.74, juce::Colour(18, 30, 39));
+            // The agreed reference is a luminous blue glass room, not a flat grey slab and not
+            // an opaque blue panel. Keep a cool navy substrate with enough headroom for node
+            // colours to become the visible illumination.
+            juce::ColourGradient body(juce::Colour(40, 63, 82), shell.getCentreX(), shell.getY(),
+                                      juce::Colour(8, 22, 34), shell.getCentreX(), shell.getBottom(), false);
+            body.addColour(.38, juce::Colour(28, 50, 68));
+            body.addColour(.74, juce::Colour(15, 34, 49));
             g.setGradientFill(body);
             g.fillRect(shell.expanded(2.f));
 
             const auto sample_rate = c_sample_rate_ > 1000.0 ? c_sample_rate_ : p_ref_.getSampleRate();
             const auto nodes = collectAmbientNodes(p_ref_, base_, curve_panel_.getBounds().toFloat(), sample_rate);
+
+            // The reference's defining feature is a room-scale wash: amber on the left,
+            // green/cyan through the low-mid area, blue in the centre and violet at the right.
+            // Paint that once as a smooth horizontal light field spanning the entire shell.
+            const auto room_radius = juce::jmax(base_.getFontSize() * 48.f, shell.getWidth() * .56f);
+            const auto room_sources = withAmbientRadius(nodes, room_radius);
+            zlgui::glass::paintBlendedAmbientStrip(g, room_sources, shell, .014f);
+
+            // Then add much softer radial pools so the scene still feels sourced from actual
+            // nodes rather than four arbitrary colour columns.
             for (const auto& node : nodes) {
-                // Wider rather than harsher: one room-scale field plus a softer local pool.
-                const auto broad_radius = juce::jmax(base_.getFontSize() * 38.f, shell.getWidth() * .46f);
-                const auto near_radius = juce::jmax(base_.getFontSize() * 18.f, shell.getWidth() * .24f);
+                const auto broad_radius = juce::jmax(base_.getFontSize() * 29.f, shell.getWidth() * .32f);
+                const auto near_radius = juce::jmax(base_.getFontSize() * 14.f, shell.getWidth() * .17f);
                 zlgui::glass::paintAmbientField(g, node.point, node.colour, broad_radius,
-                                                .026f * node.strength, shell);
+                                                .018f * node.strength, shell);
                 zlgui::glass::paintAmbientField(g, node.point, node.colour, near_radius,
-                                                .023f * node.strength, shell);
+                                                .019f * node.strength, shell);
             }
         }
 
@@ -192,15 +210,21 @@ namespace zlpanel {
     }
 
     void MainPanel::paintOverChildren(juce::Graphics& g) {
-        // Keep the graph's final ambience restrained. The stronger room response belongs to
-        // the surrounding glass, while the graph already gets colour from its fills/curves.
         const auto sample_rate = c_sample_rate_ > 1000.0 ? c_sample_rate_ : p_ref_.getSampleRate();
         const auto nodes = collectAmbientNodes(p_ref_, base_, curve_panel_.getBounds().toFloat(), sample_rate);
-        const auto graph_radius = juce::jmax(base_.getFontSize() * 32.f, getWidth() * .36f);
+        auto graph_clip = curve_panel_.getBounds().toFloat();
+
+        // The runtime screenshots were missing the broad coloured atmosphere visible in the
+        // agreed reference. A restrained room wash over the graph supplies that spread, while
+        // the existing band fills and node glows remain the stronger local stained-glass layer.
+        const auto room_radius = juce::jmax(base_.getFontSize() * 44.f, getWidth() * .50f);
+        const auto room_sources = withAmbientRadius(nodes, room_radius);
+        zlgui::glass::paintBlendedAmbientStrip(g, room_sources, graph_clip, .0055f);
+
+        const auto graph_radius = juce::jmax(base_.getFontSize() * 31.f, getWidth() * .34f);
         for (const auto& node : nodes) {
             zlgui::glass::paintAmbientField(g, node.point, node.colour, graph_radius,
-                                            .0055f * node.strength,
-                                            curve_panel_.getBounds().toFloat());
+                                            .0042f * node.strength, graph_clip);
         }
     }
 
@@ -347,8 +371,8 @@ namespace zlpanel {
 
             updateAmbientReceivers();
 
-            // The whole shell is now part of the lighting scene. Repaint it when bands move,
-            // not only the graph, so the header/footer ambience tracks nodes continuously.
+            // The whole shell is part of the lighting scene. Repaint it as the nodes move so
+            // the room wash, header, footer and graph remain spatially locked to the lamps.
             repaint();
 
             const auto c_refresh_rate = refresh_handler_.getActualRefreshRate();
