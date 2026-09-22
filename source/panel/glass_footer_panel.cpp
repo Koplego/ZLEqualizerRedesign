@@ -162,8 +162,29 @@ namespace zlpanel {
 
     void GlassFooterPanel::paint(juce::Graphics& g) {
         auto strip = getLocalBounds().toFloat().reduced(.5f);
-        zlgui::glass::fillGlassSurface(g, strip, juce::jmax(9.f, strip.getHeight() * .43f),
-                                      .060f, .110f, .145f);
+        const auto radius = juce::jmax(9.f, strip.getHeight() * .43f);
+
+        // Opaque neutral-blue glass deliberately masks the parent shell. This prevents the
+        // footer from inheriting any band-colour wash while keeping the same glass material.
+        juce::ColourGradient base(juce::Colour(20, 47, 70), strip.getCentreX(), strip.getY(),
+                                  juce::Colour(7, 23, 39), strip.getCentreX(), strip.getBottom(), false);
+        base.addColour(.55, juce::Colour(13, 35, 54));
+        g.setGradientFill(base);
+        g.fillRoundedRectangle(strip, radius);
+
+        juce::ColourGradient cool(
+            juce::Colour(118, 188, 231).withAlpha(.034f),
+            strip.getCentreX(), strip.getY() + strip.getHeight() * .06f,
+            juce::Colours::transparentBlack,
+            strip.getCentreX(), strip.getBottom(), true);
+        g.setGradientFill(cool);
+        g.fillRoundedRectangle(strip, radius);
+
+        g.setColour(zlgui::glass::rim().withMultipliedAlpha(.88f));
+        g.drawRoundedRectangle(strip, radius, .76f);
+        g.setColour(juce::Colours::white.withAlpha(.035f));
+        g.drawLine(strip.getX() + radius * .65f, strip.getY() + .6f,
+                   strip.getRight() - radius * .65f, strip.getY() + .6f, .7f);
 
         g.setColour(zlgui::glass::rim().withMultipliedAlpha(.36f));
         if (!analyzer_group_bound_.isEmpty())
