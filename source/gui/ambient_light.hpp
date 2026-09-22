@@ -25,16 +25,17 @@ namespace zlgui::glass {
         g.reduceClipRegion(clip_bounds.toNearestInt());
 
         juce::ColourGradient ambient(
-            colour.interpolatedWith(juce::Colours::white, .012f).withAlpha(alpha),
+            colour.interpolatedWith(juce::Colours::white, .018f).withAlpha(alpha),
             source.x, source.y,
             colour.withAlpha(0.f),
             source.x + radius, source.y, true);
-        ambient.addColour(.18, colour.withAlpha(alpha * .98f));
-        ambient.addColour(.40, colour.withAlpha(alpha * .82f));
-        ambient.addColour(.64, colour.withAlpha(alpha * .57f));
-        ambient.addColour(.82, colour.withAlpha(alpha * .32f));
-        ambient.addColour(.94, colour.withAlpha(alpha * .13f));
-        ambient.addColour(.988, colour.withAlpha(alpha * .025f));
+        ambient.addColour(.14, colour.withAlpha(alpha * .995f));
+        ambient.addColour(.32, colour.withAlpha(alpha * .92f));
+        ambient.addColour(.52, colour.withAlpha(alpha * .74f));
+        ambient.addColour(.70, colour.withAlpha(alpha * .49f));
+        ambient.addColour(.85, colour.withAlpha(alpha * .27f));
+        ambient.addColour(.95, colour.withAlpha(alpha * .115f));
+        ambient.addColour(.992, colour.withAlpha(alpha * .020f));
         g.setGradientFill(ambient);
         g.fillEllipse(source.x - radius, source.y - radius, radius * 2.f, radius * 2.f);
     }
@@ -45,12 +46,13 @@ namespace zlgui::glass {
                                          const float alpha_scale) {
         if (sources.empty() || clip_bounds.isEmpty()) return;
 
-        // Calibrated directly against the agreed liquid-glass reference: the receiver itself
-        // is visibly brighter and more saturated than the old runtime build, while the nodes
-        // do not become harsher. A local lobe keeps each lamp spatially identifiable; a broad
-        // low-energy tail gives the YouTube-ambient style spread across the full glass shelf.
+        // Match the agreed reference perceptually, not merely numerically. The reference has
+        // unmistakable amber/mint/blue/violet regions in the header and footer. Earlier passes
+        // were still below that threshold. Keep the lamp colours saturated, give them a wide
+        // ambient tail, and make the receiving glass responsive enough that those zones remain
+        // visible far from the graph without whitening into neon.
         constexpr int kSamples = 49;
-        constexpr float kReceiverTransmission = 11.8f;
+        constexpr float kReceiverTransmission = 15.5f;
 
         auto sampleColour = [&](const float portion) {
             const auto x = clip_bounds.getX() + clip_bounds.getWidth() * portion;
@@ -62,26 +64,27 @@ namespace zlgui::glass {
             for (const auto& source : sources) {
                 if (source.strength <= .0001f || source.radius <= 1.f) continue;
 
-                // Unselected bands are still real lamps. Selection changes focus, not whether
-                // the surrounding glass receives that band's colour.
-                const auto perceptual_strength = .68f + .32f *
-                    std::pow(juce::jlimit(0.f, 1.f, source.strength), .42f);
+                // Every enabled band remains a real lamp. Selection changes emphasis only.
+                const auto perceptual_strength = .74f + .26f *
+                    std::pow(juce::jlimit(0.f, 1.f, source.strength), .40f);
 
+                // Wide shelves should always receive some of the room light. The reference
+                // clearly shows node colour in both header and footer, even from distant nodes.
                 const auto vertical_distance = std::abs(source.point.y - clip_bounds.getCentreY());
-                const auto vertical_reach = source.radius * 2.85f;
+                const auto vertical_reach = source.radius * 3.1f;
                 const auto vertical_t = juce::jlimit(0.f, 1.f, vertical_distance / vertical_reach);
-                const auto vertical_gain = std::pow(juce::jmax(0.f, 1.f - vertical_t), .24f);
-                if (vertical_gain <= .001f) continue;
+                const auto vertical_gain = .72f + .28f *
+                    std::pow(juce::jmax(0.f, 1.f - vertical_t), .22f);
 
-                const auto core_reach = juce::jmax(clip_bounds.getHeight() * 3.4f,
-                                                   clip_bounds.getWidth() * .125f);
-                const auto tail_reach = juce::jmax(clip_bounds.getHeight() * 8.0f,
-                                                   clip_bounds.getWidth() * .42f);
+                const auto core_reach = juce::jmax(clip_bounds.getHeight() * 3.2f,
+                                                   clip_bounds.getWidth() * .115f);
+                const auto tail_reach = juce::jmax(clip_bounds.getHeight() * 8.5f,
+                                                   clip_bounds.getWidth() * .46f);
                 const auto core_dx = (x - source.point.x) / core_reach;
                 const auto tail_dx = (x - source.point.x) / tail_reach;
-                const auto core = std::exp(-1.62f * core_dx * core_dx);
-                const auto tail = std::exp(-1.08f * tail_dx * tail_dx);
-                const auto horizontal_gain = .88f * core + .12f * tail;
+                const auto core = std::exp(-1.70f * core_dx * core_dx);
+                const auto tail = std::exp(-1.02f * tail_dx * tail_dx);
+                const auto horizontal_gain = .84f * core + .16f * tail;
                 const auto weight = perceptual_strength * vertical_gain * horizontal_gain;
                 if (weight <= .00001f) continue;
 
@@ -98,11 +101,13 @@ namespace zlgui::glass {
             if (total <= .0001f) return juce::Colours::transparentBlack;
 
             auto mixed = juce::Colour::fromFloatRGBA(red / total, green / total, blue / total, 1.f);
-            mixed = mixed.interpolatedWith(dominant, .52f);
+            // Preserve the nearest lamp aggressively enough to keep the spatial colour zones
+            // readable when long tails overlap.
+            mixed = mixed.interpolatedWith(dominant, .58f);
 
-            const auto occupancy = 1.f - std::exp(-total * 1.18f);
-            const auto alpha = juce::jlimit(0.f, .28f,
-                alpha_scale * kReceiverTransmission * (.42f + .58f * occupancy));
+            const auto occupancy = 1.f - std::exp(-total * 1.22f);
+            const auto alpha = juce::jlimit(0.f, .34f,
+                alpha_scale * kReceiverTransmission * (.44f + .56f * occupancy));
             return mixed.withAlpha(alpha);
         };
 
@@ -129,11 +134,11 @@ namespace zlgui::glass {
             return;
         }
 
-        constexpr float kReceiverTransmission = 3.15f;
+        constexpr float kReceiverTransmission = 4.5f;
         for (const auto& source : sources) {
             if (source.strength <= .0001f) continue;
-            const auto perceptual_strength = .52f + .48f *
-                std::pow(juce::jlimit(0.f, 1.f, source.strength), .42f);
+            const auto perceptual_strength = .58f + .42f *
+                std::pow(juce::jlimit(0.f, 1.f, source.strength), .40f);
             const auto alpha = alpha_scale * kReceiverTransmission * perceptual_strength;
             paintAmbientField(g, source.point, source.colour, source.radius, alpha, clip_bounds);
         }
