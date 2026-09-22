@@ -12,7 +12,6 @@
 #include "../../../PluginProcessor.hpp"
 #include "../../../gui/gui.hpp"
 #include "../../helper/helper.hpp"
-#include "../../multilingual/tooltip_helper.hpp"
 
 namespace zlpanel {
     class SinglePanel final : public juce::Component {
@@ -45,9 +44,12 @@ namespace zlpanel {
 
     private:
         static constexpr size_t kNumPoints = 400;
-        static constexpr float kFillingAlpha = .105f;
-        static constexpr float kDynamicFillingAlpha = .120f;
-        static constexpr float kNotSelectedAlphaMultiplier = .52f;
+        // The band area is the stained glass receiving the node light. It needs enough
+        // optical density to carry colour, but must remain transparent enough for the
+        // analyzer and neighbouring bands to stay readable underneath.
+        static constexpr float kFillingAlpha = .132f;
+        static constexpr float kDynamicFillingAlpha = .148f;
+        static constexpr float kNotSelectedAlphaMultiplier = .50f;
         static constexpr float kBypassAlphaMultiplier = .75f;
         static constexpr float kDiffStereoAlphaMultiplier = .33333f;
         static constexpr float kNoBandSelectedAlphaMultiplier = .62f;
