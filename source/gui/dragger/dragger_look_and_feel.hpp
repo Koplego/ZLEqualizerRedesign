@@ -35,61 +35,60 @@ namespace zlgui::dragger {
             const auto hover = should_draw_button_as_highlighted && !active;
             const auto visibility = juce::jlimit(0.f, 1.f, alpha_);
 
-            // The reference uses a small glass lens surrounded by a much larger pool of
-            // emitted light. The previous implementation did the opposite: a large pastel
-            // disc with almost no bloom. Keep the hit target unchanged, but make the visible
-            // object smaller and the optical halo stronger.
+            // Reference node = small bright glass lens + large soft coloured halo. The halo
+            // is intentionally much larger than the control itself; that bloom is one of the
+            // dominant visual cues in the approved screenshot.
             if (dragger_shape_ == kRound) {
                 const juce::DropShadow outer_halo{
-                    colour_.withAlpha((active ? .34f : hover ? .20f : .13f) * visibility),
-                    juce::jmax(3, juce::roundToInt(base_.getFontSize() * (active ? .92f : .52f))),
+                    colour_.withAlpha((active ? .40f : hover ? .28f : .20f) * visibility),
+                    juce::jmax(5, juce::roundToInt(base_.getFontSize() * (active ? 1.62f : .94f))),
                     {0, 0}};
                 outer_halo.drawForPath(g, outline_path_);
 
-                if (active) {
-                    const juce::DropShadow hot_halo{
-                        colour_.interpolatedWith(juce::Colours::white, .20f).withAlpha(.24f * visibility),
-                        juce::jmax(2, juce::roundToInt(base_.getFontSize() * .46f)),
-                        {0, 0}};
-                    hot_halo.drawForPath(g, inner_path_);
-                }
+                const juce::DropShadow hot_halo{
+                    colour_.interpolatedWith(juce::Colours::white, .22f)
+                        .withAlpha((active ? .29f : .13f) * visibility),
+                    juce::jmax(3, juce::roundToInt(base_.getFontSize() * (active ? .72f : .45f))),
+                    {0, 0}};
+                hot_halo.drawForPath(g, inner_path_);
             }
 
-            // Dark glass bezel.
-            g.setColour(juce::Colour(3, 15, 27).withAlpha((active ? .66f : .48f) * visibility));
+            // The target does not have a heavy black doughnut around the coloured lens.
+            // Keep just enough dark body to establish transparent glass depth.
+            g.setColour(juce::Colour(7, 25, 42).withAlpha((active ? .30f : .22f) * visibility));
             g.fillPath(outline_path_);
 
-            g.setColour(colour_.interpolatedWith(juce::Colours::white, .10f)
-                        .withAlpha((active ? .16f : hover ? .115f : .075f) * visibility));
+            g.setColour(colour_.interpolatedWith(juce::Colours::white, .12f)
+                        .withAlpha((active ? .24f : hover ? .18f : .13f) * visibility));
             g.fillPath(outline_path_);
 
-            g.setColour(juce::Colours::white.withAlpha((active ? .88f : hover ? .66f : .50f) * visibility));
-            g.strokePath(outline_path_, juce::PathStrokeType(juce::jmax(.75f, base_.getFontSize() * .060f)));
+            // Outer white optical ring.
+            g.setColour(juce::Colours::white.withAlpha((active ? .96f : hover ? .79f : .69f) * visibility));
+            g.strokePath(outline_path_, juce::PathStrokeType(juce::jmax(1.0f, base_.getFontSize() * .080f)));
 
             const auto innerBounds = inner_path_.getBounds();
             juce::ColourGradient lens(
-                colour_.interpolatedWith(juce::Colours::white, active ? .42f : .30f)
-                    .withAlpha((active ? .99f : .93f) * visibility),
-                innerBounds.getX() + innerBounds.getWidth() * .27f,
-                innerBounds.getY() + innerBounds.getHeight() * .17f,
-                colour_.interpolatedWith(juce::Colours::black, .10f)
-                    .withAlpha((active ? .98f : .91f) * visibility),
+                colour_.interpolatedWith(juce::Colours::white, active ? .48f : .37f)
+                    .withAlpha((active ? .98f : .93f) * visibility),
+                innerBounds.getX() + innerBounds.getWidth() * .25f,
+                innerBounds.getY() + innerBounds.getHeight() * .15f,
+                colour_.interpolatedWith(juce::Colours::black, .04f)
+                    .withAlpha((active ? .96f : .90f) * visibility),
                 innerBounds.getRight(), innerBounds.getBottom(), true);
-            lens.addColour(.46, colour_.interpolatedWith(juce::Colours::white, .12f)
-                                      .withAlpha((active ? .99f : .94f) * visibility));
+            lens.addColour(.45, colour_.interpolatedWith(juce::Colours::white, .18f)
+                                      .withAlpha((active ? .98f : .94f) * visibility));
             g.setGradientFill(lens);
             g.fillPath(inner_path_);
 
-            // Bright optical rim: this is what gives the reference nodes their glass-lens
-            // quality instead of reading as filled UI buttons.
-            g.setColour(juce::Colours::white.withAlpha((active ? .98f : hover ? .80f : .69f) * visibility));
-            g.strokePath(inner_path_, juce::PathStrokeType(juce::jmax(.90f, base_.getFontSize() * .074f)));
+            // Bright inner rim gives the lens the milky-white edge visible in the target.
+            g.setColour(juce::Colours::white.withAlpha((active ? .99f : hover ? .86f : .76f) * visibility));
+            g.strokePath(inner_path_, juce::PathStrokeType(juce::jmax(.95f, base_.getFontSize() * .072f)));
 
-            if (active && dragger_shape_ == kRound) {
-                auto glint = innerBounds.withSizeKeepingCentre(innerBounds.getWidth() * .34f,
-                                                               innerBounds.getHeight() * .17f);
+            if (dragger_shape_ == kRound) {
+                auto glint = innerBounds.withSizeKeepingCentre(innerBounds.getWidth() * .38f,
+                                                               innerBounds.getHeight() * .18f);
                 glint.translate(-innerBounds.getWidth() * .13f, -innerBounds.getHeight() * .22f);
-                g.setColour(juce::Colours::white.withAlpha(.30f * visibility));
+                g.setColour(juce::Colours::white.withAlpha((active ? .38f : .22f) * visibility));
                 g.fillEllipse(glint);
             }
 
@@ -145,11 +144,12 @@ namespace zlgui::dragger {
 
         void updateRoundPaths(juce::Rectangle<float>& bound) {
             const auto radius = bound.getWidth();
-            // Preserve the large invisible interaction target, but visually use only 88% of
-            // it. The inner coloured lens is about two thirds of the original node size.
-            bound = bound.withSizeKeepingCentre(radius * .88f, radius * .88f);
+            // Preserve the large interaction target. Visually, the coloured lens nearly
+            // fills the white ring in the reference, so use a much larger inner disc than
+            // the previous 66% implementation.
+            bound = bound.withSizeKeepingCentre(radius * .90f, radius * .90f);
             outline_path_.addEllipse(bound);
-            bound = bound.withSizeKeepingCentre(radius * .66f, radius * .66f);
+            bound = bound.withSizeKeepingCentre(radius * .76f, radius * .76f);
             inner_path_.addEllipse(bound);
         }
 
