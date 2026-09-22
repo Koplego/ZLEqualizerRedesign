@@ -42,7 +42,7 @@ namespace zlpanel {
         dynamic_button_.getButton().onClick = [this]() {
             if (const auto band = base_.getSelectedBand(); band < zlp::kBandNum) {
                 const auto max_idx = std::round(p_ref_.parameters_NA_.getRawParameterValue(
-                    zlstate::PEQMaxDB::kID)->load(std::memory_order::relaxed));
+                    zlstate::PEQMaxDB::kID)->load(std::memory_order_relaxed));
                 band_helper::turnOnOffDynamic(p_ref_, band, !dynamic_on_,
                                               base_.getCurveDBScale(static_cast<size_t>(max_idx)));
                 dynamic_on_ = !dynamic_on_;
@@ -97,7 +97,7 @@ namespace zlpanel {
             double gain = 0.0;
             if (const auto band = base_.getSelectedBand(); band < zlp::kBandNum) {
                 if (const auto* value = p_ref_.parameters_.getRawParameterValue(zlp::PGain::kID + std::to_string(band)))
-                    gain = value->load(std::memory_order::relaxed);
+                    gain = value->load(std::memory_order_relaxed);
             }
             char b[32]; snprintf(b, sizeof(b), "%+.2f dB", target - gain); return b;
         };
@@ -105,7 +105,7 @@ namespace zlpanel {
             double gain = 0.0;
             if (const auto band = base_.getSelectedBand(); band < zlp::kBandNum) {
                 if (const auto* value = p_ref_.parameters_.getRawParameterValue(zlp::PGain::kID + std::to_string(band)))
-                    gain = value->load(std::memory_order::relaxed);
+                    gain = value->load(std::memory_order_relaxed);
             }
             return gain + juce::String(text).getDoubleValue();
         };
@@ -146,8 +146,7 @@ namespace zlpanel {
         side_freq_slider_.value_formatter_ = [](const double v) -> std::string {
             char b[32];
             if (v >= 1000.0) snprintf(b, sizeof(b), "%.2f kHz", v * .001);
-            else snprintf(b, sizeof(b), v >= 100.0 ? "%.0f Hz" : "%.1f Hz", v);
-            return b;
+            else snprintf(b, sizeof(b), v >= 100.0 ? "%.0f Hz" : "%.1f Hz", v); return b;
         };
         setupSlider(side_q_slider_);
         side_q_slider_.value_formatter_ = [](const double v) -> std::string {
@@ -199,24 +198,27 @@ namespace zlpanel {
         const auto radius = reveal_ < .30f
             ? surface.getHeight() * .50f
             : juce::jmax(10.f, base_.getFontSize() * .76f);
-        zlgui::glass::fillGlassSurface(g, surface, radius, .078f, .13f, .15f);
+        zlgui::glass::fillGlassSurface(g, surface, radius, .072f, .12f, .14f);
 
+        // The Hub is glass that receives light, not a light strip of its own. Keep only a
+        // faint material tint from the selected band; MainPanel supplies the spatial
+        // ambient reflection from the actual node position.
         const auto accent = base_.getColourMap1(attached_band_);
-        auto rim = surface.reduced(base_.getFontSize() * .58f, 0.f);
-        rim.setHeight(1.f);
-        juce::ColourGradient glow(accent.withAlpha(.0f), rim.getX(), rim.getY(),
-                                  accent.interpolatedWith(juce::Colours::white, .34f).withAlpha(.40f),
-                                  rim.getCentreX(), rim.getY(), false);
-        glow.addColour(.86, accent.withAlpha(.08f));
-        g.setGradientFill(glow);
-        g.fillRoundedRectangle(rim, .5f);
+        juce::ColourGradient materialTint(
+            accent.interpolatedWith(juce::Colours::white, .08f).withAlpha(.025f),
+            surface.getCentreX(), surface.getY(),
+            accent.withAlpha(0.f),
+            surface.getCentreX(), surface.getBottom(), false);
+        materialTint.addColour(.42, accent.withAlpha(.014f));
+        g.setGradientFill(materialTint);
+        g.fillRoundedRectangle(surface.reduced(1.f), juce::jmax(1.f, radius - 1.f));
 
         static constexpr std::array<const char*, 11> names{
             "Bell", "Low Shelf", "High Cut", "High Shelf", "Low Cut", "Notch",
             "Band Pass", "Tilt", "Flat Tilt", "All Pass", "Gain"
         };
         auto* typeValue = p_ref_.parameters_.getRawParameterValue(zlp::PFilterType::kID + std::to_string(attached_band_));
-        const auto type = typeValue ? static_cast<int>(std::round(typeValue->load(std::memory_order::relaxed))) : 0;
+        const auto type = typeValue ? static_cast<int>(std::round(typeValue->load(std::memory_order_relaxed))) : 0;
 
         if (reveal_ < .38f) {
             juce::String title = "Band " + juce::String(static_cast<int>(attached_band_ + 1));
