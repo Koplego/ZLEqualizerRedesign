@@ -35,54 +35,53 @@ namespace zlgui::dragger {
             const auto hover = should_draw_button_as_highlighted && !active;
             const auto visibility = juce::jlimit(0.f, 1.f, alpha_);
 
-            // The node is the emitter, not a glossy bead. The larger environmental light
-            // pool is painted by Dragger::paint(); this face is kept small, hot and bright
-            // so it reads as the physical origin of that light.
+            // The round EQ node is a little ball of emitted light. It should not read as
+            // polished glass with an external highlight: the centre itself is the hottest
+            // point and the band colour blooms outward from it.
             if (dragger_shape_ == kRound) {
-                const juce::DropShadow closeBloom{
-                    colour_.withAlpha((active ? .42f : hover ? .26f : .17f) * visibility),
-                    juce::jmax(2, juce::roundToInt(base_.getFontSize() * (active ? .72f : .48f))),
+                const juce::DropShadow bloom{
+                    colour_.withAlpha((active ? .52f : hover ? .34f : .22f) * visibility),
+                    juce::jmax(2, juce::roundToInt(base_.getFontSize() * (active ? .82f : .56f))),
                     {0, 0}};
-                closeBloom.drawForPath(g, outline_path_);
+                bloom.drawForPath(g, outline_path_);
             }
 
-            const auto innerBounds = inner_path_.getBounds();
-            const auto centre = innerBounds.getCentre();
-            const auto radius = juce::jmax(1.f, innerBounds.getWidth() * .52f);
-
-            // Quiet dark carrier underneath the emitter keeps the edge readable against
-            // very bright FFT content without making the node look like a shaded sphere.
-            g.setColour(juce::Colour(7, 22, 34).withAlpha((active ? .34f : .24f) * visibility));
-            g.fillPath(outline_path_);
-
-            // Coloured emission ring. Keep it translucent so the centre remains the hot spot.
-            g.setColour(colour_.withAlpha((active ? .72f : hover ? .56f : .42f) * visibility));
-            g.fillPath(outline_path_);
-
-            // Radial emitter: near-white centre -> band colour -> transparent-ish edge.
-            juce::ColourGradient emission(
-                colour_.interpolatedWith(juce::Colours::white, active ? .88f : .76f)
-                    .withAlpha((active ? 1.f : .96f) * visibility),
-                centre.x, centre.y,
-                colour_.withAlpha((active ? .94f : .84f) * visibility),
-                centre.x + radius, centre.y, true);
-            emission.addColour(.38, colour_.interpolatedWith(juce::Colours::white, .46f)
-                                          .withAlpha((active ? .99f : .93f) * visibility));
-            emission.addColour(.78, colour_.withAlpha((active ? .86f : .72f) * visibility));
-            g.setGradientFill(emission);
-            g.fillPath(inner_path_);
-
-            // A single luminous rim is enough. No offset specular glint: the brightness is
-            // energy coming out of the node, not light reflecting off a shiny ball.
-            g.setColour(colour_.interpolatedWith(juce::Colours::white, .72f)
-                        .withAlpha((active ? .92f : hover ? .76f : .62f) * visibility));
-            g.strokePath(outline_path_, juce::PathStrokeType(juce::jmax(.72f, base_.getFontSize() * .070f)));
+            const auto outerBounds = outline_path_.getBounds();
+            const auto centre = outerBounds.getCentre();
+            const auto radius = juce::jmax(1.f, outerBounds.getWidth() * .50f);
 
             if (dragger_shape_ == kRound) {
-                auto hotCore = innerBounds.withSizeKeepingCentre(innerBounds.getWidth() * (active ? .28f : .22f),
-                                                                 innerBounds.getHeight() * (active ? .28f : .22f));
-                g.setColour(juce::Colours::white.withAlpha((active ? .84f : .64f) * visibility));
+                // Soft emissive ball: white-hot centre, then saturated band colour, then a
+                // slightly transparent edge. No dark shell and no offset specular glint.
+                juce::ColourGradient ball(
+                    juce::Colours::white.withAlpha((active ? .98f : .90f) * visibility),
+                    centre.x, centre.y,
+                    colour_.withAlpha((active ? .58f : .46f) * visibility),
+                    centre.x + radius, centre.y, true);
+                ball.addColour(.18, colour_.interpolatedWith(juce::Colours::white, .78f)
+                                           .withAlpha((active ? .99f : .94f) * visibility));
+                ball.addColour(.48, colour_.interpolatedWith(juce::Colours::white, .30f)
+                                           .withAlpha((active ? .98f : .90f) * visibility));
+                ball.addColour(.82, colour_.withAlpha((active ? .82f : .68f) * visibility));
+                g.setGradientFill(ball);
+                g.fillPath(outline_path_);
+
+                // A tiny neutral core makes the source feel energetic rather than glossy.
+                auto hotCore = outerBounds.withSizeKeepingCentre(outerBounds.getWidth() * (active ? .24f : .19f),
+                                                                 outerBounds.getHeight() * (active ? .24f : .19f));
+                g.setColour(juce::Colours::white.withAlpha((active ? .92f : .72f) * visibility));
                 g.fillEllipse(hotCore);
+
+                // Barely-there luminous edge for definition against bright analyser traces.
+                g.setColour(colour_.interpolatedWith(juce::Colours::white, .58f)
+                            .withAlpha((active ? .56f : hover ? .43f : .32f) * visibility));
+                g.strokePath(outline_path_, juce::PathStrokeType(juce::jmax(.55f, base_.getFontSize() * .052f)));
+            } else {
+                // Preserve the existing readable treatment for non-round utility draggers.
+                g.setColour(colour_.withAlpha((active ? .88f : .68f) * visibility));
+                g.fillPath(outline_path_);
+                g.setColour(glass::textPrimary().withAlpha((active ? .82f : .58f) * visibility));
+                g.strokePath(outline_path_, juce::PathStrokeType(juce::jmax(.75f, base_.getFontSize() * .080f)));
             }
 
             if (label_.length() > 0) {
