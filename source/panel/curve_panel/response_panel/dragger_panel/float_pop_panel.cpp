@@ -1,11 +1,5 @@
 // Copyright (C) 2026 - zsliu98
 // This file is part of ZLEqualizer
-//
-// ZLEqualizer is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License Version 3 as published by the Free Software Foundation.
-//
-// ZLEqualizer is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License along with ZLEqualizer. If not, see <https://www.gnu.org/licenses/>.
 
 #include "float_pop_panel.hpp"
 #include "../../../../gui/glass_tokens.hpp"
@@ -17,1055 +11,447 @@ namespace zlpanel {
     FloatPopPanel::FloatPopPanel(PluginProcessor& p, zlgui::UIBase& base,
                                  const multilingual::TooltipHelper& tooltip_helper) :
         p_ref_(p), base_(base), updater_(),
-        control_background_(base, .18f),
-        bypass_drawable_(juce::Drawable::createFromImageData(BinaryData::bypass_svg,
-                                                             BinaryData::bypass_svgSize)),
+        bypass_drawable_(juce::Drawable::createFromImageData(BinaryData::bypass_svg, BinaryData::bypass_svgSize)),
         bypass_button_(base, bypass_drawable_.get(), bypass_drawable_.get(),
                        tooltip_helper.getToolTipText(multilingual::kBandBypass)),
+        dynamic_drawable_(juce::Drawable::createFromImageData(BinaryData::dynamic_svg, BinaryData::dynamic_svgSize)),
+        dynamic_button_(base, dynamic_drawable_.get(), dynamic_drawable_.get(),
+                        tooltip_helper.getToolTipText(multilingual::kBandDynamic)),
         solo_drawable_(juce::Drawable::createFromImageData(BinaryData::solo_svg, BinaryData::solo_svgSize)),
         solo_button_(base, solo_drawable_.get(), solo_drawable_.get(),
                      tooltip_helper.getToolTipText(multilingual::kBandSolo)),
-        close_drawable_(juce::Drawable::createFromImageData(BinaryData::trash_svg,
-                                                            BinaryData::trash_svgSize)),
-        close_button_(base, close_drawable_.get(), nullptr),
-        dynamic_drawable_(juce::Drawable::createFromImageData(BinaryData::dynamic_svg,
-                                                              BinaryData::dynamic_svgSize)),
-        dynamic_button_(base, dynamic_drawable_.get(), dynamic_drawable_.get(),
-                        tooltip_helper.getToolTipText(multilingual::kBandDynamic)),
-        dynamics_page_button_(base, "Dynamic"),
-        detector_page_button_(base, "More"),
-        sidechain_page_button_(base, "Sidechain"),
-        more_button_(base, "..."),
-        ftype_box_(juce::StringArray{"Bell", "Low Shelf", "High Cut", "High Shelf", "Low Cut",
-                                     "Notch", "Band Pass", "Tilt", "Flat Tilt", "All Pass", "Gain"},
-                   base, ""),
-        lr_box_(juce::StringArray{"Stereo", "Left", "Right", "Mid", "Side"}, base, ""),
+        ftype_box_(juce::StringArray{"Bell", "Low Shelf", "High Cut", "High Shelf", "Low Cut", "Notch",
+                                     "Band Pass", "Tilt", "Flat Tilt", "All Pass", "Gain"}, base, ""),
         slope_box_(zlp::POrder::kChoices, base, ""),
-        freq_slider_("", base),
-        gain_slider_("", base),
-        q_slider_("", base),
-        range_slider_("", base),
-        threshold_slider_("", base),
-        attack_slider_("", base),
-        release_slider_("", base),
-        knee_slider_("", base),
-        rms_length_slider_("", base),
-        rms_mix_slider_("", base),
-        smooth_slider_("", base),
-        learn_button_(base, "Learn"),
-        relative_button_(base, "Relative"),
-        dyn_bypass_button_(base, "Dyn Bypass"),
-        side_type_box_(zlp::PSideFilterType::kChoices, base, ""),
-        side_order_box_(zlp::PSideOrder::kChoices, base, ""),
-        side_freq_slider_("", base),
-        side_q_slider_("", base),
-        side_link_button_(base, "Link"),
-        side_swap_button_(base, "Swap") {
-        control_background_.setBufferedToImage(true);
-        addAndMakeVisible(control_background_);
-
-        close_button_.setImageAlpha(0.f, 0.f, 0.f, 0.f);
-        close_button_.setBufferedToImage(true);
-        addAndMakeVisible(close_button_);
-        close_button_.getButton().onClick = [this]() {
-            if (const auto c_band = base_.getSelectedBand(); c_band < zlp::kBandNum) {
-                band_helper::turnOffBand(p_ref_, c_band, base_.getSelectedBandSet());
-                const auto band1 = band_helper::findClosestBand<true>(p_ref_, c_band);
-                const auto band2 = band_helper::findClosestBand<false>(p_ref_, c_band);
-                if (band1 < zlp::kBandNum) base_.setSelectedBand(band1);
-                else if (band2 < zlp::kBandNum) base_.setSelectedBand(band2);
-                else base_.setSelectedBand(zlp::kBandNum);
-            }
-        };
-
-        solo_button_.setImageAlpha(0.f, 0.f, 0.f, 0.f);
-        solo_button_.setBufferedToImage(true);
-        addAndMakeVisible(solo_button_);
-        solo_button_.getButton().onClick = [this]() {
-            if (solo_button_.getButton().getToggleState()) {
-                if (const auto c_band = base_.getSelectedBand(); c_band < zlp::kBandNum)
-                    base_.setSoloWholeIdx(c_band);
-            } else {
-                base_.setSoloWholeIdx(2 * zlp::kBandNum);
-            }
-        };
+        freq_slider_("", base), gain_slider_("", base), q_slider_("", base) {
+        setOpaque(false);
+        setInterceptsMouseClicks(true, true);
 
         bypass_button_.setImageAlpha(0.f, 0.f, 0.f, 0.f);
-        bypass_button_.setBufferedToImage(true);
         addAndMakeVisible(bypass_button_);
         bypass_button_.getButton().onClick = [this]() {
-            if (const auto c_band = base_.getSelectedBand(); c_band < zlp::kBandNum) {
-                updateValue(p_ref_.parameters_.getParameter(zlp::PFilterStatus::kID + std::to_string(c_band)),
+            if (const auto band = base_.getSelectedBand(); band < zlp::kBandNum) {
+                updateValue(p_ref_.parameters_.getParameter(zlp::PFilterStatus::kID + std::to_string(band)),
                             bypass_button_.getToggleState() ? 1.f : .5f);
             }
         };
 
         dynamic_button_.setImageAlpha(0.f, 0.f, 0.f, 0.f);
-        dynamic_button_.setBufferedToImage(true);
+        dynamic_button_.getButton().setToggleable(true);
+        dynamic_button_.getButton().setClickingTogglesState(false);
         addAndMakeVisible(dynamic_button_);
         dynamic_button_.getButton().onClick = [this]() {
-            if (const auto c_band = base_.getSelectedBand(); c_band < zlp::kBandNum) {
+            if (const auto band = base_.getSelectedBand(); band < zlp::kBandNum) {
+                const auto next = !(dynamic_on_ptr_ != nullptr
+                    && dynamic_on_ptr_->load(std::memory_order::relaxed) > .5f);
                 const auto max_idx = std::round(p_ref_.parameters_NA_.getRawParameterValue(
                     zlstate::PEQMaxDB::kID)->load(std::memory_order::relaxed));
-                band_helper::turnOnOffDynamic(p_ref_, c_band, dynamic_button_.getToggleState(),
+                band_helper::turnOnOffDynamic(p_ref_, band, next,
                                               base_.getCurveDBScale(static_cast<size_t>(max_idx)));
+                dynamic_button_.getButton().setToggleState(next, juce::dontSendNotification);
+                repaint();
             }
-            if (!dynamic_button_.getToggleState() && base_.getSoloWholeIdx() < 2 * zlp::kBandNum)
-                base_.setSoloWholeIdx(2 * zlp::kBandNum);
         };
 
-        // The approved concept is a single Dynamic card with nested detail, not a set of
-        // three equal tabs. More opens detector detail; Sidechain stays spatially tied to
-        // the same band card.
-        dynamics_page_button_.setVisible(false);
-        for (auto* b : {&detector_page_button_, &sidechain_page_button_}) {
-            styleDetailButton(*b);
-            b->getButton().setToggleable(true);
-            b->getButton().setClickingTogglesState(false);
-            addAndMakeVisible(*b);
+        solo_button_.setImageAlpha(0.f, 0.f, 0.f, 0.f);
+        solo_button_.getButton().setToggleable(true);
+        solo_button_.getButton().setClickingTogglesState(false);
+        addAndMakeVisible(solo_button_);
+        solo_button_.getButton().onClick = [this]() {
+            if (const auto band = base_.getSelectedBand(); band < zlp::kBandNum) {
+                const auto active = base_.getSoloWholeIdx() == band;
+                base_.setSoloWholeIdx(active ? 2 * zlp::kBandNum : band);
+                solo_button_.getButton().setToggleState(!active, juce::dontSendNotification);
+                repaint();
+            }
+        };
+
+        const auto popup = juce::PopupMenu::Options()
+            .withPreferredPopupDirection(juce::PopupMenu::Options::PopupDirection::upwards)
+            .withMinimumNumColumns(1);
+        for (auto* box : {&ftype_box_, &slope_box_}) {
+            box->getLAF().setOption(popup);
+            box->setBufferedToImage(true);
+            box->setAlpha(.01f);
+            addAndMakeVisible(*box);
         }
-        detector_page_button_.getButton().onClick = [this]() {
-            updateDetailPage(detail_page_ == DetailPage::detector ? DetailPage::dynamics : DetailPage::detector, true);
-        };
-        sidechain_page_button_.getButton().onClick = [this]() {
-            updateDetailPage(detail_page_ == DetailPage::sidechain ? DetailPage::dynamics : DetailPage::sidechain, true);
-        };
-
-        styleDetailButton(more_button_);
-        more_button_.getLAF().setFontScale(.72f);
-        more_button_.getButton().onClick = [this]() {
-            advanced_open_ = !advanced_open_;
-            if (auto* parent = getParentComponent()) parent->resized();
-            resized();
-            repaint();
-        };
-        addAndMakeVisible(more_button_);
-
-        for (auto* b : {&learn_button_, &relative_button_, &dyn_bypass_button_, &side_link_button_, &side_swap_button_}) {
-            styleDetailButton(*b);
-            b->getButton().setToggleable(true);
-            b->getButton().setClickingTogglesState(true);
-            addAndMakeVisible(*b);
-        }
-
-        side_type_box_.setBufferedToImage(true);
-        side_type_box_.getLAF().setFontScale(.72f);
-        side_type_box_.getLAF().setBoxAlpha(.36f);
-        side_type_box_.getLAF().setLabelJustification(juce::Justification::centred);
-        addAndMakeVisible(side_type_box_);
-        side_order_box_.setBufferedToImage(true);
-        side_order_box_.getLAF().setFontScale(.72f);
-        side_order_box_.getLAF().setBoxAlpha(.36f);
-        side_order_box_.getLAF().setLabelJustification(juce::Justification::centred);
-        addAndMakeVisible(side_order_box_);
-
-        const auto popup_option1 = juce::PopupMenu::Options().withPreferredPopupDirection(
-            juce::PopupMenu::Options::PopupDirection::upwards).withMinimumNumColumns(1);
-        ftype_box_.getLAF().setOption(popup_option1);
-        ftype_box_.setBufferedToImage(true);
-        ftype_box_.setAlpha(.01f);
-        addAndMakeVisible(ftype_box_);
-
-        const auto popup_option2 = juce::PopupMenu::Options().withPreferredPopupDirection(
-            juce::PopupMenu::Options::PopupDirection::upwards).withMinimumNumColumns(1);
-        lr_box_.setScrollEnabled(true);
-        lr_box_.getLAF().setOption(popup_option2);
-        lr_box_.setBufferedToImage(true);
-        lr_box_.setAlpha(.01f);
-        addAndMakeVisible(lr_box_);
-
         slope_box_.setScrollEnabled(true);
-        slope_box_.getLAF().setOption(popup_option2);
-        slope_box_.getLAF().setFontScale(.66f);
-        slope_box_.getLAF().setBoxAlpha(.44f);
-        slope_box_.getLAF().setLabelJustification(juce::Justification::centred);
-        slope_box_.setBufferedToImage(true);
-        addAndMakeVisible(slope_box_);
 
-        auto setup_plain_slider = [this](auto& slider) {
-            slider.setFontScale(1.10f);
+        auto setup = [this](auto& slider) {
+            slider.setFontScale(.72f);
             slider.getSlider().setSliderSnapsToMousePosition(false);
             slider.setBufferedToImage(true);
             addAndMakeVisible(slider);
         };
+        setup(freq_slider_); setup(gain_slider_); setup(q_slider_);
 
-        setup_plain_slider(freq_slider_);
         freq_slider_.setPrecision(4);
         freq_slider_.permitted_characters_ = "0123456789.kK";
-        freq_slider_.value_formatter_ = [](const double value) -> std::string {
-            char buffer[32];
-            if (value >= 1000.0) snprintf(buffer, sizeof(buffer), "%.2f kHz", value * 0.001);
-            else snprintf(buffer, sizeof(buffer), value >= 100.0 ? "%.0f Hz" : "%.1f Hz", value);
-            return buffer;
+        freq_slider_.value_formatter_ = [](double v) -> std::string {
+            char b[32];
+            if (v >= 1000.0) snprintf(b, sizeof(b), "%.2f kHz", v * .001);
+            else snprintf(b, sizeof(b), v >= 100.0 ? "%.0f Hz" : "%.1f Hz", v);
+            return b;
         };
-
-        setup_plain_slider(gain_slider_);
         gain_slider_.setPrecision(3);
         gain_slider_.permitted_characters_ = "-+0123456789.";
-        gain_slider_.value_formatter_ = [](const double value) -> std::string {
-            char buffer[32]; snprintf(buffer, sizeof(buffer), "%+.2f dB", value); return buffer;
+        gain_slider_.value_formatter_ = [](double v) -> std::string {
+            char b[32]; snprintf(b, sizeof(b), "%+.2f dB", v); return b;
         };
-
-        setup_plain_slider(q_slider_);
         q_slider_.setPrecision(3);
         q_slider_.permitted_characters_ = "0123456789.";
-        q_slider_.value_formatter_ = [](const double value) -> std::string {
-            char buffer[32]; snprintf(buffer, sizeof(buffer), "Q %.2f", value); return buffer;
+        q_slider_.value_formatter_ = [](double v) -> std::string {
+            char b[32]; snprintf(b, sizeof(b), "Q %.2f", v); return b;
         };
-
-        setup_plain_slider(range_slider_);
-        range_slider_.setPrecision(3);
-        range_slider_.permitted_characters_ = "-+0123456789.";
-        range_slider_.value_formatter_ = [this](const double target_value) -> std::string {
-            double base_gain = 0.0;
-            if (const auto band = base_.getSelectedBand(); band < zlp::kBandNum) {
-                if (const auto* value = p_ref_.parameters_.getRawParameterValue(zlp::PGain::kID + std::to_string(band)))
-                    base_gain = value->load(std::memory_order::relaxed);
-            }
-            char buffer[32]; snprintf(buffer, sizeof(buffer), "%+.2f dB", target_value - base_gain); return buffer;
-        };
-        range_slider_.string_formatter_ = [this](const std::string& text) -> std::optional<double> {
-            double base_gain = 0.0;
-            if (const auto band = base_.getSelectedBand(); band < zlp::kBandNum) {
-                if (const auto* value = p_ref_.parameters_.getRawParameterValue(zlp::PGain::kID + std::to_string(band)))
-                    base_gain = value->load(std::memory_order::relaxed);
-            }
-            return base_gain + juce::String(text).getDoubleValue();
-        };
-
-        setup_plain_slider(threshold_slider_);
-        threshold_slider_.setPrecision(3);
-        threshold_slider_.permitted_characters_ = "-0123456789.";
-        threshold_slider_.value_formatter_ = [](const double value) -> std::string {
-            char buffer[32]; snprintf(buffer, sizeof(buffer), "%.1f dB", value); return buffer;
-        };
-
-        setup_plain_slider(attack_slider_);
-        attack_slider_.setPrecision(4);
-        attack_slider_.permitted_characters_ = "0123456789.";
-        attack_slider_.value_formatter_ = [](const double value) -> std::string {
-            char buffer[32]; snprintf(buffer, sizeof(buffer), value < 100.0 ? "%.1f ms" : "%.0f ms", value); return buffer;
-        };
-
-        setup_plain_slider(release_slider_);
-        release_slider_.setPrecision(4);
-        release_slider_.permitted_characters_ = "0123456789.";
-        release_slider_.value_formatter_ = [](const double value) -> std::string {
-            char buffer[32];
-            if (value >= 1000.0) snprintf(buffer, sizeof(buffer), "%.2f s", value * .001);
-            else snprintf(buffer, sizeof(buffer), "%.0f ms", value);
-            return buffer;
-        };
-
-        // This is the major visual convergence point from the Dynamic EQ preview: four
-        // compact optical dials, in the same order and proportions as the concept image.
-        threshold_slider_.setGlassRotaryMode("Threshold");
-        range_slider_.setGlassRotaryMode("Range");
-        attack_slider_.setGlassRotaryMode("Attack");
-        release_slider_.setGlassRotaryMode("Release");
-        for (auto* s : {&range_slider_, &threshold_slider_, &attack_slider_, &release_slider_}) s->setFontScale(.64f);
-
-        for (auto* s : {&knee_slider_, &rms_length_slider_, &rms_mix_slider_, &smooth_slider_,
-                        &side_freq_slider_, &side_q_slider_}) {
-            setup_plain_slider(*s);
-            s->setFontScale(.82f);
-        }
-        knee_slider_.setPrecision(3);
-        knee_slider_.permitted_characters_ = "0123456789.";
-        knee_slider_.value_formatter_ = [](const double v) -> std::string {
-            char buffer[32]; snprintf(buffer, sizeof(buffer), "%.1f dB", v); return buffer;
-        };
-        rms_length_slider_.setPrecision(3);
-        rms_length_slider_.permitted_characters_ = "0123456789.";
-        rms_length_slider_.value_formatter_ = [](const double v) -> std::string {
-            char buffer[32]; snprintf(buffer, sizeof(buffer), "%.1f ms", v); return buffer;
-        };
-        rms_mix_slider_.setPrecision(3);
-        rms_mix_slider_.permitted_characters_ = "0123456789.";
-        rms_mix_slider_.value_formatter_ = [](const double v) -> std::string {
-            char buffer[32]; snprintf(buffer, sizeof(buffer), "%.0f%%", v); return buffer;
-        };
-        smooth_slider_.setPrecision(3);
-        smooth_slider_.permitted_characters_ = "0123456789.";
-        smooth_slider_.value_formatter_ = [](const double v) -> std::string {
-            char buffer[32]; snprintf(buffer, sizeof(buffer), "%.0f%%", v); return buffer;
-        };
-        side_freq_slider_.setPrecision(4);
-        side_freq_slider_.permitted_characters_ = "0123456789.kK";
-        side_freq_slider_.value_formatter_ = [](const double value) -> std::string {
-            char buffer[32];
-            if (value >= 1000.0) snprintf(buffer, sizeof(buffer), "%.2f kHz", value * .001);
-            else snprintf(buffer, sizeof(buffer), value >= 100.0 ? "%.0f Hz" : "%.1f Hz", value);
-            return buffer;
-        };
-        side_q_slider_.setPrecision(3);
-        side_q_slider_.permitted_characters_ = "0123456789.";
-        side_q_slider_.value_formatter_ = [](const double v) -> std::string {
-            char buffer[32]; snprintf(buffer, sizeof(buffer), "Q %.2f", v); return buffer;
-        };
-
-        updateDynamicVisibility(false, false);
-        base_.getSoloWholeIdxTree().addListener(this);
     }
 
-    FloatPopPanel::~FloatPopPanel() {
-        base_.getSoloWholeIdxTree().removeListener(this);
-    }
-
-    void FloatPopPanel::paintOverChildren(juce::Graphics& g) {
-        static constexpr std::array<const char*, 11> filter_names{
-            "Bell", "Low Shelf", "High Cut", "High Shelf", "Low Cut", "Notch",
-            "Band Pass", "Tilt", "Flat Tilt", "All Pass", "Gain"
-        };
-        static constexpr std::array<const char*, 5> mode_names{"Stereo", "Left", "Right", "Mid", "Side"};
-
-        const auto text_colour = juce::Colour(246, 251, 255);
-        const auto quiet_colour = text_colour.withAlpha(.52f);
-
-        const auto draw_power = [&g, &text_colour](const juce::Rectangle<int>& ib, const float alpha) {
-            if (ib.isEmpty()) return;
-            auto r = ib.toFloat().reduced(ib.getHeight() * .27f);
-            g.setColour(text_colour.withAlpha(alpha));
-            juce::Path power_arc;
-            power_arc.addCentredArc(r.getCentreX(), r.getCentreY(), r.getWidth() * .5f,
-                                    r.getHeight() * .5f, 0.f, .72f, 5.56f, true);
-            g.strokePath(power_arc, juce::PathStrokeType(1.45f, juce::PathStrokeType::curved,
-                                                         juce::PathStrokeType::rounded));
-            g.drawLine(r.getCentreX(), r.getY(), r.getCentreX(), r.getCentreY(), 1.45f);
-        };
-        draw_power(bypass_button_.getBounds(), bypass_button_.getToggleState() ? .42f : .92f);
-
-        if (!solo_button_.getBounds().isEmpty()) {
-            auto r = solo_button_.getBounds().toFloat().reduced(solo_button_.getHeight() * .30f);
-            const auto active = solo_button_.getButton().getToggleState();
-            g.setColour(text_colour.withAlpha(active ? .92f : .40f));
-            juce::Path hp;
-            hp.addCentredArc(r.getCentreX(), r.getCentreY() + r.getHeight() * .08f,
-                             r.getWidth() * .40f, r.getHeight() * .42f, 0.f, 3.48f, 5.94f, true);
-            g.strokePath(hp, juce::PathStrokeType(1.25f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-            g.drawRoundedRectangle(r.getX(), r.getCentreY(), r.getWidth() * .19f, r.getHeight() * .36f, 2.f, 1.1f);
-            g.drawRoundedRectangle(r.getRight() - r.getWidth() * .19f, r.getCentreY(), r.getWidth() * .19f, r.getHeight() * .36f, 2.f, 1.1f);
-        }
-        if (!close_button_.getBounds().isEmpty()) {
-            auto r = close_button_.getBounds().toFloat().reduced(close_button_.getHeight() * .31f);
-            g.setColour(text_colour.withAlpha(.34f));
-            g.drawRoundedRectangle(r.getX() + r.getWidth() * .19f, r.getY() + r.getHeight() * .25f,
-                                   r.getWidth() * .62f, r.getHeight() * .62f, 1.5f, 1.1f);
-            g.drawLine(r.getX() + r.getWidth() * .12f, r.getY() + r.getHeight() * .22f,
-                       r.getRight() - r.getWidth() * .12f, r.getY() + r.getHeight() * .22f, 1.1f);
-            g.drawLine(r.getX() + r.getWidth() * .37f, r.getY() + r.getHeight() * .11f,
-                       r.getX() + r.getWidth() * .63f, r.getY() + r.getHeight() * .11f, 1.1f);
-        }
-
-        if (!dynamic_button_.getBounds().isEmpty()) {
-            auto r = dynamic_button_.getBounds().toFloat().reduced(dynamic_button_.getHeight() * .27f);
-            juce::Path wave;
-            wave.startNewSubPath(r.getX(), r.getCentreY());
-            wave.cubicTo(r.getX() + r.getWidth() * .22f, r.getY(),
-                         r.getX() + r.getWidth() * .28f, r.getBottom(),
-                         r.getX() + r.getWidth() * .50f, r.getCentreY());
-            wave.cubicTo(r.getX() + r.getWidth() * .72f, r.getY(),
-                         r.getX() + r.getWidth() * .78f, r.getBottom(),
-                         r.getRight(), r.getCentreY());
-            auto c = juce::Colour(188, 216, 255);
-            if (dynamic_button_.getToggleState() && base_.getSelectedBand() < zlp::kBandNum)
-                c = base_.getColourMap1(base_.getSelectedBand()).interpolatedWith(juce::Colours::white, .24f);
-            g.setColour(c.withAlpha(dynamic_button_.getToggleState() ? .96f : .48f));
-            g.strokePath(wave, juce::PathStrokeType(1.50f, juce::PathStrokeType::curved,
-                                                    juce::PathStrokeType::rounded));
-        }
-
-        const auto f_idx = ftype_box_.getBox().getSelectedItemIndex();
-        const auto lr_idx = lr_box_.getBox().getSelectedItemIndex();
-
-        if (!ftype_box_.getBounds().isEmpty()) {
-            auto r = ftype_box_.getBounds().toFloat().reduced(ftype_box_.getHeight() * .24f);
-            const auto y0 = r.getCentreY();
-            juce::Path glyph;
-            switch (f_idx) {
-            case 0:
-                glyph.startNewSubPath(r.getX(), y0 + r.getHeight() * .20f);
-                glyph.cubicTo(r.getX() + r.getWidth() * .26f, y0 + r.getHeight() * .20f,
-                              r.getX() + r.getWidth() * .30f, r.getY(), r.getCentreX(), r.getY());
-                glyph.cubicTo(r.getX() + r.getWidth() * .70f, r.getY(),
-                              r.getX() + r.getWidth() * .74f, y0 + r.getHeight() * .20f,
-                              r.getRight(), y0 + r.getHeight() * .20f);
+    void FloatPopPanel::drawFilterGlyph(juce::Graphics& g, juce::Rectangle<float> r,
+                                        const int type, const juce::Colour colour) const {
+        r = r.reduced(r.getHeight() * .22f);
+        const auto y = r.getCentreY();
+        juce::Path p;
+        switch (type) {
+            case 0: case 6:
+                p.startNewSubPath(r.getX(), y + r.getHeight() * .18f);
+                p.cubicTo(r.getX()+r.getWidth()*.28f, y+r.getHeight()*.18f,
+                          r.getX()+r.getWidth()*.34f, r.getY(), r.getCentreX(), r.getY());
+                p.cubicTo(r.getX()+r.getWidth()*.66f, r.getY(),
+                          r.getX()+r.getWidth()*.72f, y+r.getHeight()*.18f, r.getRight(), y+r.getHeight()*.18f);
                 break;
-            case 1:
-                glyph.startNewSubPath(r.getX(), r.getY() + r.getHeight() * .18f);
-                glyph.lineTo(r.getX() + r.getWidth() * .30f, r.getY() + r.getHeight() * .18f);
-                glyph.cubicTo(r.getCentreX(), r.getY() + r.getHeight() * .18f,
-                              r.getCentreX(), r.getBottom() - r.getHeight() * .18f,
-                              r.getRight(), r.getBottom() - r.getHeight() * .18f);
+            case 1: case 2:
+                p.startNewSubPath(r.getX(), r.getY()+r.getHeight()*.18f);
+                p.lineTo(r.getX()+r.getWidth()*.32f, r.getY()+r.getHeight()*.18f);
+                p.cubicTo(r.getCentreX(), r.getY()+r.getHeight()*.18f,
+                          r.getCentreX(), r.getBottom()-r.getHeight()*.18f,
+                          r.getRight(), r.getBottom()-r.getHeight()*.18f);
                 break;
-            case 2:
-                glyph.startNewSubPath(r.getX(), r.getY() + r.getHeight() * .18f);
-                glyph.lineTo(r.getX() + r.getWidth() * .38f, r.getY() + r.getHeight() * .18f);
-                glyph.cubicTo(r.getCentreX(), r.getY() + r.getHeight() * .18f,
-                              r.getCentreX(), r.getBottom() - r.getHeight() * .18f,
-                              r.getRight(), r.getBottom() - r.getHeight() * .18f);
-                break;
-            case 3:
-                glyph.startNewSubPath(r.getX(), r.getBottom() - r.getHeight() * .18f);
-                glyph.lineTo(r.getX() + r.getWidth() * .30f, r.getBottom() - r.getHeight() * .18f);
-                glyph.cubicTo(r.getCentreX(), r.getBottom() - r.getHeight() * .18f,
-                              r.getCentreX(), r.getY() + r.getHeight() * .18f,
-                              r.getRight(), r.getY() + r.getHeight() * .18f);
-                break;
-            case 4:
-                glyph.startNewSubPath(r.getX(), r.getBottom() - r.getHeight() * .18f);
-                glyph.cubicTo(r.getCentreX(), r.getBottom() - r.getHeight() * .18f,
-                              r.getCentreX(), r.getY() + r.getHeight() * .18f,
-                              r.getX() + r.getWidth() * .62f, r.getY() + r.getHeight() * .18f);
-                glyph.lineTo(r.getRight(), r.getY() + r.getHeight() * .18f);
+            case 3: case 4:
+                p.startNewSubPath(r.getX(), r.getBottom()-r.getHeight()*.18f);
+                p.lineTo(r.getX()+r.getWidth()*.32f, r.getBottom()-r.getHeight()*.18f);
+                p.cubicTo(r.getCentreX(), r.getBottom()-r.getHeight()*.18f,
+                          r.getCentreX(), r.getY()+r.getHeight()*.18f,
+                          r.getRight(), r.getY()+r.getHeight()*.18f);
                 break;
             case 5:
-                glyph.startNewSubPath(r.getX(), y0 - r.getHeight() * .16f);
-                glyph.cubicTo(r.getX() + r.getWidth() * .34f, y0 - r.getHeight() * .16f,
-                              r.getX() + r.getWidth() * .40f, r.getBottom(), r.getCentreX(), r.getBottom());
-                glyph.cubicTo(r.getX() + r.getWidth() * .60f, r.getBottom(),
-                              r.getX() + r.getWidth() * .66f, y0 - r.getHeight() * .16f,
-                              r.getRight(), y0 - r.getHeight() * .16f);
+                p.startNewSubPath(r.getX(), y-r.getHeight()*.12f);
+                p.cubicTo(r.getX()+r.getWidth()*.38f, y-r.getHeight()*.12f,
+                          r.getX()+r.getWidth()*.42f, r.getBottom(), r.getCentreX(), r.getBottom());
+                p.cubicTo(r.getX()+r.getWidth()*.58f, r.getBottom(),
+                          r.getX()+r.getWidth()*.62f, y-r.getHeight()*.12f, r.getRight(), y-r.getHeight()*.12f);
                 break;
-            case 6:
-                glyph.startNewSubPath(r.getX(), r.getBottom());
-                glyph.cubicTo(r.getX() + r.getWidth() * .30f, r.getBottom(),
-                              r.getX() + r.getWidth() * .34f, r.getY(), r.getCentreX(), r.getY());
-                glyph.cubicTo(r.getX() + r.getWidth() * .66f, r.getY(),
-                              r.getX() + r.getWidth() * .70f, r.getBottom(), r.getRight(), r.getBottom());
-                break;
-            case 7: glyph.startNewSubPath(r.getX(), r.getBottom()); glyph.lineTo(r.getRight(), r.getY()); break;
-            case 8:
-                glyph.startNewSubPath(r.getX(), r.getBottom() - r.getHeight() * .18f);
-                glyph.cubicTo(r.getCentreX(), r.getBottom() - r.getHeight() * .18f,
-                              r.getCentreX(), r.getY() + r.getHeight() * .18f,
-                              r.getRight(), r.getY() + r.getHeight() * .18f);
-                break;
+            case 7: case 8:
+                p.startNewSubPath(r.getX(), r.getBottom()); p.lineTo(r.getRight(), r.getY()); break;
             case 9:
-                glyph.startNewSubPath(r.getX(), y0); glyph.lineTo(r.getX() + r.getWidth() * .28f, y0);
-                glyph.lineTo(r.getX() + r.getWidth() * .42f, r.getY());
-                glyph.lineTo(r.getX() + r.getWidth() * .58f, r.getBottom());
-                glyph.lineTo(r.getX() + r.getWidth() * .72f, y0); glyph.lineTo(r.getRight(), y0);
+                p.startNewSubPath(r.getX(), y); p.lineTo(r.getX()+r.getWidth()*.30f, y);
+                p.lineTo(r.getCentreX(), r.getY()); p.lineTo(r.getX()+r.getWidth()*.70f, y); p.lineTo(r.getRight(), y);
                 break;
-            default: glyph.startNewSubPath(r.getX(), y0); glyph.lineTo(r.getRight(), y0); break;
-            }
-            g.setColour(text_colour.withAlpha(.88f));
-            g.strokePath(glyph, juce::PathStrokeType(1.25f, juce::PathStrokeType::curved,
-                                                     juce::PathStrokeType::rounded));
+            default:
+                p.startNewSubPath(r.getX(), y); p.lineTo(r.getRight(), y); break;
         }
+        g.setColour(colour);
+        g.strokePath(p, juce::PathStrokeType(1.15f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    }
+
+    void FloatPopPanel::drawQuickActionGlyphs(juce::Graphics& g) const {
+        const auto primary = zlgui::glass::textPrimary();
+
+        auto dyn = dynamic_button_.getBounds().toFloat().reduced(static_cast<float>(dynamic_button_.getHeight()) * .25f);
+        const auto dynActive = dynamic_button_.getToggleState();
+        g.setColour(primary.withAlpha(dynActive ? .95f : .46f));
+        juce::Path dp;
+        dp.startNewSubPath(dyn.getX(), dyn.getCentreY() + dyn.getHeight() * .18f);
+        dp.cubicTo(dyn.getX() + dyn.getWidth() * .25f, dyn.getBottom(),
+                   dyn.getX() + dyn.getWidth() * .32f, dyn.getY(), dyn.getCentreX(), dyn.getCentreY());
+        dp.cubicTo(dyn.getX() + dyn.getWidth() * .68f, dyn.getBottom(),
+                   dyn.getX() + dyn.getWidth() * .75f, dyn.getY(), dyn.getRight(), dyn.getCentreY() - dyn.getHeight() * .18f);
+        g.strokePath(dp, juce::PathStrokeType(1.25f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        if (dynActive) g.drawLine(dyn.getX(), dyn.getBottom() - .5f, dyn.getRight(), dyn.getBottom() - .5f, .9f);
+
+        auto solo = solo_button_.getBounds().toFloat().reduced(static_cast<float>(solo_button_.getHeight()) * .26f);
+        const auto soloActive = solo_button_.getToggleState();
+        g.setColour(primary.withAlpha(soloActive ? .95f : .46f));
+        juce::Path hp;
+        hp.addCentredArc(solo.getCentreX(), solo.getCentreY() + solo.getHeight() * .08f,
+                         solo.getWidth() * .42f, solo.getHeight() * .42f, 0.f, 4.02f, 5.40f, true);
+        g.strokePath(hp, juce::PathStrokeType(1.25f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        const auto padW = solo.getWidth() * .16f;
+        const auto padH = solo.getHeight() * .38f;
+        g.drawRoundedRectangle({solo.getX(), solo.getCentreY(), padW, padH}, padW * .4f, 1.1f);
+        g.drawRoundedRectangle({solo.getRight() - padW, solo.getCentreY(), padW, padH}, padW * .4f, 1.1f);
+    }
+
+    void FloatPopPanel::paint(juce::Graphics& g) {
+        static constexpr std::array<const char*, 11> names{
+            "Bell", "Low Shelf", "High Cut", "High Shelf", "Low Cut", "Notch",
+            "Band Pass", "Tilt", "Flat Tilt", "All Pass", "Gain"};
+
+        auto card = getLocalBounds().toFloat().reduced(.5f);
+        zlgui::glass::fillGlassSurface(g, card, juce::jmax(9.f, card.getHeight() * .20f), .085f, .135f, .15f);
 
         if (const auto band = base_.getSelectedBand(); band < zlp::kBandNum) {
             const auto accent = base_.getColourMap1(band);
-            auto accent_line = getLocalBounds().toFloat().reduced(base_.getFontSize() * .85f);
-            accent_line.setHeight(1.15f);
-            juce::ColourGradient line_gradient(accent.withAlpha(.0f), accent_line.getX(), accent_line.getY(),
-                                                accent.interpolatedWith(juce::Colours::white, .35f).withAlpha(.48f),
-                                                accent_line.getCentreX(), accent_line.getY(), false);
-            line_gradient.addColour(.82, accent.withAlpha(.16f));
-            line_gradient.addColour(1.0, accent.withAlpha(.0f));
-            g.setGradientFill(line_gradient);
-            g.fillRoundedRectangle(accent_line, .6f);
+            auto glint = card.reduced(base_.getFontSize() * .58f, 0.f);
+            glint.setHeight(1.f);
+            juce::ColourGradient grad(accent.withAlpha(.0f), glint.getX(), glint.getY(),
+                                      accent.interpolatedWith(juce::Colours::white, .30f).withAlpha(.36f),
+                                      glint.getCentreX(), glint.getY(), false);
+            grad.addColour(.86, accent.withAlpha(.08f));
+            g.setGradientFill(grad);
+            g.fillRoundedRectangle(glint, .5f);
         }
 
-        if (!freq_slider_.getBounds().isEmpty() && !gain_slider_.getBounds().isEmpty()) {
-            const auto x = (freq_slider_.getRight() + gain_slider_.getX()) * .5f;
-            g.setColour(juce::Colour(240, 249, 255).withAlpha(.070f));
-            g.drawLine(x, static_cast<float>(freq_slider_.getY()) + base_.getFontSize() * .18f,
-                       x, static_cast<float>(freq_slider_.getBottom()) - base_.getFontSize() * .18f, 1.f);
-        }
-
-        const auto identity_bounds = dynamic_on_
-            ? dynamic_button_.getBounds().getUnion(filter_name_bound_)
-            : ftype_box_.getBounds().getUnion(filter_name_bound_);
-        auto filter_outline = identity_bounds.toFloat().expanded(2.f, 1.f);
-        juce::ColourGradient filter_glass(juce::Colour(250, 253, 255).withAlpha(.085f),
-                                          filter_outline.getCentreX(), filter_outline.getY(),
-                                          juce::Colour(42, 67, 88).withAlpha(.13f),
-                                          filter_outline.getCentreX(), filter_outline.getBottom(), false);
-        g.setGradientFill(filter_glass);
-        g.fillRoundedRectangle(filter_outline, filter_outline.getHeight() * .5f);
-        g.setColour(juce::Colour(248, 252, 255).withAlpha(.16f));
-        g.drawRoundedRectangle(filter_outline, filter_outline.getHeight() * .5f, .8f);
-
-        g.setColour(text_colour.withAlpha(.94f));
-        g.setFont(juce::FontOptions(base_.getFontSize() * .94f));
-        if (dynamic_on_) {
-            g.drawText("Dynamic", filter_name_bound_, juce::Justification::centredLeft, false);
-        } else if (f_idx >= 0 && f_idx < static_cast<int>(filter_names.size())) {
-            g.drawText(filter_names[static_cast<size_t>(f_idx)], filter_name_bound_, juce::Justification::centredLeft, false);
-        }
-
-        if (lr_idx >= 0 && lr_idx < static_cast<int>(mode_names.size()) && !mode_name_bound_.isEmpty()) {
-            auto mode_pill = mode_name_bound_.toFloat().reduced(.5f);
-            g.setColour(juce::Colour(230, 244, 255).withAlpha(.080f));
-            g.fillRoundedRectangle(mode_pill, mode_pill.getHeight() * .5f);
-            g.setColour(juce::Colour(235, 247, 255).withAlpha(.15f));
-            g.drawRoundedRectangle(mode_pill, mode_pill.getHeight() * .5f, 1.f);
-            g.setColour(quiet_colour);
+        const auto type = ftype_box_.getBox().getSelectedItemIndex();
+        const auto typePill = ftype_box_.getBounds().getUnion(filter_name_bound_).toFloat().expanded(.5f, .2f);
+        zlgui::glass::fillGlassSurface(g, typePill, typePill.getHeight() * .5f, .045f, .075f, .085f);
+        drawFilterGlyph(g, ftype_box_.getBounds().toFloat(), type, zlgui::glass::textPrimary().withAlpha(.86f));
+        if (type >= 0 && type < static_cast<int>(names.size())) {
+            g.setColour(zlgui::glass::textPrimary().withAlpha(.91f));
             g.setFont(juce::FontOptions(base_.getFontSize() * .68f));
-            g.drawText(mode_names[static_cast<size_t>(lr_idx)], mode_name_bound_, juce::Justification::centred, false);
+            g.drawFittedText(names[static_cast<size_t>(type)], filter_name_bound_, juce::Justification::centredLeft, 1);
         }
 
-        if (dynamic_on_ && detail_page_ != DetailPage::dynamics) {
-            g.setColour(text_colour.withAlpha(.48f));
-            g.setFont(juce::FontOptions(base_.getFontSize() * .58f));
-            g.drawText(detail_page_ == DetailPage::detector ? "Detector" : "Sidechain Filter",
-                       advanced_section_title_bound_, juce::Justification::centredLeft, false);
+        if (slope_supported_ && !slope_name_bound_.isEmpty()) {
+            auto slopePill = slope_name_bound_.toFloat().reduced(.35f);
+            zlgui::glass::fillGlassSurface(g, slopePill, slopePill.getHeight() * .5f, .035f, .065f, .075f);
+            const auto idx = slope_box_.getBox().getSelectedItemIndex();
+            auto label = idx >= 0 && idx < static_cast<int>(zlp::POrder::kChoices.size())
+                ? zlp::POrder::kChoices[static_cast<size_t>(idx)] : juce::String{};
+            // The popup keeps the complete "dB/oct" wording. The chip only needs the
+            // compact slope value, otherwise it competes with the adjacent quick actions.
+            label = label.replace(" dB/oct", " dB");
 
-            static constexpr std::array<const char*, 4> detector{"KNEE", "LENGTH", "MIX", "SMOOTH"};
-            static constexpr std::array<const char*, 4> side{"FILTER", "SLOPE", "FREQ", "Q"};
-            const auto& labels = detail_page_ == DetailPage::detector ? detector : side;
-            g.setColour(quiet_colour.withMultipliedAlpha(.76f));
-            g.setFont(juce::FontOptions(base_.getFontSize() * .55f));
-            for (size_t i = 0; i < labels.size(); ++i)
-                g.drawText(labels[i], advanced_dynamic_label_bounds_[i], juce::Justification::centredBottom, false);
+            auto textArea = slope_name_bound_.reduced(3, 0);
+            textArea.removeFromRight(7);
+            g.setColour(zlgui::glass::textSecondary().withAlpha(.86f));
+            g.setFont(juce::FontOptions(base_.getFontSize() * .51f));
+            g.drawFittedText(label, textArea, juce::Justification::centred, 1);
+
+            // Tiny disclosure chevron makes the compact chip read as a menu without
+            // relying on the almost-transparent ComboBox arrow.
+            const auto cx = static_cast<float>(slope_name_bound_.getRight() - 6);
+            const auto cy = static_cast<float>(slope_name_bound_.getCentreY());
+            juce::Path chevron;
+            chevron.startNewSubPath(cx - 2.2f, cy - 1.f);
+            chevron.lineTo(cx, cy + 1.2f);
+            chevron.lineTo(cx + 2.2f, cy - 1.f);
+            g.setColour(zlgui::glass::textSecondary().withAlpha(.58f));
+            g.strokePath(chevron, juce::PathStrokeType(.9f, juce::PathStrokeType::curved,
+                                                       juce::PathStrokeType::rounded));
         }
+
+        for (const auto& r : value_bounds_) {
+            if (r.isEmpty()) continue;
+            auto cell = r.toFloat().reduced(.35f);
+            g.setColour(juce::Colour(228, 243, 255).withAlpha(.028f));
+            g.fillRoundedRectangle(cell, cell.getHeight() * .34f);
+            g.setColour(zlgui::glass::rim().withMultipliedAlpha(.13f));
+            g.drawRoundedRectangle(cell, cell.getHeight() * .34f, .55f);
+        }
+
+        drawQuickActionGlyphs(g);
+
+        auto power = bypass_button_.getBounds().toFloat().reduced(static_cast<float>(bypass_button_.getHeight()) * .26f);
+        g.setColour(zlgui::glass::textPrimary().withAlpha(bypass_button_.getToggleState() ? .92f : .40f));
+        juce::Path pp;
+        pp.addCentredArc(power.getCentreX(), power.getCentreY(), power.getWidth()*.5f, power.getHeight()*.5f,
+                         0.f, .72f, 5.56f, true);
+        g.strokePath(pp, juce::PathStrokeType(1.25f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        g.drawLine(power.getCentreX(), power.getY(), power.getCentreX(), power.getCentreY(), 1.25f);
     }
 
     void FloatPopPanel::resized() {
-        control_background_.setBounds(getLocalBounds());
-
         const auto font = base_.getFontSize();
-        const auto padding = getPaddingSize(font);
-        const auto button_size = getButtonSize(font);
-        auto bound = getLocalBounds().reduced(padding + padding / 2, padding + padding / 2);
+        const auto padding = juce::jmax(4, juce::roundToInt(font * .30f));
+        const auto rowH = juce::jmax(20, juce::roundToInt(font * 1.42f));
+        const auto gap = juce::jmax(2, juce::roundToInt(font * .20f));
+        const auto actionGap = juce::jmax(1, juce::roundToInt(font * .10f));
+        const auto slopeGap = juce::jmax(4, juce::roundToInt(font * .26f));
 
-        // Header transforms into the Dynamic identity used in the preview when enabled.
-        auto header = bound.removeFromTop(button_size);
-        if (dynamic_on_) {
-            dynamic_button_.setBounds(header.removeFromLeft(button_size));
-            ftype_box_.setBounds({});
-            filter_name_bound_ = header.removeFromLeft(juce::jmax(button_size * 2,
-                                                                  juce::roundToInt(font * 4.55f)));
-        } else {
-            ftype_box_.setBounds(header.removeFromLeft(button_size));
-            filter_name_bound_ = header.removeFromLeft(juce::jmax(button_size * 2,
-                                                                  juce::roundToInt(font * 3.95f)));
-            more_button_.setBounds(header.removeFromRight(button_size));
-            header.removeFromRight(padding / 6);
-            bypass_button_.setBounds(header.removeFromRight(button_size));
-            header.removeFromRight(padding / 6);
-            dynamic_button_.setBounds(header.removeFromRight(button_size));
-        }
-        if (dynamic_on_) {
-            more_button_.setBounds(header.removeFromRight(button_size));
-            header.removeFromRight(padding / 6);
-            bypass_button_.setBounds(header.removeFromRight(button_size));
-        }
-        dynamic_button_.setVisible(true);
+        auto b = getLocalBounds().reduced(padding);
+        auto header = b.removeFromTop(rowH);
 
-        // Frequency and Gain remain immediate in either state.
-        bound.removeFromTop(padding / 3);
-        auto values = bound.removeFromTop(button_size);
-        const auto two_gap = juce::jmax(2, padding / 2);
-        const auto half_w = (values.getWidth() - two_gap) / 2;
-        freq_slider_.setBounds(values.removeFromLeft(half_w));
-        values.removeFromLeft(two_gap);
-        gain_slider_.setBounds(values);
+        // Keep the filter identity compact so the slope chip and quick actions always
+        // get dedicated, non-overlapping space even at the minimum inspector width.
+        ftype_box_.setBounds(header.removeFromLeft(rowH));
+        filter_name_bound_ = header.removeFromLeft(juce::roundToInt(font * 3.05f));
 
-        // Static card exposes Q + channel. In Dynamic mode the preview puts Q beneath
-        // the gain readout and moves channel/order into the contextual overflow.
-        bound.removeFromTop(padding / 4);
-        mode_name_bound_ = {};
-        if (dynamic_on_) {
-            auto qrow = bound.removeFromTop(juce::jmax(juce::roundToInt(font * 1.18f), button_size * 2 / 3));
-            q_slider_.setBounds(qrow.removeFromRight(half_w));
-            lr_box_.setBounds({});
-            lr_box_.setVisible(false);
-        } else {
-            auto lower = bound.removeFromTop(button_size);
-            q_slider_.setBounds(lower.removeFromLeft(half_w));
-            lower.removeFromLeft(two_gap);
-            mode_name_bound_ = lower;
-            lr_box_.setBounds(mode_name_bound_);
-            lr_box_.setVisible(true);
-        }
+        bypass_button_.setBounds(header.removeFromRight(rowH));
+        header.removeFromRight(actionGap);
+        solo_button_.setBounds(header.removeFromRight(rowH));
+        header.removeFromRight(actionGap);
+        dynamic_button_.setBounds(header.removeFromRight(rowH));
+        header.removeFromRight(slopeGap);
 
-        const auto show_advanced = advanced_open_;
-        solo_button_.setVisible(show_advanced);
-        close_button_.setVisible(show_advanced);
-        slope_box_.setVisible(show_advanced && slope_supported_);
-        if (show_advanced) {
-            bound.removeFromTop(padding / 3);
-            auto advanced = bound.removeFromTop(button_size);
-            close_button_.setBounds(advanced.removeFromRight(button_size));
-            advanced.removeFromRight(padding / 6);
-            solo_button_.setBounds(advanced.removeFromRight(button_size));
-            advanced.removeFromRight(padding / 3);
+        // The slope control is intentionally narrower than before. It owns its entire
+        // chip and never shares pixels with Dynamic/Solo/Bypass.
+        const auto desiredSlopeW = juce::roundToInt(font * 2.65f);
+        const auto slopeW = juce::jmax(0, juce::jmin(desiredSlopeW, header.getWidth()));
+        slope_name_bound_ = header.removeFromRight(slopeW);
+        slope_box_.setBounds(slope_name_bound_);
+        slope_box_.setVisible(slope_supported_ && slopeW > 0);
 
-            if (dynamic_on_) {
-                const auto mode_w = juce::jmax(button_size * 2, juce::roundToInt(font * 3.65f));
-                mode_name_bound_ = advanced.removeFromRight(juce::jmin(mode_w, advanced.getWidth()));
-                lr_box_.setBounds(mode_name_bound_);
-                lr_box_.setVisible(true);
-                advanced.removeFromRight(padding / 3);
-            }
-            if (slope_supported_) slope_box_.setBounds(advanced);
-            else slope_box_.setBounds({});
-        } else {
-            solo_button_.setBounds({});
-            close_button_.setBounds({});
-            slope_box_.setBounds({});
-        }
-
-        dynamic_title_bound_ = {};
-        advanced_section_title_bound_ = {};
-        for (auto& r : primary_dynamic_label_bounds_) r = {};
-        for (auto& r : advanced_dynamic_label_bounds_) r = {};
-        dynamics_page_button_.setBounds({});
-
-        if (dynamic_on_) {
-            bound.removeFromTop(padding / 2);
-
-            // Four dial cells from the actual approved Dynamic EQ preview.
-            auto dials = bound.removeFromTop(juce::jmax(juce::roundToInt(font * 5.0f), button_size * 2 + padding));
-            const auto gap = juce::jmax(2, padding / 4);
-            const auto dial_w = (dials.getWidth() - 3 * gap) / 4;
-            threshold_slider_.setBounds(dials.removeFromLeft(dial_w)); dials.removeFromLeft(gap);
-            range_slider_.setBounds(dials.removeFromLeft(dial_w)); dials.removeFromLeft(gap);
-            attack_slider_.setBounds(dials.removeFromLeft(dial_w)); dials.removeFromLeft(gap);
-            release_slider_.setBounds(dials);
-
-            const auto band = base_.getSelectedBand();
-            if (band < zlp::kBandNum) {
-                const auto accent = base_.getColourMap1(band);
-                threshold_slider_.setGlassRotaryAccent(accent);
-                range_slider_.setGlassRotaryAccent(accent);
-                attack_slider_.setGlassRotaryAccent(accent);
-                release_slider_.setGlassRotaryAccent(accent);
-            }
-
-            bound.removeFromTop(padding / 3);
-            auto disclosures = bound.removeFromTop(juce::jmax(button_size * 3 / 4,
-                                                              juce::roundToInt(font * 1.25f)));
-            dynamic_title_bound_ = disclosures.removeFromLeft(juce::jmax(juce::roundToInt(font * 4.7f),
-                                                                          disclosures.getWidth() / 4));
-            const auto disclosure_gap = juce::jmax(2, padding / 4);
-            const auto more_w = juce::jmax(button_size * 3 / 2, juce::roundToInt(font * 3.0f));
-            const auto side_w = juce::jmax(button_size * 2, juce::roundToInt(font * 4.8f));
-            detector_page_button_.setBounds(disclosures.removeFromRight(more_w));
-            disclosures.removeFromRight(disclosure_gap);
-            sidechain_page_button_.setBounds(disclosures.removeFromRight(side_w));
-
-            if (detail_page_ != DetailPage::dynamics) {
-                bound.removeFromTop(padding / 2);
-                advanced_section_title_bound_ = bound.removeFromTop(juce::jmax(8, juce::roundToInt(font * .78f)));
-                const auto label_h = juce::jmax(8, juce::roundToInt(font * .64f));
-                auto detail_labels = bound.removeFromTop(label_h);
-                auto detail_values = bound.removeFromTop(button_size);
-                const auto detail_gap = juce::jmax(2, padding / 3);
-                const auto detail_w = (detail_values.getWidth() - 3 * detail_gap) / 4;
-                for (size_t i = 0; i < 4; ++i) {
-                    advanced_dynamic_label_bounds_[i] = detail_labels.removeFromLeft(detail_w);
-                    if (i < 3) detail_labels.removeFromLeft(detail_gap);
-                }
-
-                if (detail_page_ == DetailPage::detector) {
-                    knee_slider_.setBounds(detail_values.removeFromLeft(detail_w)); detail_values.removeFromLeft(detail_gap);
-                    rms_length_slider_.setBounds(detail_values.removeFromLeft(detail_w)); detail_values.removeFromLeft(detail_gap);
-                    rms_mix_slider_.setBounds(detail_values.removeFromLeft(detail_w)); detail_values.removeFromLeft(detail_gap);
-                    smooth_slider_.setBounds(detail_values);
-
-                    bound.removeFromTop(padding / 3);
-                    auto flags = bound.removeFromTop(juce::jmax(button_size * 3 / 4,
-                                                               juce::roundToInt(font * 1.20f)));
-                    const auto fw = (flags.getWidth() - 2 * detail_gap) / 3;
-                    learn_button_.setBounds(flags.removeFromLeft(fw)); flags.removeFromLeft(detail_gap);
-                    relative_button_.setBounds(flags.removeFromLeft(fw)); flags.removeFromLeft(detail_gap);
-                    dyn_bypass_button_.setBounds(flags);
-                } else {
-                    side_type_box_.setBounds(detail_values.removeFromLeft(detail_w)); detail_values.removeFromLeft(detail_gap);
-                    side_order_box_.setBounds(detail_values.removeFromLeft(detail_w)); detail_values.removeFromLeft(detail_gap);
-                    side_freq_slider_.setBounds(detail_values.removeFromLeft(detail_w)); detail_values.removeFromLeft(detail_gap);
-                    side_q_slider_.setBounds(detail_values);
-
-                    bound.removeFromTop(padding / 3);
-                    auto flags = bound.removeFromTop(juce::jmax(button_size * 3 / 4,
-                                                               juce::roundToInt(font * 1.20f)));
-                    const auto fw = (flags.getWidth() - detail_gap) / 2;
-                    side_link_button_.setBounds(flags.removeFromLeft(fw)); flags.removeFromLeft(detail_gap);
-                    side_swap_button_.setBounds(flags);
-                }
-            }
-        } else {
-            detector_page_button_.setBounds({});
-            sidechain_page_button_.setBounds({});
-        }
-
-        updateDetailVisibility();
-        ideal_height_ = static_cast<float>(getIdealHeight());
-        ideal_width_ = static_cast<float>(getIdealWidth());
+        b.removeFromTop(gap);
+        auto values = b.removeFromTop(rowH);
+        const auto cell = juce::jmax(1, (values.getWidth() - 2 * gap) / 3);
+        value_bounds_[0] = values.removeFromLeft(cell); values.removeFromLeft(gap);
+        value_bounds_[1] = values.removeFromLeft(cell); values.removeFromLeft(gap);
+        value_bounds_[2] = values;
+        freq_slider_.setBounds(value_bounds_[0]);
+        gain_slider_.setBounds(value_bounds_[1]);
+        q_slider_.setBounds(value_bounds_[2]);
     }
 
     void FloatPopPanel::mouseUp(const juce::MouseEvent& event) {
-        if (filter_name_bound_.contains(event.getPosition()))
-            ftype_box_.getBox().showPopup();
+        const auto typeArea = ftype_box_.getBounds().getUnion(filter_name_bound_);
+        if (typeArea.contains(event.getPosition())) ftype_box_.getBox().showPopup();
     }
 
     void FloatPopPanel::updateBand() {
         if (base_.getSelectedBand() < zlp::kBandNum) {
-            const auto band_s = std::to_string(base_.getSelectedBand());
-            ftype_attachment_ = std::make_unique<zlgui::attachment::ComboBoxAttachment<true>>(
-                ftype_box_.getBox(), p_ref_.parameters_, zlp::PFilterType::kID + band_s, updater_);
-            lr_attachment_ = std::make_unique<zlgui::attachment::ComboBoxAttachment<true>>(
-                lr_box_.getBox(), p_ref_.parameters_, zlp::PLRMode::kID + band_s, updater_);
-            slope_attachment_ = std::make_unique<zlgui::attachment::ComboBoxAttachment<true>>(
-                slope_box_.getBox(), p_ref_.parameters_, zlp::POrder::kID + band_s, updater_);
-            freq_attachment_ = std::make_unique<zlgui::attachment::SliderAttachment<true>>(
-                freq_slider_.getSlider(), p_ref_.parameters_, zlp::PFreq::kID + band_s, updater_);
-            gain_attachment_ = std::make_unique<zlgui::attachment::SliderAttachment<true>>(
-                gain_slider_.getSlider(), p_ref_.parameters_, zlp::PGain::kID + band_s, updater_);
-            q_attachment_ = std::make_unique<zlgui::attachment::SliderAttachment<true>>(
-                q_slider_.getSlider(), p_ref_.parameters_, zlp::PQ::kID + band_s, updater_);
-
-            dynamic_attachment_ = std::make_unique<zlgui::attachment::ButtonAttachment<true>>(
-                dynamic_button_.getButton(), p_ref_.parameters_, zlp::PDynamicON::kID + band_s, updater_,
-                juce::dontSendNotification);
-            range_attachment_ = std::make_unique<zlgui::attachment::SliderAttachment<true>>(
-                range_slider_.getSlider(), p_ref_.parameters_, zlp::PTargetGain::kID + band_s, updater_);
-            threshold_attachment_ = std::make_unique<zlgui::attachment::SliderAttachment<true>>(
-                threshold_slider_.getSlider(), p_ref_.parameters_, zlp::PThreshold::kID + band_s, updater_);
-            attack_attachment_ = std::make_unique<zlgui::attachment::SliderAttachment<true>>(
-                attack_slider_.getSlider(), p_ref_.parameters_, zlp::PAttack::kID + band_s, updater_);
-            release_attachment_ = std::make_unique<zlgui::attachment::SliderAttachment<true>>(
-                release_slider_.getSlider(), p_ref_.parameters_, zlp::PRelease::kID + band_s, updater_);
-            knee_attachment_ = std::make_unique<zlgui::attachment::SliderAttachment<true>>(
-                knee_slider_.getSlider(), p_ref_.parameters_, zlp::PKneeW::kID + band_s, updater_);
-            rms_length_attachment_ = std::make_unique<zlgui::attachment::SliderAttachment<true>>(
-                rms_length_slider_.getSlider(), p_ref_.parameters_, zlp::PDynamicRMSLength::kID + band_s, updater_);
-            rms_mix_attachment_ = std::make_unique<zlgui::attachment::SliderAttachment<true>>(
-                rms_mix_slider_.getSlider(), p_ref_.parameters_, zlp::PDynamicRMSMix::kID + band_s, updater_);
-            smooth_attachment_ = std::make_unique<zlgui::attachment::SliderAttachment<true>>(
-                smooth_slider_.getSlider(), p_ref_.parameters_, zlp::PDynamicSmooth::kID + band_s, updater_);
-
-            learn_attachment_ = std::make_unique<zlgui::attachment::ButtonAttachment<true>>(
-                learn_button_.getButton(), p_ref_.parameters_, zlp::PDynamicLearn::kID + band_s, updater_, juce::dontSendNotification);
-            relative_attachment_ = std::make_unique<zlgui::attachment::ButtonAttachment<true>>(
-                relative_button_.getButton(), p_ref_.parameters_, zlp::PDynamicRelative::kID + band_s, updater_, juce::dontSendNotification);
-            dyn_bypass_attachment_ = std::make_unique<zlgui::attachment::ButtonAttachment<true>>(
-                dyn_bypass_button_.getButton(), p_ref_.parameters_, zlp::PDynamicBypass::kID + band_s, updater_, juce::dontSendNotification);
-
-            side_type_attachment_ = std::make_unique<zlgui::attachment::ComboBoxAttachment<true>>(
-                side_type_box_.getBox(), p_ref_.parameters_, zlp::PSideFilterType::kID + band_s, updater_);
-            side_order_attachment_ = std::make_unique<zlgui::attachment::ComboBoxAttachment<true>>(
-                side_order_box_.getBox(), p_ref_.parameters_, zlp::PSideOrder::kID + band_s, updater_);
-            side_freq_attachment_ = std::make_unique<zlgui::attachment::SliderAttachment<true>>(
-                side_freq_slider_.getSlider(), p_ref_.parameters_, zlp::PSideFreq::kID + band_s, updater_);
-            side_q_attachment_ = std::make_unique<zlgui::attachment::SliderAttachment<true>>(
-                side_q_slider_.getSlider(), p_ref_.parameters_, zlp::PSideQ::kID + band_s, updater_);
-            side_link_attachment_ = std::make_unique<zlgui::attachment::ButtonAttachment<true>>(
-                side_link_button_.getButton(), p_ref_.parameters_, zlp::PSideLink::kID + band_s, updater_, juce::dontSendNotification);
-            side_swap_attachment_ = std::make_unique<zlgui::attachment::ButtonAttachment<true>>(
-                side_swap_button_.getButton(), p_ref_.parameters_, zlp::PSideSwap::kID + band_s, updater_, juce::dontSendNotification);
-
-            freq_attachment_->updateComponent();
-            gain_attachment_->updateComponent();
-            q_attachment_->updateComponent();
-            slope_attachment_->updateComponent();
-            range_attachment_->updateComponent();
-            threshold_attachment_->updateComponent();
-            attack_attachment_->updateComponent();
-            release_attachment_->updateComponent();
-            knee_attachment_->updateComponent();
-            rms_length_attachment_->updateComponent();
-            rms_mix_attachment_->updateComponent();
-            smooth_attachment_->updateComponent();
-            side_freq_attachment_->updateComponent();
-            side_q_attachment_->updateComponent();
-
-            filter_status_ptr_ = p_ref_.parameters_.getRawParameterValue(zlp::PFilterStatus::kID + band_s);
-            dynamic_on_ptr_ = p_ref_.parameters_.getRawParameterValue(zlp::PDynamicON::kID + band_s);
-            filter_type_ptr_ = p_ref_.parameters_.getRawParameterValue(zlp::PFilterType::kID + band_s);
-            slope_ptr_ = p_ref_.parameters_.getRawParameterValue(zlp::POrder::kID + band_s);
-            current_filter_type_ = -1;
-            current_slope_ = -1;
+            const auto s = std::to_string(base_.getSelectedBand());
+            ftype_attachment_ = std::make_unique<zlgui::attachment::ComboBoxAttachment<true>>(ftype_box_.getBox(), p_ref_.parameters_, zlp::PFilterType::kID+s, updater_);
+            slope_attachment_ = std::make_unique<zlgui::attachment::ComboBoxAttachment<true>>(slope_box_.getBox(), p_ref_.parameters_, zlp::POrder::kID+s, updater_);
+            freq_attachment_ = std::make_unique<zlgui::attachment::SliderAttachment<true>>(freq_slider_.getSlider(), p_ref_.parameters_, zlp::PFreq::kID+s, updater_);
+            gain_attachment_ = std::make_unique<zlgui::attachment::SliderAttachment<true>>(gain_slider_.getSlider(), p_ref_.parameters_, zlp::PGain::kID+s, updater_);
+            q_attachment_ = std::make_unique<zlgui::attachment::SliderAttachment<true>>(q_slider_.getSlider(), p_ref_.parameters_, zlp::PQ::kID+s, updater_);
+            updater_.updateComponents();
+            filter_status_ptr_ = p_ref_.parameters_.getRawParameterValue(zlp::PFilterStatus::kID+s);
+            filter_type_ptr_ = p_ref_.parameters_.getRawParameterValue(zlp::PFilterType::kID+s);
+            slope_ptr_ = p_ref_.parameters_.getRawParameterValue(zlp::POrder::kID+s);
+            dynamic_on_ptr_ = p_ref_.parameters_.getRawParameterValue(zlp::PDynamicON::kID+s);
+            current_filter_type_ = current_slope_ = -1;
             updateFilterCapabilities();
-            const auto next_dynamic = dynamic_on_ptr_ != nullptr
-                && dynamic_on_ptr_->load(std::memory_order::relaxed) > .5f;
-            updateDynamicVisibility(next_dynamic, true);
+            transform_initialized_ = false;
+            setVisible(true);
             repaintCallBackSlow();
         } else {
-            ftype_attachment_.reset();
-            lr_attachment_.reset();
-            slope_attachment_.reset();
-            freq_attachment_.reset();
-            gain_attachment_.reset();
-            q_attachment_.reset();
-            dynamic_attachment_.reset();
-            range_attachment_.reset();
-            threshold_attachment_.reset();
-            attack_attachment_.reset();
-            release_attachment_.reset();
-            knee_attachment_.reset();
-            rms_length_attachment_.reset();
-            rms_mix_attachment_.reset();
-            smooth_attachment_.reset();
-            learn_attachment_.reset();
-            relative_attachment_.reset();
-            dyn_bypass_attachment_.reset();
-            side_type_attachment_.reset();
-            side_order_attachment_.reset();
-            side_freq_attachment_.reset();
-            side_q_attachment_.reset();
-            side_link_attachment_.reset();
-            side_swap_attachment_.reset();
-            filter_status_ptr_ = nullptr;
-            dynamic_on_ptr_ = nullptr;
-            filter_type_ptr_ = nullptr;
-            slope_ptr_ = nullptr;
-            current_filter_type_ = -1;
-            current_slope_ = -1;
-            updateDynamicVisibility(false, true);
+            ftype_attachment_.reset(); slope_attachment_.reset(); freq_attachment_.reset(); gain_attachment_.reset(); q_attachment_.reset();
+            filter_status_ptr_ = filter_type_ptr_ = slope_ptr_ = dynamic_on_ptr_ = nullptr;
+            current_filter_type_ = current_slope_ = -1;
+            dynamic_button_.getButton().setToggleState(false, juce::dontSendNotification);
+            solo_button_.getButton().setToggleState(false, juce::dontSendNotification);
+            stopTimer();
+            setVisible(false);
         }
-        setVisible(base_.getSelectedBand() < zlp::kBandNum);
     }
 
     void FloatPopPanel::repaintCallBackSlow() {
-        if (filter_status_ptr_ != nullptr) {
-            updater_.updateComponents();
-            freq_slider_.updateDisplayValue();
-            gain_slider_.updateDisplayValue();
-            q_slider_.updateDisplayValue();
-            range_slider_.updateDisplayValue();
-            threshold_slider_.updateDisplayValue();
-            attack_slider_.updateDisplayValue();
-            release_slider_.updateDisplayValue();
-            knee_slider_.updateDisplayValue();
-            rms_length_slider_.updateDisplayValue();
-            rms_mix_slider_.updateDisplayValue();
-            smooth_slider_.updateDisplayValue();
-            side_freq_slider_.updateDisplayValue();
-            side_q_slider_.updateDisplayValue();
-
-            const auto filter_on = filter_status_ptr_->load(std::memory_order::relaxed) > 1.5f;
-            if (filter_on != bypass_button_.getToggleState())
-                bypass_button_.getButton().setToggleState(filter_on, juce::dontSendNotification);
-
-            if (dynamic_on_ptr_ != nullptr) {
-                const auto next_dynamic = dynamic_on_ptr_->load(std::memory_order::relaxed) > .5f;
-                if (next_dynamic != dynamic_on_) updateDynamicVisibility(next_dynamic, true);
-            }
-            updateFilterCapabilities();
-            repaint();
-        }
+        if (filter_status_ptr_ == nullptr) return;
+        updater_.updateComponents();
+        freq_slider_.updateDisplayValue(); gain_slider_.updateDisplayValue(); q_slider_.updateDisplayValue();
+        bypass_button_.getButton().setToggleState(filter_status_ptr_->load(std::memory_order::relaxed) > 1.5f,
+                                                   juce::dontSendNotification);
+        dynamic_button_.getButton().setToggleState(dynamic_on_ptr_ != nullptr
+            && dynamic_on_ptr_->load(std::memory_order::relaxed) > .5f, juce::dontSendNotification);
+        solo_button_.getButton().setToggleState(base_.getSelectedBand() < zlp::kBandNum
+            && base_.getSoloWholeIdx() == base_.getSelectedBand(), juce::dontSendNotification);
+        updateFilterCapabilities();
+        repaint();
     }
 
     void FloatPopPanel::updateFilterCapabilities() {
         if (filter_type_ptr_ == nullptr || slope_ptr_ == nullptr) return;
-
-        const auto filter_type = static_cast<int>(std::round(filter_type_ptr_->load(std::memory_order::relaxed)));
+        const auto type = static_cast<int>(std::round(filter_type_ptr_->load(std::memory_order::relaxed)));
         const auto slope = static_cast<int>(std::round(slope_ptr_->load(std::memory_order::relaxed)));
-        if (filter_type == current_filter_type_ && slope == current_slope_) return;
-        current_filter_type_ = filter_type;
+        if (type == current_filter_type_ && slope == current_slope_) return;
+        current_filter_type_ = type;
         current_slope_ = slope;
-
-        const auto slope_enabled = filter_type != static_cast<int>(zldsp::filter::kFlatTilt)
-            && filter_type != static_cast<int>(zldsp::filter::kFlatGain);
-        const auto slope_6_allowed = filter_type != static_cast<int>(zldsp::filter::kPeak)
-            && filter_type != static_cast<int>(zldsp::filter::kBandPass)
-            && filter_type != static_cast<int>(zldsp::filter::kNotch);
-        if (!slope_6_allowed && slope_box_.getBox().getSelectedId() == 1)
+        slope_supported_ = type != static_cast<int>(zldsp::filter::kFlatTilt)
+            && type != static_cast<int>(zldsp::filter::kFlatGain);
+        const auto slope6 = type != static_cast<int>(zldsp::filter::kPeak)
+            && type != static_cast<int>(zldsp::filter::kBandPass)
+            && type != static_cast<int>(zldsp::filter::kNotch);
+        if (!slope6 && slope_box_.getBox().getSelectedId() == 1)
             slope_box_.getBox().setSelectedId(2, juce::sendNotificationSync);
-        slope_box_.getBox().setItemEnabled(1, slope_6_allowed);
-        slope_supported_ = slope_enabled;
-        slope_box_.setEditable(slope_enabled);
+        slope_box_.getBox().setItemEnabled(1, slope6);
+        slope_box_.setEditable(slope_supported_);
+        slope_box_.setVisible(slope_supported_);
 
-        const auto gain_enabled = filter_type == static_cast<int>(zldsp::filter::kPeak)
-            || filter_type == static_cast<int>(zldsp::filter::kLowShelf)
-            || filter_type == static_cast<int>(zldsp::filter::kHighShelf)
-            || filter_type == static_cast<int>(zldsp::filter::kTiltShelf)
-            || filter_type == static_cast<int>(zldsp::filter::kFlatTilt)
-            || filter_type == static_cast<int>(zldsp::filter::kFlatGain);
-        if (!gain_enabled && dynamic_button_.getToggleState())
-            dynamic_button_.getButton().setToggleState(false, juce::sendNotificationSync);
-        gain_slider_.setEditable(gain_enabled);
-        dynamic_button_.setAlpha(gain_enabled ? 1.f : .38f);
-        dynamic_button_.setInterceptsMouseClicks(false, gain_enabled);
-        q_slider_.setEditable(slope_enabled && slope != 0);
+        const auto gainEnabled = type == static_cast<int>(zldsp::filter::kPeak)
+            || type == static_cast<int>(zldsp::filter::kLowShelf)
+            || type == static_cast<int>(zldsp::filter::kHighShelf)
+            || type == static_cast<int>(zldsp::filter::kTiltShelf)
+            || type == static_cast<int>(zldsp::filter::kFlatTilt)
+            || type == static_cast<int>(zldsp::filter::kFlatGain);
+        gain_slider_.setEditable(gainEnabled);
+        q_slider_.setEditable(slope_supported_ && slope != 0);
+        dynamic_button_.getButton().setEnabled(gainEnabled);
+        dynamic_button_.setAlpha(gainEnabled ? 1.f : .34f);
         resized();
         repaint();
     }
 
     int FloatPopPanel::getIdealWidth() const {
-        const auto padding = getPaddingSize(base_.getFontSize());
-        const auto button_size = getButtonSize(base_.getFontSize());
-        return juce::roundToInt(8.15f * static_cast<float>(button_size) + 4.5f * static_cast<float>(padding));
+        return juce::jmax(210, juce::roundToInt(base_.getFontSize() * 15.2f));
     }
 
     int FloatPopPanel::getIdealHeight() const {
-        const auto font = base_.getFontSize();
-        const auto padding = getPaddingSize(font);
-        const auto button_size = getButtonSize(font);
-
-        auto base_height = 3 * button_size + 4 * padding;
-        if (dynamic_on_) {
-            // Dynamic preview compacts Q beneath Gain instead of keeping a full third row.
-            base_height = 2 * button_size + juce::jmax(juce::roundToInt(font * 1.18f), button_size * 2 / 3)
-                + 4 * padding;
-        }
-        if (advanced_open_) base_height += button_size + padding / 2;
-        if (!dynamic_on_) return base_height;
-
-        const auto dial_h = juce::jmax(juce::roundToInt(font * 5.0f), button_size * 2 + padding);
-        const auto disclosure_h = juce::jmax(button_size * 3 / 4, juce::roundToInt(font * 1.25f));
-        auto detail = dial_h + disclosure_h + 3 * padding;
-        if (detail_page_ != DetailPage::dynamics) {
-            const auto title_h = juce::jmax(8, juce::roundToInt(font * .78f));
-            const auto label_h = juce::jmax(8, juce::roundToInt(font * .64f));
-            const auto flags_h = juce::jmax(button_size * 3 / 4, juce::roundToInt(font * 1.20f));
-            detail += title_h + label_h + button_size + flags_h + 2 * padding;
-        }
-        return base_height + detail;
+        return juce::jmax(58, juce::roundToInt(base_.getFontSize() * 4.05f));
     }
 
-    void FloatPopPanel::styleDetailButton(zlgui::button::ClickTextButton& button) {
-        button.getLAF().setFontScale(.68f);
-        button.setBackgroundPainter([this](juce::Graphics& g, juce::Button& b,
-                                           const bool highlighted, const bool down) {
-            auto r = b.getLocalBounds().toFloat().reduced(.5f);
-            const auto active = b.getToggleState() || down;
-            if (active || highlighted) {
-                zlgui::glass::fillGlassSurface(g, r, r.getHeight() * .5f,
-                                               active ? .105f : .045f,
-                                               active ? .155f : .075f,
-                                               active ? .17f : .080f);
-            }
-            if (active) {
-                g.setColour(juce::Colour(135, 191, 238).withAlpha(.13f));
-                g.fillRoundedRectangle(r.reduced(1.f), r.getHeight() * .46f);
-            }
-        });
+    void FloatPopPanel::updatePosition(const juce::Point<float> position, const juce::Point<float> target_position) {
+        position_ = position;
+        target_position_ = target_position;
+        updateTransformationTarget();
     }
 
-    void FloatPopPanel::updateDetailPage(const DetailPage page, const bool request_parent_resize) {
-        detail_page_ = page;
-        dynamics_page_button_.getButton().setToggleState(false, juce::dontSendNotification);
-        detector_page_button_.getButton().setToggleState(page == DetailPage::detector, juce::dontSendNotification);
-        sidechain_page_button_.getButton().setToggleState(page == DetailPage::sidechain, juce::dontSendNotification);
-        updateDetailVisibility();
-        if (request_parent_resize) {
-            if (auto* parent = getParentComponent()) parent->resized();
-        }
-        resized();
-        repaint();
-    }
-
-    void FloatPopPanel::updateDetailVisibility() {
-        const auto dyn = dynamic_on_;
-        dynamics_page_button_.setVisible(false);
-        detector_page_button_.setVisible(dyn);
-        sidechain_page_button_.setVisible(dyn);
-
-        const std::array<juce::Component*, 4> primary{
-            &range_slider_, &threshold_slider_, &attack_slider_, &release_slider_};
-        for (auto* c : primary) c->setVisible(dyn);
-
-        const auto showDetector = dyn && detail_page_ == DetailPage::detector;
-        const std::array<juce::Component*, 7> detector{
-            &knee_slider_, &rms_length_slider_, &rms_mix_slider_, &smooth_slider_,
-            &learn_button_, &relative_button_, &dyn_bypass_button_};
-        for (auto* c : detector) c->setVisible(showDetector);
-
-        const auto showSide = dyn && detail_page_ == DetailPage::sidechain;
-        const std::array<juce::Component*, 6> side{
-            &side_type_box_, &side_order_box_, &side_freq_slider_, &side_q_slider_,
-            &side_link_button_, &side_swap_button_};
-        for (auto* c : side) c->setVisible(showSide);
-    }
-
-    void FloatPopPanel::updateDynamicVisibility(const bool dynamic_on, const bool request_parent_resize) {
-        dynamic_on_ = dynamic_on;
-        if (!dynamic_on_) detail_page_ = DetailPage::dynamics;
-        updateDetailPage(detail_page_, request_parent_resize);
-    }
-
-    void FloatPopPanel::setTargetVisible(const bool is_target_visible) {
-        if (is_target_visible != is_target_visible_) {
-            is_target_visible_ = is_target_visible;
-            updateTransformation();
-        }
-    }
-
-    void FloatPopPanel::updatePosition(const juce::Point<float> position,
-                                       const juce::Point<float> target_position) {
-        if (std::abs(position.x - position_.x) > .01f
-            || std::abs(position.y - position_.y) > .01f
-            || std::abs(target_position.x - target_position_.x) > .01f
-            || std::abs(target_position.y - target_position_.y) > .01f) {
-            position_ = position;
-            target_position_ = target_position;
-            updateTransformation();
-        }
-    }
+    void FloatPopPanel::setTargetVisible(const bool visible) { target_visible_ = visible; }
 
     void FloatPopPanel::updateFloatingBound(const juce::Rectangle<float> bound) {
-        const auto width = ideal_width_;
-        const auto height = ideal_height_;
-        const auto padding = base_.getFontSize() * kPaddingScale * 1.5f;
-
-        upper_center_ = {width * .5f, -base_.getFontSize()};
-        lower_center_ = {width * .5f, height + base_.getFontSize()};
-        left_center_ = {-padding, ideal_height_ * .5f};
-        right_center_ = {width + padding, ideal_height_ * .5f};
-
-        x_min_ = width * .5f;
-        x_mid_ = bound.getWidth() * .5f;
-        x_max_ = bound.getWidth() - width * .5f;
-        y_min_ = ideal_height_ * .5f;
-        y_max_ = bound.getHeight() - height * .5f;
-        floating_top_ = bound.getY();
-        floating_bottom_ = bound.getBottom();
-
-        y1_ = bound.getHeight() * .25f;
-        y2_ = bound.getHeight() * .5f + .5f;
-        y3_ = bound.getHeight() * .75f;
-        updateTransformation();
+        floating_bound_ = bound;
+        updateTransformationTarget();
     }
 
-    void FloatPopPanel::updateTransformation() {
-        const auto place_below = [this]() {
-            setTransform(juce::AffineTransform::translation(
-                std::clamp(position_.x, x_min_, x_max_) - upper_center_.x,
-                position_.y - upper_center_.y));
-        };
-        const auto place_above = [this]() {
-            setTransform(juce::AffineTransform::translation(
-                std::clamp(position_.x, x_min_, x_max_) - lower_center_.x,
-                position_.y - lower_center_.y));
-        };
-        const auto place_on_side = [this]() {
-            if (position_.x < x_mid_) {
-                setTransform(juce::AffineTransform::translation(
-                    position_.x - left_center_.x,
-                    std::clamp(position_.y, y_min_, y_max_) - left_center_.y));
-            } else {
-                setTransform(juce::AffineTransform::translation(
-                    position_.x - right_center_.x,
-                    std::clamp(position_.y, y_min_, y_max_) - right_center_.y));
-            }
-        };
-        const auto place_using_default_rule = [this, &place_below, &place_above]() {
-            if (position_.y < y1_ || (position_.y > y2_ && position_.y < y3_)) place_below();
-            else place_above();
-        };
+    void FloatPopPanel::updateTransformationTarget() {
+        if (floating_bound_.isEmpty() || !isVisible()) return;
+        const auto width = static_cast<float>(getIdealWidth());
+        const auto height = static_cast<float>(getIdealHeight());
+        const auto safeMargin = juce::jmax(6.f, base_.getFontSize() * .55f);
+        const auto gap = juce::jmax(8.f, base_.getFontSize() * .58f);
+        const auto hysteresis = juce::jmax(9.f, base_.getFontSize() * .70f);
+        const auto safe = floating_bound_.reduced(safeMargin);
+        const auto aboveY = position_.y - gap - height;
+        const auto belowY = position_.y + gap;
+        const auto aboveFits = aboveY >= safe.getY();
+        const auto belowFits = belowY + height <= safe.getBottom();
 
-        constexpr float target_position_epsilon = 1.f;
-        const auto target_y_delta = target_position_.y - position_.y;
-        if (!is_target_visible_ || std::abs(target_y_delta) <= target_position_epsilon) {
-            place_using_default_rule();
-        } else if (target_y_delta < 0.f) {
-            const auto popup_bottom = position_.y - upper_center_.y + ideal_height_;
-            if (popup_bottom <= floating_bottom_) place_below();
-            else place_on_side();
-        } else {
-            const auto popup_top = position_.y - lower_center_.y;
-            if (popup_top >= floating_top_) place_above();
-            else place_on_side();
+        if (placement_ == Placement::above) {
+            if (!aboveFits && belowFits) placement_ = Placement::below;
+        } else if ((!belowFits && aboveFits) || (aboveFits && aboveY >= safe.getY() + hysteresis)) {
+            placement_ = Placement::above;
         }
+
+        const auto maxX = juce::jmax(safe.getX(), safe.getRight() - width);
+        auto x = juce::jlimit(safe.getX(), maxX, position_.x - width * .5f);
+        auto y = placement_ == Placement::above ? aboveY : belowY;
+        y = juce::jlimit(safe.getY(), juce::jmax(safe.getY(), safe.getBottom() - height), y);
+        target_x_ = x;
+        target_y_ = y;
+
+        if (!transform_initialized_) {
+            current_x_ = target_x_;
+            current_y_ = target_y_;
+            transform_initialized_ = true;
+            applyCurrentTransform();
+            return;
+        }
+        if (std::abs(current_x_ - target_x_) > .25f || std::abs(current_y_ - target_y_) > .25f)
+            startTimerHz(60);
     }
 
-    void FloatPopPanel::valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) {
-        const auto solo_whole_idx = base_.getSoloWholeIdx();
-        solo_button_.getButton().setToggleState(solo_whole_idx < zlp::kBandNum, juce::dontSendNotification);
+    void FloatPopPanel::timerCallback() {
+        constexpr float response = .34f;
+        current_x_ += (target_x_ - current_x_) * response;
+        current_y_ += (target_y_ - current_y_) * response;
+        if (std::abs(current_x_ - target_x_) < .20f && std::abs(current_y_ - target_y_) < .20f) {
+            current_x_ = target_x_;
+            current_y_ = target_y_;
+            stopTimer();
+        }
+        applyCurrentTransform();
+    }
+
+    void FloatPopPanel::applyCurrentTransform() {
+        setTransform(juce::AffineTransform::translation(current_x_, current_y_));
     }
 }
