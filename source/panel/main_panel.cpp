@@ -9,8 +9,95 @@
 
 #include "main_panel.hpp"
 #include "../gui/glass_tokens.hpp"
+#include <array>
+#include <cmath>
 
 namespace zlpanel {
+    namespace {
+        struct AmbientNode {
+            juce::Point<float> point{};
+            juce::Colour colour{juce::Colours::transparentBlack};
+            float strength{0.f};
+            bool valid{false};
+        };
+
+        std::array<AmbientNode, zlp::kBandNum> collectAmbientNodes(PluginProcessor& p,
+                                                                   zlgui::UIBase& base,
+                                                                   juce::Rectangle<float> graph,
+                                                                   const double sample_rate) {
+            std::array<AmbientNode, zlp::kBandNum> result{};
+            if (graph.isEmpty() || sample_rate <= 1000.0) return result;
+
+            graph.removeFromBottom(static_cast<float>(getBottomAreaHeight(base.getFontSize())));
+            if (graph.getWidth() <= 1.f || graph.getHeight() <= 1.f) return result;
+
+            const auto fft_max = static_cast<float>(freq_helper::getFFTMax(sample_rate));
+            const auto log_max = std::log(fft_max * .1f);
+            if (log_max <= 1.0e-5f) return result;
+
+            const auto selected_band = base.getSelectedBand();
+            const auto* scale_value = p.parameters_.getRawParameterValue(zlp::PGainScale::kID);
+            const auto gain_scale = scale_value ? scale_value->load(std::memory_order_relaxed) * .01f : 1.f;
+            const auto* max_value = p.parameters_NA_.getRawParameterValue(zlstate::PEQMaxDB::kID);
+            const auto max_idx = max_value
+                ? static_cast<size_t>(juce::jmax(0, static_cast<int>(std::round(max_value->load(std::memory_order_relaxed)))))
+                : size_t{0};
+            const auto max_db = juce::jmax(1.f, static_cast<float>(base.getCurveDBScale(max_idx)));
+
+            for (size_t band = 0; band < zlp::kBandNum; ++band) {
+                const auto suffix = std::to_string(band);
+                const auto* status_value = p.parameters_.getRawParameterValue(zlp::PFilterStatus::kID + suffix);
+                const auto* freq_value = p.parameters_.getRawParameterValue(zlp::PFreq::kID + suffix);
+                const auto* gain_value = p.parameters_.getRawParameterValue(zlp::PGain::kID + suffix);
+                if (status_value == nullptr || freq_value == nullptr || gain_value == nullptr) continue;
+
+                const auto status = static_cast<zlp::FilterStatus>(
+                    static_cast<int>(std::round(status_value->load(std::memory_order_relaxed))));
+                if (status == zlp::FilterStatus::kOff) continue;
+
+                const auto freq = juce::jmax(10.f, freq_value->load(std::memory_order_relaxed));
+                const auto x_portion = juce::jlimit(0.f, 1.f,
+                    static_cast<float>(kFFTSizeOverWidth) * std::log(freq * .1f) / log_max);
+                const auto gain = juce::jlimit(-max_db, max_db,
+                    gain_value->load(std::memory_order_relaxed) * gain_scale);
+                const auto y_portion = juce::jlimit(0.f, 1.f, .5f - gain / (2.f * max_db));
+
+                auto strength = band == selected_band ? 1.f : .20f;
+                if (status == zlp::FilterStatus::kBypass) strength *= .42f;
+
+                result[band] = {
+                    {graph.getX() + graph.getWidth() * x_portion,
+                     graph.getY() + graph.getHeight() * y_portion},
+                    base.getColourMap1(band), strength, true
+                };
+            }
+            return result;
+        }
+
+        void paintAmbientField(juce::Graphics& g,
+                               const juce::Point<float> source,
+                               const juce::Colour colour,
+                               const float radius,
+                               const float alpha,
+                               const juce::Rectangle<float> clip_bounds) {
+            if (alpha <= .0001f || radius <= 1.f || clip_bounds.isEmpty()) return;
+            juce::Graphics::ScopedSaveState state(g);
+            g.reduceClipRegion(clip_bounds.toNearestInt());
+
+            juce::ColourGradient ambient(
+                colour.interpolatedWith(juce::Colours::white, .055f).withAlpha(alpha),
+                source.x, source.y,
+                colour.withAlpha(0.f),
+                source.x + radius, source.y, true);
+            ambient.addColour(.24, colour.withAlpha(alpha * .82f));
+            ambient.addColour(.52, colour.withAlpha(alpha * .40f));
+            ambient.addColour(.76, colour.withAlpha(alpha * .13f));
+            ambient.addColour(.94, colour.withAlpha(alpha * .018f));
+            g.setGradientFill(ambient);
+            g.fillEllipse(source.x - radius, source.y - radius, radius * 2.f, radius * 2.f);
+        }
+    }
+
     MainPanel::MainPanel(PluginProcessor& p, zlgui::UIBase& base, const multilingual::TooltipLanguage language) :
         p_ref_(p), base_(base),
         tooltip_helper_(language),
@@ -86,30 +173,20 @@ namespace zlpanel {
             g.setGradientFill(body);
             g.fillRect(shell.expanded(2.f));
 
-            // The shell carries the glass impression with broad environmental light only.
-            // Visible ribbons/caustics were removed because the mockup keeps the UI plane
-            // calm and lets controls and EQ colours provide the sharp visual information.
-            juce::ColourGradient cool_bloom(
-                juce::Colour(187, 222, 246).withAlpha(.105f),
-                shell.getX() + shell.getWidth() * .16f,
-                shell.getY() + shell.getHeight() * .04f,
-                juce::Colours::transparentBlack,
-                shell.getX() + shell.getWidth() * .52f,
-                shell.getY() + shell.getHeight() * .66f,
-                true);
-            g.setGradientFill(cool_bloom);
-            g.fillRect(shell);
-
-            juce::ColourGradient warm_bloom(
-                juce::Colour(226, 204, 180).withAlpha(.044f),
-                shell.getX() + shell.getWidth() * .78f,
-                shell.getY() + shell.getHeight() * .17f,
-                juce::Colours::transparentBlack,
-                shell.getX() + shell.getWidth() * .54f,
-                shell.getBottom(),
-                true);
-            g.setGradientFill(warm_bloom);
-            g.fillRect(shell);
+            // There is no independent decorative light field anymore. Active EQ nodes are
+            // the lighting system: broad, low-energy colour diffuses into the shell like
+            // YouTube ambient light, while the curve/fill handle the brighter local optics.
+            const auto sample_rate = c_sample_rate_ > 1000.0 ? c_sample_rate_ : p_ref_.getSampleRate();
+            const auto nodes = collectAmbientNodes(p_ref_, base_, curve_panel_.getBounds().toFloat(), sample_rate);
+            for (const auto& node : nodes) {
+                if (!node.valid) continue;
+                const auto broad_radius = juce::jmax(base_.getFontSize() * 15.f, shell.getWidth() * .145f);
+                const auto near_radius = juce::jmax(base_.getFontSize() * 7.5f, shell.getWidth() * .072f);
+                paintAmbientField(g, node.point, node.colour, broad_radius,
+                                  .030f * node.strength, shell);
+                paintAmbientField(g, node.point, node.colour, near_radius,
+                                  .038f * node.strength, shell);
+            }
         }
 
         g.setColour(zlgui::glass::rimStrong());
@@ -129,7 +206,26 @@ namespace zlpanel {
     }
 
     void MainPanel::paintOverChildren(juce::Graphics& g) {
-        juce::ignoreUnused(g);
+        // A very faint surface response ensures the translucent top/footer glass and the
+        // Band Hub visibly pick up nearby node colour. This is intentionally much weaker
+        // than the graph illumination so labels and controls stay clean and readable.
+        const auto sample_rate = c_sample_rate_ > 1000.0 ? c_sample_rate_ : p_ref_.getSampleRate();
+        const auto nodes = collectAmbientNodes(p_ref_, base_, curve_panel_.getBounds().toFloat(), sample_rate);
+        const auto surface_radius = juce::jmax(base_.getFontSize() * 20.f, getWidth() * .22f);
+
+        for (const auto& node : nodes) {
+            if (!node.valid) continue;
+            const auto alpha = .017f * node.strength;
+            paintAmbientField(g, node.point, node.colour, surface_radius, alpha,
+                              top_panel_.getBounds().toFloat());
+            paintAmbientField(g, node.point, node.colour, surface_radius, alpha,
+                              footer_panel_.getBounds().toFloat());
+            if (band_hub_panel_.isVisible()) {
+                paintAmbientField(g, node.point, node.colour, surface_radius * .74f,
+                                  .026f * node.strength,
+                                  band_hub_panel_.getBounds().toFloat());
+            }
+        }
     }
 
     void MainPanel::resized() {
@@ -273,6 +369,14 @@ namespace zlpanel {
             if (preset_browser_.isVisible()) preset_browser_.flushPendingScroll();
             curve_panel_.repaintCallBack();
             control_panel_.repaintCallBack();
+
+            // Keep ambient reflections attached to moving nodes without repainting every
+            // pixel of the plugin. Only the glass surfaces that receive the distant light
+            // need the additional parent repaint.
+            auto ambient_dirty = top_panel_.getBounds().getUnion(footer_panel_.getBounds());
+            if (band_hub_panel_.isVisible()) ambient_dirty = ambient_dirty.getUnion(band_hub_panel_.getBounds());
+            repaint(ambient_dirty.expanded(3));
+
             const auto c_refresh_rate = refresh_handler_.getActualRefreshRate();
             if (std::abs(c_refresh_rate - refresh_rate_) > 0.1) {
                 refresh_rate_ = c_refresh_rate;
