@@ -28,79 +28,38 @@ namespace zlpanel {
             juce::Graphics::ScopedSaveState clip(g);
             g.reduceClipRegion(panel_clip);
 
-            // Reference lock: use the actual broad colour field visible in the approved
-            // image as the graph material instead of a generic navy pane. This is opaque on
-            // purpose; later light pools and band illumination are layered on top of it.
-            juce::ColourGradient horizontal(juce::Colour(86, 99, 94), panel.getX(), panel.getCentreY(),
-                                            juce::Colour(46, 48, 91), panel.getRight(), panel.getCentreY(), false);
-            horizontal.addColour(.14, juce::Colour(78, 92, 91));
-            horizontal.addColour(.25, juce::Colour(42, 83, 105));
-            horizontal.addColour(.36, juce::Colour(38, 88, 109));
-            horizontal.addColour(.50, juce::Colour(31, 69, 107));
-            horizontal.addColour(.62, juce::Colour(35, 69, 111));
-            horizontal.addColour(.76, juce::Colour(35, 61, 96));
-            horizontal.addColour(.88, juce::Colour(48, 61, 107));
-            g.setGradientFill(horizontal);
-            g.fillRect(panel.expanded(2.f));
+            // Neutral transparent liquid glass. The graph no longer owns any amber/teal/
+            // blue/violet colour field. Colour underneath this pane comes from the live EQ
+            // nodes painted by MainPanel, and colour above it comes from SinglePanel's local
+            // node transmission. This panel only provides density, depth and reflection.
+            g.setColour(juce::Colour(10, 23, 34).withAlpha(.24f));
+            g.fillRect(panel.expanded(1.f));
 
-            // Match the reference's stronger vertical falloff: brighter / hazier at the top,
-            // considerably darker toward the frequency labels at the bottom.
-            juce::ColourGradient vertical(juce::Colour(126, 156, 179).withAlpha(.105f),
-                                          panel.getCentreX(), panel.getY(),
-                                          juce::Colour(3, 14, 28).withAlpha(.43f),
-                                          panel.getCentreX(), panel.getBottom(), false);
-            vertical.addColour(.40, juce::Colours::transparentBlack);
-            vertical.addColour(.74, juce::Colour(4, 17, 31).withAlpha(.16f));
-            g.setGradientFill(vertical);
-            g.fillRect(panel);
+            juce::ColourGradient body(juce::Colour(174, 204, 220).withAlpha(.052f),
+                                      panel.getCentreX(), panel.getY(),
+                                      juce::Colour(8, 21, 34).withAlpha(.19f),
+                                      panel.getCentreX(), panel.getBottom(), false);
+            body.addColour(.34, juce::Colour(91, 124, 145).withAlpha(.022f));
+            body.addColour(.72, juce::Colour(16, 34, 48).withAlpha(.075f));
+            g.setGradientFill(body);
+            g.fillRect(panel.expanded(1.f));
 
-            // Keep a broad stained-glass field, but do not double-count the local light now
-            // painted by SinglePanel. These pools set the ambient hue; the strong saturation
-            // at each filter point comes from the real band position and moves with the node.
-            juce::ColourGradient warm(juce::Colour(244, 193, 107).withAlpha(.16f),
-                                      panel.getX() + panel.getWidth() * .075f,
-                                      panel.getY() + panel.getHeight() * .36f,
-                                      juce::Colours::transparentBlack,
-                                      panel.getX() + panel.getWidth() * .27f,
-                                      panel.getY() + panel.getHeight() * .67f, true);
-            warm.addColour(.42, juce::Colour(218, 174, 92).withAlpha(.065f));
-            warm.addColour(.72, juce::Colour(188, 150, 79).withAlpha(.018f));
-            g.setGradientFill(warm);
-            g.fillRect(panel);
-
-            juce::ColourGradient teal(juce::Colour(70, 205, 180).withAlpha(.095f),
-                                      panel.getX() + panel.getWidth() * .27f,
-                                      panel.getY() + panel.getHeight() * .53f,
-                                      juce::Colours::transparentBlack,
-                                      panel.getX() + panel.getWidth() * .48f,
-                                      panel.getY() + panel.getHeight() * .88f, true);
-            teal.addColour(.46, juce::Colour(62, 176, 163).withAlpha(.034f));
-            g.setGradientFill(teal);
-            g.fillRect(panel);
-
-            juce::ColourGradient blue(juce::Colour(69, 145, 231).withAlpha(.10f),
-                                      panel.getX() + panel.getWidth() * .54f,
-                                      panel.getY() + panel.getHeight() * .29f,
-                                      juce::Colours::transparentBlack,
-                                      panel.getX() + panel.getWidth() * .72f,
-                                      panel.getY() + panel.getHeight() * .73f, true);
-            blue.addColour(.45, juce::Colour(58, 122, 204).withAlpha(.038f));
-            g.setGradientFill(blue);
-            g.fillRect(panel);
-
-            juce::ColourGradient violet(juce::Colour(161, 118, 238).withAlpha(.105f),
-                                        panel.getX() + panel.getWidth() * .88f,
-                                        panel.getY() + panel.getHeight() * .43f,
-                                        juce::Colours::transparentBlack,
-                                        panel.getX() + panel.getWidth() * .69f,
-                                        panel.getY() + panel.getHeight() * .82f, true);
-            violet.addColour(.46, juce::Colour(132, 103, 214).withAlpha(.040f));
-            g.setGradientFill(violet);
+            // Soft neutral reflection across the top edge gives the pane its liquid-glass
+            // identity without inventing a coloured light source.
+            juce::ColourGradient sheen(juce::Colour(239, 248, 252).withAlpha(.075f),
+                                       panel.getCentreX(), panel.getY(),
+                                       juce::Colours::transparentWhite,
+                                       panel.getCentreX(), panel.getY() + panel.getHeight() * .42f, false);
+            sheen.addColour(.22, juce::Colour(211, 231, 240).withAlpha(.032f));
+            g.setGradientFill(sheen);
             g.fillRect(panel);
         }
 
-        g.setColour(juce::Colour(220, 238, 248).withAlpha(.12f));
+        g.setColour(juce::Colour(225, 241, 250).withAlpha(.13f));
         g.drawRoundedRectangle(panel, radius, .72f);
+        g.setColour(juce::Colour(255, 255, 255).withAlpha(.055f));
+        g.drawLine(panel.getX() + radius * .72f, panel.getY() + .6f,
+                   panel.getRight() - radius * .72f, panel.getY() + .6f, .65f);
 
         if (freq_max_ <= 10.0) return;
         drawFreqs(g);
