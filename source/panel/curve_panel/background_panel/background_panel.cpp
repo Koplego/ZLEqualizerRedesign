@@ -9,13 +9,16 @@
 
 #include "background_panel.hpp"
 #include "../../../gui/glass_tokens.hpp"
+#include "../../../gui/ambient_light.hpp"
+#include <cmath>
+#include <vector>
 
 namespace zlpanel {
     BackgroundPanel::BackgroundPanel(PluginProcessor& p,
                                      zlgui::UIBase& base,
                                      const multilingual::TooltipHelper& tooltip_helper) :
-        base_(base) {
-        juce::ignoreUnused(p, tooltip_helper);
+        p_ref_(p), base_(base) {
+        juce::ignoreUnused(tooltip_helper);
         setInterceptsMouseClicks(false, false);
         setOpaque(false);
         lookAndFeelChanged();
@@ -32,20 +35,19 @@ namespace zlpanel {
             juce::Graphics::ScopedSaveState clip(g);
             g.reduceClipRegion(panel_clip);
 
-            // The viewport in the concept is intentionally calmer than the shell. The
-            // analyzer and EQ curves provide the visual energy; the graph itself remains
-            // a dark, lightly illuminated pane.
-            juce::ColourGradient glass(juce::Colour(35, 60, 79), panel.getCentreX(), panel.getY(),
-                                       juce::Colour(7, 23, 37), panel.getCentreX(), panel.getBottom(), false);
-            glass.addColour(.44, juce::Colour(20, 45, 63));
+            // The graph is a dark pane, but it should visibly transmit the colour of the
+            // bands that live inside it. The previous fixed blue wash was flattening every
+            // state into the same colour and hiding the new spatial-light system.
+            juce::ColourGradient glass(juce::Colour(31, 55, 75), panel.getCentreX(), panel.getY(),
+                                       juce::Colour(6, 21, 34), panel.getCentreX(), panel.getBottom(), false);
+            glass.addColour(.44, juce::Colour(17, 40, 58));
             g.setGradientFill(glass);
             g.fillRect(panel.expanded(2.f));
 
-            // One broad cool field and one extremely weak warm field are enough to make
-            // the graph feel optically connected to the outer shell without introducing
-            // visible decorative objects behind the data.
+            // Keep only a very quiet neutral/cool transmission so an empty graph still
+            // has depth. Live band colour below is now the dominant optical information.
             juce::ColourGradient cool_light(
-                juce::Colour(187, 221, 241).withAlpha(.070f),
+                juce::Colour(187, 221, 241).withAlpha(.026f),
                 panel.getX() + panel.getWidth() * .18f,
                 panel.getY() + panel.getHeight() * .10f,
                 juce::Colours::transparentBlack,
@@ -56,7 +58,7 @@ namespace zlpanel {
             g.fillRect(panel);
 
             juce::ColourGradient warm_light(
-                juce::Colour(233, 207, 174).withAlpha(.032f),
+                juce::Colour(233, 207, 174).withAlpha(.010f),
                 panel.getX() + panel.getWidth() * .82f,
                 panel.getY() + panel.getHeight() * .24f,
                 juce::Colours::transparentBlack,
@@ -65,6 +67,68 @@ namespace zlpanel {
                 true);
             g.setGradientFill(warm_light);
             g.fillRect(panel);
+
+            if (freq_max_ > 10.0 && panel.getWidth() > 1.f && panel.getHeight() > 1.f) {
+                std::vector<zlgui::glass::AmbientLightSource> sources;
+                sources.reserve(zlp::kBandNum);
+
+                auto graph = panel;
+                graph.removeFromBottom(static_cast<float>(getBottomAreaHeight(base_.getFontSize())));
+
+                const auto log_max = std::log(freq_max_ * .1);
+                const auto* scale_value = p_ref_.parameters_.getRawParameterValue(zlp::PGainScale::kID);
+                const auto gain_scale = scale_value
+                    ? scale_value->load(std::memory_order_relaxed) * .01f
+                    : 1.f;
+                const auto* max_value = p_ref_.parameters_NA_.getRawParameterValue(zlstate::PEQMaxDB::kID);
+                const auto max_idx = max_value
+                    ? static_cast<size_t>(juce::jmax(0, static_cast<int>(std::round(
+                        max_value->load(std::memory_order_relaxed)))))
+                    : size_t{0};
+                const auto max_db = juce::jmax(1.f, static_cast<float>(base_.getCurveDBScale(max_idx)));
+                const auto selected_band = base_.getSelectedBand();
+                const auto light_radius = juce::jmax(base_.getFontSize() * 26.f, panel.getWidth() * .40f);
+
+                if (log_max > 1.0e-5) {
+                    for (size_t band = 0; band < zlp::kBandNum; ++band) {
+                        const auto suffix = std::to_string(band);
+                        const auto* status_value = p_ref_.parameters_.getRawParameterValue(
+                            zlp::PFilterStatus::kID + suffix);
+                        const auto* freq_value = p_ref_.parameters_.getRawParameterValue(
+                            zlp::PFreq::kID + suffix);
+                        const auto* gain_value = p_ref_.parameters_.getRawParameterValue(
+                            zlp::PGain::kID + suffix);
+                        if (status_value == nullptr || freq_value == nullptr || gain_value == nullptr)
+                            continue;
+
+                        const auto status = static_cast<zlp::FilterStatus>(
+                            static_cast<int>(std::round(status_value->load(std::memory_order_relaxed))));
+                        if (status == zlp::FilterStatus::kOff) continue;
+
+                        const auto freq = juce::jmax(10.f, freq_value->load(std::memory_order_relaxed));
+                        const auto x_portion = juce::jlimit(0.f, 1.f,
+                            static_cast<float>(kFFTSizeOverWidth) *
+                            static_cast<float>(std::log(static_cast<double>(freq) * .1) / log_max));
+                        const auto gain = juce::jlimit(-max_db, max_db,
+                            gain_value->load(std::memory_order_relaxed) * gain_scale);
+                        const auto y_portion = juce::jlimit(0.f, 1.f,
+                            .5f - gain / (2.f * max_db));
+
+                        auto strength = band == selected_band ? 1.f : .42f;
+                        if (status == zlp::FilterStatus::kBypass) strength *= .40f;
+
+                        sources.push_back({
+                            {graph.getX() + graph.getWidth() * x_portion,
+                             graph.getY() + graph.getHeight() * y_portion},
+                            base_.getColourMap1(band), strength, light_radius
+                        });
+                    }
+                }
+
+                // This is intentionally painted behind grid/data. The colour reads as light
+                // inside the pane rather than as a tint over labels and response curves.
+                zlgui::glass::paintAmbientSources(g, sources, panel, .035f);
+            }
         }
 
         g.setColour(zlgui::glass::rim().withMultipliedAlpha(.62f));
