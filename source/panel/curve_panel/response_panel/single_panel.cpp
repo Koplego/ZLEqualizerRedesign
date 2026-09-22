@@ -181,74 +181,86 @@ namespace zlpanel {
         const auto colour = base_.getColourMap1(band);
         const auto node_x = node_x_[band].load(std::memory_order_relaxed);
         const auto node_y = node_y_[band].load(std::memory_order_relaxed);
-        const auto glow_radius = juce::jmax(base_.getFontSize() * 7.2f, 78.f);
+
+        // The node is a local light source for its own curve, not a spotlight over the
+        // whole graph. Keep the falloff tight enough that the curve/fill nearest the node
+        // clearly catches the light while the rest of the response stays calm.
+        const auto glow_radius = juce::jmax(base_.getFontSize() * (thick ? 5.0f : 3.65f), thick ? 58.f : 42.f);
+        const auto fill_light_alpha = thick ? .185f : .070f;
+        const auto line_light_alpha = thick ? .82f : .34f;
+
         if (base_fill_alpha_[band] > 0.01f) {
             base_fills_[band].pull();
             const auto& fill = base_fills_[band].getReader();
             g.setColour(colour.withAlpha(base_fill_alpha_[band]));
             g.fillPath(fill);
-            if constexpr (thick) {
-                juce::ColourGradient illumination(
-                    colour.interpolatedWith(juce::Colours::white, .10f).withAlpha(.105f),
-                    node_x, node_y,
-                    colour.withAlpha(0.f), node_x + glow_radius, node_y, true);
-                illumination.addColour(.34, colour.withAlpha(.060f));
-                illumination.addColour(.72, colour.withAlpha(.014f));
-                g.setGradientFill(illumination);
-                g.fillPath(fill);
-            }
+
+            juce::ColourGradient illumination(
+                colour.interpolatedWith(juce::Colours::white, thick ? .44f : .28f)
+                      .withAlpha(fill_light_alpha),
+                node_x, node_y,
+                colour.withAlpha(0.f), node_x + glow_radius, node_y, true);
+            illumination.addColour(.24, colour.interpolatedWith(juce::Colours::white, thick ? .24f : .12f)
+                                               .withAlpha(fill_light_alpha * .62f));
+            illumination.addColour(.58, colour.withAlpha(fill_light_alpha * .18f));
+            g.setGradientFill(illumination);
+            g.fillPath(fill);
         }
+
         if (target_fill_alpha_[band] > 0.01f) {
             target_fills_[band].pull();
             const auto& fill = target_fills_[band].getReader();
             g.setColour(colour.withAlpha(target_fill_alpha_[band]));
             g.fillPath(fill);
-            if constexpr (thick) {
-                juce::ColourGradient target_light(
-                    colour.interpolatedWith(juce::Colours::white, .08f).withAlpha(.085f),
-                    node_x, node_y,
-                    colour.withAlpha(0.f), node_x + glow_radius * .78f, node_y, true);
-                g.setGradientFill(target_light);
-                g.fillPath(fill);
-            }
+
+            juce::ColourGradient target_light(
+                colour.interpolatedWith(juce::Colours::white, thick ? .34f : .20f)
+                      .withAlpha(fill_light_alpha * .78f),
+                node_x, node_y,
+                colour.withAlpha(0.f), node_x + glow_radius * .84f, node_y, true);
+            target_light.addColour(.46, colour.withAlpha(fill_light_alpha * .16f));
+            g.setGradientFill(target_light);
+            g.fillPath(fill);
         }
+
         const auto curve_thickness = thick ? curve_thickness_ * kThickMultiplier : curve_thickness_;
         if (base_stroke_alpha_[band] > 0.01f) {
             base_paths_[band].pull();
             const auto& path = base_paths_[band].getReader();
-            if constexpr (thick) {
-                juce::ColourGradient outer_light(
-                    colour.interpolatedWith(juce::Colours::white, .12f).withAlpha(.075f),
-                    node_x, node_y,
-                    colour.withAlpha(0.f), node_x + glow_radius * 1.00f, node_y, true);
-                g.setGradientFill(outer_light);
-                g.strokePath(path, juce::PathStrokeType(curve_thickness * 2.55f,
-                                                        juce::PathStrokeType::curved,
-                                                        juce::PathStrokeType::rounded));
 
-                juce::ColourGradient core_light(
-                    colour.interpolatedWith(juce::Colours::white, .20f).withAlpha(.16f),
-                    node_x, node_y,
-                    colour.withAlpha(0.f), node_x + glow_radius * .50f, node_y, true);
-                g.setGradientFill(core_light);
-                g.strokePath(path, juce::PathStrokeType(curve_thickness * 1.28f,
-                                                        juce::PathStrokeType::curved,
-                                                        juce::PathStrokeType::rounded));
-            }
-            if constexpr (thick) {
-                juce::ColourGradient lit_stroke(
-                    colour.interpolatedWith(juce::Colours::white, .28f).withAlpha(.94f),
-                    node_x, node_y,
-                    colour.interpolatedWith(juce::Colours::white, .06f).withAlpha(.39f),
-                    node_x + glow_radius * 1.15f, node_y, true);
-                lit_stroke.addColour(.38, colour.interpolatedWith(juce::Colours::white, .15f).withAlpha(.76f));
-                g.setGradientFill(lit_stroke);
-            } else {
-                g.setColour(base_stroke_colour_[band]);
-            }
+            // Draw the normal response first so the curve remains readable away from the
+            // source, then add a local bloom and a hot highlight around the node.
+            g.setColour(base_stroke_colour_[band]);
             g.strokePath(path, juce::PathStrokeType(curve_thickness,
                                                     juce::PathStrokeType::curved,
                                                     juce::PathStrokeType::rounded));
+
+            juce::ColourGradient bloom(
+                colour.interpolatedWith(juce::Colours::white, thick ? .48f : .30f)
+                      .withAlpha(line_light_alpha * .30f),
+                node_x, node_y,
+                colour.withAlpha(0.f), node_x + glow_radius * .80f, node_y, true);
+            bloom.addColour(.40, colour.withAlpha(line_light_alpha * .10f));
+            g.setGradientFill(bloom);
+            g.strokePath(path, juce::PathStrokeType(curve_thickness * (thick ? 2.35f : 1.72f),
+                                                    juce::PathStrokeType::curved,
+                                                    juce::PathStrokeType::rounded));
+
+            juce::ColourGradient hot_line(
+                colour.interpolatedWith(juce::Colours::white, thick ? .72f : .54f)
+                      .withAlpha(line_light_alpha),
+                node_x, node_y,
+                colour.withAlpha(0.f), node_x + glow_radius * .46f, node_y, true);
+            hot_line.addColour(.36, colour.interpolatedWith(juce::Colours::white, thick ? .38f : .24f)
+                                           .withAlpha(line_light_alpha * .56f));
+            g.setGradientFill(hot_line);
+            g.strokePath(path, juce::PathStrokeType(curve_thickness * (thick ? 1.18f : 1.06f),
+                                                    juce::PathStrokeType::curved,
+                                                    juce::PathStrokeType::rounded));
+
+            // Connector lines should inherit the steady band colour rather than whatever
+            // radial gradient happened to be active above.
+            g.setColour(base_stroke_colour_[band]);
             button_lines_[band].pull();
             if (const auto line = button_lines_[band].getReader(); line.getEndX() > 0.f) {
                 if (line.getEndY() > line.getStartY()) {
