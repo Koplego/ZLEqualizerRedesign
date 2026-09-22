@@ -4,7 +4,10 @@
 
 #include "../PluginProcessor.hpp"
 #include "../gui/gui.hpp"
+#include "../gui/ambient_light.hpp"
 #include "helper/helper.hpp"
+#include <utility>
+#include <vector>
 
 namespace zlpanel {
     class GlassFooterPanel final : public juce::Component {
@@ -16,10 +19,16 @@ namespace zlpanel {
         int getIdealHeight() const;
         void repaintCallbackSlow();
 
+        void setAmbientSources(std::vector<zlgui::glass::AmbientLightSource> sources) {
+            ambient_sources_ = std::move(sources);
+            repaint();
+        }
+
     private:
         PluginProcessor& p_ref_;
         zlgui::UIBase& base_;
         zlgui::attachment::ComponentUpdater updater_{};
+        std::vector<zlgui::glass::AmbientLightSource> ambient_sources_{};
 
         // Analyzer is deliberately split into two interactions:
         // clicking the word opens its detail sheet, while the switch controls whether
