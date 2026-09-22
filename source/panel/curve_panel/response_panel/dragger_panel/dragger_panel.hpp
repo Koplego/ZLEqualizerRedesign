@@ -23,61 +23,36 @@ namespace zlpanel {
     public:
         explicit DraggerPanel(PluginProcessor& p, zlgui::UIBase& base,
                               const multilingual::TooltipHelper& tooltip_helper);
-
         ~DraggerPanel() override;
-
         void resized() override;
-
         void repaintCallBack();
-
         void repaintCallBackSlow();
-
         void updateBand();
-
         void updateSampleRate(double sample_rate);
-
         void updateFilterType(size_t band, zldsp::filter::FilterType filter_type);
-
         void updateDrawingParas(size_t band, zlp::FilterStatus filter_status,
-                                bool is_dynamic_on,
-                                bool is_same_stereo, int lr_mode);
+                                bool is_dynamic_on, bool is_same_stereo, int lr_mode);
 
-        zlgui::dragger::Dragger& getDragger(const size_t band) {
-            return draggers_[band];
-        }
-
-        zlgui::dragger::Dragger& getTargetDragger() {
-            return target_dragger_;
-        }
-
-        zlgui::dragger::Dragger& getSideDragger() {
-            return side_dragger_;
-        }
-
-        FloatPopPanel& getFloatPopPanel() {
-            return float_pop_panel_;
-        }
-
-        RightClickPanel& getRightClickPanel() {
-            return right_click_panel_;
-        }
+        zlgui::dragger::Dragger& getDragger(const size_t band) { return draggers_[band]; }
+        zlgui::dragger::Dragger& getTargetDragger() { return target_dragger_; }
+        zlgui::dragger::Dragger& getSideDragger() { return side_dragger_; }
+        FloatPopPanel& getFloatPopPanel() { return float_pop_panel_; }
+        RightClickPanel& getRightClickPanel() { return right_click_panel_; }
 
         void mouseDown(const juce::MouseEvent& event) override;
-
         void mouseUp(const juce::MouseEvent& event) override;
-
         void mouseDrag(const juce::MouseEvent& event) override;
-
         void mouseDoubleClick(const juce::MouseEvent& event) override;
-
         void mouseEnter(const juce::MouseEvent& event) override;
-
         void mouseWheelMove(const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) override;
 
     private:
         static constexpr float kBypassAlphaMultiplier = .75f;
         static constexpr float kDiffStereoAlphaMultiplier = .5f;
-        static constexpr float kDraggerSizeMultiplier = 2.4f;
+        // Reference nodes occupy roughly 30% more screen space than the regressed build.
+        // 2.85 combined with the 0.995 visual lens scale reproduces that footprint while
+        // preserving the same interaction model and centre positions.
+        static constexpr float kDraggerSizeMultiplier = 2.85f;
         static constexpr float kDraggerPaddingMultiplier = 1.f;
 
         PluginProcessor& p_ref_;
@@ -96,7 +71,6 @@ namespace zlpanel {
 
         size_t previous_solo_whole_idx_{2 * zlp::kBandNum};
         std::array<bool, zlp::kBandNum> dragger_y_enabled_{};
-
         FloatPopPanel float_pop_panel_;
 
         std::unique_ptr<zlgui::attachment::DraggerAttachment<false, true>> dragger_freq_attachment_;
@@ -139,33 +113,19 @@ namespace zlpanel {
         juce::LassoComponent<size_t> lasso_component_;
 
         void lookAndFeelChanged() override;
-
         void updateDraggerBound(size_t band);
-
         void updateDraggerAttachment(size_t band);
-
         void updateTargetAttachment(size_t band);
-
         void updateSideAttachment(size_t band);
-
         [[nodiscard]] bool isSideAll() const;
-
         void updateSlopeAttachment();
-
         bool isEnterSoloTriggered(zlgui::MouseActionType type, const juce::ModifierKeys& mods) const;
-
         bool isExitSoloTriggered(zlgui::MouseActionType type, const juce::ModifierKeys& mods) const;
-
         void startSoloGainDrag(const juce::Component* component);
-
         juce::Point<float> updateSoloGain(juce::Point<float> current, juce::Point<float> next) const;
-
         void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
-
         void findLassoItemsInArea(juce::Array<size_t>& items_found, const juce::Rectangle<int>& area) override;
-
         juce::SelectedItemSet<size_t>& getLassoSelection() override;
-
         void changeListenerCallback(juce::ChangeBroadcaster* source) override;
     };
 }
