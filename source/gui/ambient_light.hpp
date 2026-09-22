@@ -24,9 +24,7 @@ namespace zlgui::glass {
         juce::Graphics::ScopedSaveState state(g);
         g.reduceClipRegion(clip_bounds.toNearestInt());
 
-        // Keep the core restrained but let saturated colour travel a long way through the
-        // material. The screenshot pass showed that the previous tail disappeared before
-        // it reached the header/footer, leaving the UI blue-grey instead of optically linked.
+        // Keep the source itself restrained and let the colour survive far into the glass.
         juce::ColourGradient ambient(
             colour.interpolatedWith(juce::Colours::white, .018f).withAlpha(alpha),
             source.x, source.y,
@@ -42,20 +40,62 @@ namespace zlgui::glass {
         g.fillEllipse(source.x - radius, source.y - radius, radius * 2.f, radius * 2.f);
     }
 
+    inline void paintAmbientStripField(juce::Graphics& g,
+                                       const AmbientLightSource& source,
+                                       const juce::Rectangle<float> clip_bounds,
+                                       const float alpha) {
+        if (alpha <= .0001f || source.radius <= 1.f || clip_bounds.isEmpty()) return;
+
+        // Header/footer/Hub are very wide, shallow pieces of glass. A circular field makes
+        // every distant lamp overlap almost equally and the colours collapse into blue-grey.
+        // Instead, preserve the real horizontal position of each node while allowing its
+        // light to travel vertically to the receiver, like an ambient-video glow.
+        const auto vertical_distance = std::abs(source.point.y - clip_bounds.getCentreY());
+        const auto t = juce::jlimit(0.f, 1.f, vertical_distance / source.radius);
+        const auto vertical_gain = std::pow(juce::jmax(0.f, 1.f - t), .72f);
+        if (vertical_gain <= .001f) return;
+
+        const auto half_width = juce::jmax(clip_bounds.getHeight() * 2.8f,
+                                          source.radius * .43f);
+        const auto effective_alpha = alpha * vertical_gain;
+
+        juce::Graphics::ScopedSaveState state(g);
+        g.reduceClipRegion(clip_bounds.toNearestInt());
+
+        juce::ColourGradient spread(
+            source.colour.withAlpha(0.f), source.point.x - half_width, 0.f,
+            source.colour.withAlpha(0.f), source.point.x + half_width, 0.f, false);
+        spread.addColour(.10, source.colour.withAlpha(effective_alpha * .04f));
+        spread.addColour(.24, source.colour.withAlpha(effective_alpha * .20f));
+        spread.addColour(.38, source.colour.withAlpha(effective_alpha * .66f));
+        spread.addColour(.50, source.colour.interpolatedWith(juce::Colours::white, .012f)
+                                      .withAlpha(effective_alpha));
+        spread.addColour(.62, source.colour.withAlpha(effective_alpha * .66f));
+        spread.addColour(.76, source.colour.withAlpha(effective_alpha * .20f));
+        spread.addColour(.90, source.colour.withAlpha(effective_alpha * .04f));
+        g.setGradientFill(spread);
+        g.fillRect(clip_bounds);
+    }
+
     inline void paintAmbientSources(juce::Graphics& g,
                                     const std::vector<AmbientLightSource>& sources,
                                     const juce::Rectangle<float> clip_bounds,
                                     const float alpha_scale) {
-        // Receiver panels are painted after the parent shell, so their material needs a
-        // little more transmission than the shell itself. sqrt() also lets unselected bands
-        // remain visible as colour contributors without making the selected band brighter.
         constexpr float kReceiverTransmission = 2.60f;
+        const auto wide_receiver = clip_bounds.getWidth() > clip_bounds.getHeight() * 4.f;
+
         for (const auto& source : sources) {
             if (source.strength <= .0001f) continue;
-            const auto perceptual_strength = std::sqrt(juce::jmax(0.f, source.strength));
-            paintAmbientField(g, source.point, source.colour, source.radius,
-                              alpha_scale * kReceiverTransmission * perceptual_strength,
-                              clip_bounds);
+
+            // Preserve selected-band dominance, but allow ordinary active bands to remain
+            // visible contributors. This is especially important when no band is selected.
+            const auto perceptual_strength = std::pow(juce::jmax(0.f, source.strength), .36f);
+            const auto alpha = alpha_scale * kReceiverTransmission * perceptual_strength;
+
+            if (wide_receiver)
+                paintAmbientStripField(g, source, clip_bounds, alpha);
+            else
+                paintAmbientField(g, source.point, source.colour, source.radius, alpha, clip_bounds);
         }
     }
 }
