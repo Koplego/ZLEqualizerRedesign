@@ -32,74 +32,84 @@ namespace zlpanel {
             juce::Graphics::ScopedSaveState clip(g);
             g.reduceClipRegion(panel_clip);
 
-            // The supplied reference sits much closer to navy/ink than the previous build.
-            // Keep the pane dark enough that coloured curves can look self-luminous instead
-            // of simply being lighter paint on a grey background.
-            juce::ColourGradient glass(juce::Colour(15, 43, 70), panel.getCentreX(), panel.getY(),
-                                       juce::Colour(3, 15, 28), panel.getCentreX(), panel.getBottom(), false);
-            glass.addColour(.43, juce::Colour(9, 31, 53));
-            glass.addColour(.78, juce::Colour(5, 22, 39));
+            // Locked to the approved screenshot: the graph is a medium-dark steel/blue
+            // pane, not near-black. It stays dark enough for the curves to glow, while
+            // retaining the clearly visible blue body seen in the reference.
+            juce::ColourGradient glass(juce::Colour(35, 73, 108), panel.getCentreX(), panel.getY(),
+                                       juce::Colour(18, 43, 69), panel.getCentreX(), panel.getBottom(), false);
+            glass.addColour(.42, juce::Colour(29, 66, 101));
+            glass.addColour(.78, juce::Colour(22, 50, 78));
             g.setGradientFill(glass);
             g.fillRect(panel.expanded(2.f));
 
-            // The reference does contain a broad stained-glass colour field, but it is very
-            // low exposure. It should alter hue, not lift the whole graph toward pastel grey.
+            // Broad colour transmission is deliberately obvious in the target. The left
+            // third is amber/olive, the middle crosses teal into blue and the right side
+            // carries a violet wash. These are background light fields, not band fills.
             juce::ColourGradient transmitted(
-                juce::Colour(236, 183, 104).withAlpha(.020f), panel.getX(), panel.getCentreY(),
-                juce::Colour(156, 118, 236).withAlpha(.022f), panel.getRight(), panel.getCentreY(), false);
-            transmitted.addColour(.20, juce::Colour(82, 185, 178).withAlpha(.018f));
-            transmitted.addColour(.46, juce::Colour(69, 142, 215).withAlpha(.020f));
-            transmitted.addColour(.73, juce::Colour(91, 123, 219).withAlpha(.019f));
+                juce::Colour(236, 186, 108).withAlpha(.115f), panel.getX(), panel.getCentreY(),
+                juce::Colour(160, 120, 239).withAlpha(.100f), panel.getRight(), panel.getCentreY(), false);
+            transmitted.addColour(.20, juce::Colour(80, 186, 177).withAlpha(.100f));
+            transmitted.addColour(.46, juce::Colour(69, 145, 219).withAlpha(.090f));
+            transmitted.addColour(.73, juce::Colour(91, 124, 221).withAlpha(.085f));
             g.setGradientFill(transmitted);
             g.fillRect(panel);
 
-            // Subtle optical pools keep the glass from feeling flat, while remaining much
-            // dimmer than the actual band illumination drawn above this layer.
             juce::ColourGradient cool_light(
-                juce::Colour(93, 172, 226).withAlpha(.034f),
-                panel.getX() + panel.getWidth() * .40f,
-                panel.getY() + panel.getHeight() * .10f,
+                juce::Colour(91, 174, 231).withAlpha(.105f),
+                panel.getX() + panel.getWidth() * .47f,
+                panel.getY() + panel.getHeight() * .17f,
                 juce::Colours::transparentBlack,
-                panel.getX() + panel.getWidth() * .60f,
-                panel.getY() + panel.getHeight() * .72f,
+                panel.getX() + panel.getWidth() * .67f,
+                panel.getY() + panel.getHeight() * .78f,
                 true);
-            cool_light.addColour(.38, juce::Colour(68, 142, 204).withAlpha(.012f));
+            cool_light.addColour(.40, juce::Colour(69, 144, 207).withAlpha(.040f));
             g.setGradientFill(cool_light);
             g.fillRect(panel);
 
             juce::ColourGradient warm_light(
-                juce::Colour(245, 194, 112).withAlpha(.016f),
-                panel.getX() + panel.getWidth() * .06f,
+                juce::Colour(246, 196, 116).withAlpha(.105f),
+                panel.getX() + panel.getWidth() * .075f,
                 panel.getY() + panel.getHeight() * .30f,
                 juce::Colours::transparentBlack,
-                panel.getX() + panel.getWidth() * .29f,
-                panel.getY() + panel.getHeight() * .72f,
+                panel.getX() + panel.getWidth() * .31f,
+                panel.getY() + panel.getHeight() * .78f,
                 true);
+            warm_light.addColour(.45, juce::Colour(211, 174, 100).withAlpha(.034f));
             g.setGradientFill(warm_light);
             g.fillRect(panel);
 
-            juce::ColourGradient violet_light(
-                juce::Colour(161, 121, 238).withAlpha(.016f),
-                panel.getX() + panel.getWidth() * .92f,
-                panel.getY() + panel.getHeight() * .32f,
+            juce::ColourGradient teal_light(
+                juce::Colour(68, 203, 180).withAlpha(.060f),
+                panel.getX() + panel.getWidth() * .28f,
+                panel.getY() + panel.getHeight() * .48f,
                 juce::Colours::transparentBlack,
-                panel.getX() + panel.getWidth() * .74f,
-                panel.getY() + panel.getHeight() * .76f,
+                panel.getX() + panel.getWidth() * .45f,
+                panel.getY() + panel.getHeight() * .88f,
+                true);
+            g.setGradientFill(teal_light);
+            g.fillRect(panel);
+
+            juce::ColourGradient violet_light(
+                juce::Colour(164, 121, 240).withAlpha(.085f),
+                panel.getX() + panel.getWidth() * .88f,
+                panel.getY() + panel.getHeight() * .43f,
+                juce::Colours::transparentBlack,
+                panel.getX() + panel.getWidth() * .70f,
+                panel.getY() + panel.getHeight() * .84f,
                 true);
             g.setGradientFill(violet_light);
             g.fillRect(panel);
 
-            // Gentle dark edge absorption is visible in the reference and gives the pane
-            // more depth without introducing another coloured overlay.
+            // Only a very slight edge falloff is present in the screenshot.
             juce::ColourGradient edge_absorption(
-                juce::Colour(1, 8, 16).withAlpha(.085f), panel.getX(), panel.getCentreY(),
-                juce::Colours::transparentBlack, panel.getX() + panel.getWidth() * .16f,
+                juce::Colour(3, 14, 25).withAlpha(.035f), panel.getX(), panel.getCentreY(),
+                juce::Colours::transparentBlack, panel.getX() + panel.getWidth() * .15f,
                 panel.getCentreY(), false);
             g.setGradientFill(edge_absorption);
             g.fillRect(panel);
         }
 
-        g.setColour(zlgui::glass::rim().withMultipliedAlpha(.62f));
+        g.setColour(zlgui::glass::rim().withMultipliedAlpha(.66f));
         g.drawRoundedRectangle(panel, radius, .72f);
 
         if (freq_max_ <= 10.0) {
@@ -151,14 +161,14 @@ namespace zlpanel {
         edge_fade.point2 = juce::Point<float>(bound.getX(), bound.getBottom());
         edge_fade.isRadial = false;
         edge_fade.clearColours();
-        edge_fade.addColour(0.0, juce::Colour(3, 15, 27).withAlpha(.095f));
+        edge_fade.addColour(0.0, juce::Colour(10, 28, 45).withAlpha(.060f));
         edge_fade.addColour(.12, juce::Colours::transparentBlack);
         edge_fade.addColour(.86, juce::Colours::transparentBlack);
-        edge_fade.addColour(1.0, juce::Colour(3, 15, 27).withAlpha(.125f));
+        edge_fade.addColour(1.0, juce::Colour(7, 22, 38).withAlpha(.080f));
         g.setGradientFill(edge_fade);
         g.fillRect(getLocalBounds());
 
-        g.setColour(zlgui::glass::textTertiary().withMultipliedAlpha(.92f));
+        g.setColour(zlgui::glass::textTertiary().withMultipliedAlpha(.96f));
         g.setFont(base_.getFontSize() * .98f);
         const auto label_y0 = bound.getBottom() - base_.getFontSize() * 1.15f;
         const auto label_height = base_.getFontSize() * 1.1f;
