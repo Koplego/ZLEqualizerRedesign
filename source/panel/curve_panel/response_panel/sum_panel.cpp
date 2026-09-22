@@ -41,29 +41,29 @@ namespace zlpanel {
             if (path.isEmpty()) return;
 
             if (!data.valid || data.xs.back() <= data.xs.front() + 1.f) {
-                g.setColour(zlgui::glass::neutralResponse().withAlpha(.035f * alpha));
-                g.strokePath(path, juce::PathStrokeType(thickness * 1.65f,
+                g.setColour(zlgui::glass::neutralResponse().withAlpha(.040f * alpha));
+                g.strokePath(path, juce::PathStrokeType(thickness * 2.1f,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
-                g.setColour(zlgui::glass::neutralResponse().withAlpha(.84f * alpha));
+                g.setColour(zlgui::glass::neutralResponse().withAlpha(.91f * alpha));
                 g.strokePath(path, juce::PathStrokeType(thickness,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
                 return;
             }
 
-            // The sum line is the sharpest graph element in the concept. Its colour
-            // should read directly from the response, not from a large neon halo.
-            g.setGradientFill(makeResponseGradient(data, .022f * alpha));
-            g.strokePath(path, juce::PathStrokeType(thickness * 2.75f,
+            // The final response is the sharp luminous thread that ties all bands together.
+            // Keep its centre extremely crisp, with only a restrained optical bloom.
+            g.setGradientFill(makeResponseGradient(data, .030f * alpha));
+            g.strokePath(path, juce::PathStrokeType(thickness * 3.05f,
                                                     juce::PathStrokeType::curved,
                                                     juce::PathStrokeType::rounded));
-            g.setGradientFill(makeResponseGradient(data, .070f * alpha));
-            g.strokePath(path, juce::PathStrokeType(thickness * 1.45f,
+            g.setGradientFill(makeResponseGradient(data, .105f * alpha));
+            g.strokePath(path, juce::PathStrokeType(thickness * 1.55f,
                                                     juce::PathStrokeType::curved,
                                                     juce::PathStrokeType::rounded));
 
-            g.setGradientFill(makeResponseGradient(data, .97f * alpha));
+            g.setGradientFill(makeResponseGradient(data, 1.0f * alpha));
             g.strokePath(path, juce::PathStrokeType(thickness,
                                                     juce::PathStrokeType::curved,
                                                     juce::PathStrokeType::rounded));
@@ -148,8 +148,6 @@ namespace zlpanel {
         }
 
         // Build the response colour field from each band's actual local contribution.
-        // The neutral base keeps low-contribution regions calm while overlapping active
-        // bands mix continuously into the same pastel language used by the mockup.
         auto& gradient = gradients_[lr].getWriter();
         gradient.valid = !on_indices.empty() && xs.size() >= kGradientStops;
         if (gradient.valid) {
@@ -173,11 +171,11 @@ namespace zlpanel {
                 juce::Colour mixed = neutral;
                 if (total > 1.0e-4f) {
                     mixed = juce::Colour::fromFloatRGBA(rr / total, gg / total, bb / total, 1.f)
-                                .interpolatedWith(juce::Colours::white, .055f);
-                    const auto tint = juce::jlimit(.80f, .99f, .84f + total * .048f);
+                                .interpolatedWith(juce::Colours::white, .065f);
+                    const auto tint = juce::jlimit(.86f, .995f, .89f + total * .045f);
                     mixed = neutral.interpolatedWith(mixed, tint);
                 }
-                gradient.colours[stop] = mixed.withAlpha(.99f);
+                gradient.colours[stop] = mixed.withAlpha(1.f);
             }
         }
         gradients_[lr].publish();
