@@ -58,8 +58,10 @@ namespace zlpanel {
                     gain_value->load(std::memory_order_relaxed) * gain_scale);
                 const auto y_portion = juce::jlimit(0.f, 1.f, .5f - gain / (2.f * max_db));
 
-                auto strength = band == selected_band ? 1.f : .30f;
-                if (status == zlp::FilterStatus::kBypass) strength *= .42f;
+                // Selection changes focus, not whether a band emits light. Every enabled node
+                // remains a meaningful lamp in the ambient scene, matching the agreed reference.
+                auto strength = band == selected_band ? 1.f : .58f;
+                if (status == zlp::FilterStatus::kBypass) strength *= .38f;
 
                 result.push_back({
                     {graph.getX() + graph.getWidth() * x_portion,
@@ -151,22 +153,25 @@ namespace zlpanel {
             juce::Graphics::ScopedSaveState clip(g);
             g.reduceClipRegion(shell_clip);
 
-            juce::ColourGradient body(juce::Colour(42, 65, 83), shell.getCentreX(), shell.getY(),
-                                      juce::Colour(9, 25, 39), shell.getCentreX(), shell.getBottom(), false);
-            body.addColour(.38, juce::Colour(29, 53, 71));
-            body.addColour(.74, juce::Colour(15, 35, 51));
+            // The old hard-coded blue shell was masking the ambient system. Use a much more
+            // neutral smoked-glass substrate and let the nodes provide the actual colour.
+            juce::ColourGradient body(juce::Colour(39, 51, 60), shell.getCentreX(), shell.getY(),
+                                      juce::Colour(10, 20, 28), shell.getCentreX(), shell.getBottom(), false);
+            body.addColour(.38, juce::Colour(31, 43, 53));
+            body.addColour(.74, juce::Colour(18, 30, 39));
             g.setGradientFill(body);
             g.fillRect(shell.expanded(2.f));
 
             const auto sample_rate = c_sample_rate_ > 1000.0 ? c_sample_rate_ : p_ref_.getSampleRate();
             const auto nodes = collectAmbientNodes(p_ref_, base_, curve_panel_.getBounds().toFloat(), sample_rate);
             for (const auto& node : nodes) {
-                const auto broad_radius = juce::jmax(base_.getFontSize() * 30.f, shell.getWidth() * .30f);
-                const auto near_radius = juce::jmax(base_.getFontSize() * 13.f, shell.getWidth() * .15f);
+                // Wider rather than harsher: one room-scale field plus a softer local pool.
+                const auto broad_radius = juce::jmax(base_.getFontSize() * 38.f, shell.getWidth() * .46f);
+                const auto near_radius = juce::jmax(base_.getFontSize() * 18.f, shell.getWidth() * .24f);
                 zlgui::glass::paintAmbientField(g, node.point, node.colour, broad_radius,
-                                                .022f * node.strength, shell);
+                                                .026f * node.strength, shell);
                 zlgui::glass::paintAmbientField(g, node.point, node.colour, near_radius,
-                                                .024f * node.strength, shell);
+                                                .023f * node.strength, shell);
             }
         }
 
@@ -181,21 +186,20 @@ namespace zlpanel {
         juce::ColourGradient top_line(juce::Colours::transparentWhite, top_specular.getX(), top_specular.getY(),
                                       juce::Colours::transparentWhite, top_specular.getRight(), top_specular.getY(), false);
         top_line.addColour(.20, juce::Colour(255, 255, 255).withAlpha(.19f));
-        top_line.addColour(.64, juce::Colour(202, 232, 250).withAlpha(.075f));
+        top_line.addColour(.64, juce::Colour(232, 241, 247).withAlpha(.070f));
         g.setGradientFill(top_line);
         g.fillRect(top_specular);
     }
 
     void MainPanel::paintOverChildren(juce::Graphics& g) {
-        // Only the graph/meter needs a very faint final ambient response. Top, footer and
-        // Band Hub now receive the same spatial sources inside their own glass paint pass,
-        // which keeps text/icons neutral and makes the colour feel embedded in the material.
+        // Keep the graph's final ambience restrained. The stronger room response belongs to
+        // the surrounding glass, while the graph already gets colour from its fills/curves.
         const auto sample_rate = c_sample_rate_ > 1000.0 ? c_sample_rate_ : p_ref_.getSampleRate();
         const auto nodes = collectAmbientNodes(p_ref_, base_, curve_panel_.getBounds().toFloat(), sample_rate);
-        const auto graph_radius = juce::jmax(base_.getFontSize() * 31.f, getWidth() * .34f);
+        const auto graph_radius = juce::jmax(base_.getFontSize() * 32.f, getWidth() * .36f);
         for (const auto& node : nodes) {
             zlgui::glass::paintAmbientField(g, node.point, node.colour, graph_radius,
-                                            .008f * node.strength,
+                                            .0055f * node.strength,
                                             curve_panel_.getBounds().toFloat());
         }
     }
@@ -205,7 +209,7 @@ namespace zlpanel {
 
         const auto sample_rate = c_sample_rate_ > 1000.0 ? c_sample_rate_ : p_ref_.getSampleRate();
         const auto nodes = collectAmbientNodes(p_ref_, base_, curve_panel_.getBounds().toFloat(), sample_rate);
-        const auto surface_radius = juce::jmax(base_.getFontSize() * 40.f, getWidth() * .44f);
+        const auto surface_radius = juce::jmax(base_.getFontSize() * 44.f, getWidth() * .50f);
 
         top_panel_.setAmbientSources(localiseAmbientSources(nodes, top_panel_.getBounds(), surface_radius));
         footer_panel_.setAmbientSources(localiseAmbientSources(nodes, footer_panel_.getBounds(), surface_radius));
@@ -343,9 +347,9 @@ namespace zlpanel {
 
             updateAmbientReceivers();
 
-            // The shell and graph remain parent-owned receivers. The child glass surfaces
-            // repaint themselves when their local ambient sources are updated above.
-            repaint(curve_panel_.getBounds().expanded(3));
+            // The whole shell is now part of the lighting scene. Repaint it when bands move,
+            // not only the graph, so the header/footer ambience tracks nodes continuously.
+            repaint();
 
             const auto c_refresh_rate = refresh_handler_.getActualRefreshRate();
             if (std::abs(c_refresh_rate - refresh_rate_) > 0.1) {
