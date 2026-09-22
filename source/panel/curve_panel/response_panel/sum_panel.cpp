@@ -43,14 +43,18 @@ namespace zlpanel {
             const auto transparent = colour.withAlpha(0.f);
             juce::ColourGradient gradient(transparent, centre_x - radius, 0.f,
                                           transparent, centre_x + radius, 0.f, false);
-            gradient.addColour(.24, colour.withAlpha(alpha * .035f));
-            gradient.addColour(.38, colour.interpolatedWith(juce::Colours::white, white_mix * .42f)
-                                           .withAlpha(alpha * .30f));
+            gradient.addColour(.20, colour.withAlpha(alpha * .020f));
+            gradient.addColour(.34, colour.interpolatedWith(juce::Colours::white, white_mix * .30f)
+                                           .withAlpha(alpha * .18f));
+            gradient.addColour(.44, colour.interpolatedWith(juce::Colours::white, white_mix * .68f)
+                                           .withAlpha(alpha * .58f));
             gradient.addColour(.50, colour.interpolatedWith(juce::Colours::white, white_mix)
                                            .withAlpha(alpha));
-            gradient.addColour(.62, colour.interpolatedWith(juce::Colours::white, white_mix * .42f)
-                                           .withAlpha(alpha * .30f));
-            gradient.addColour(.76, colour.withAlpha(alpha * .035f));
+            gradient.addColour(.56, colour.interpolatedWith(juce::Colours::white, white_mix * .68f)
+                                           .withAlpha(alpha * .58f));
+            gradient.addColour(.66, colour.interpolatedWith(juce::Colours::white, white_mix * .30f)
+                                           .withAlpha(alpha * .18f));
+            gradient.addColour(.80, colour.withAlpha(alpha * .020f));
             return gradient;
         }
 
@@ -72,7 +76,6 @@ namespace zlpanel {
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
             } else {
-                // The sum line stays crisp and inherits colour from the contributing bands.
                 g.setGradientFill(makeResponseGradient(data, .022f * alpha));
                 g.strokePath(path, juce::PathStrokeType(thickness * 2.75f,
                                                         juce::PathStrokeType::curved,
@@ -81,26 +84,24 @@ namespace zlpanel {
                 g.strokePath(path, juce::PathStrokeType(thickness * 1.45f,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
-
                 g.setGradientFill(makeResponseGradient(data, .97f * alpha));
                 g.strokePath(path, juce::PathStrokeType(thickness,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
             }
 
-            // In the mockup the selected node's luminous rim spills directly into the EQ
-            // response. This highlight is painted on the actual summed response (the line
-            // users perceive as the EQ), not only on the individual band's hidden path.
+            // The mockup does not thicken the response into a neon streak. Instead the
+            // same thin line simply catches more light as it passes the selected node.
             if (node_light_x >= 0.f && node_light_radius > 1.f && node_light_colour.getAlpha() > 0) {
                 g.setGradientFill(makeNodeLineLight(node_light_x, node_light_radius,
-                                                    node_light_colour, .17f * alpha, .54f));
-                g.strokePath(path, juce::PathStrokeType(thickness * 2.25f,
+                                                    node_light_colour, .085f * alpha, .46f));
+                g.strokePath(path, juce::PathStrokeType(thickness * 1.62f,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
 
                 g.setGradientFill(makeNodeLineLight(node_light_x, node_light_radius * .72f,
-                                                    node_light_colour, .72f * alpha, .78f));
-                g.strokePath(path, juce::PathStrokeType(thickness * 1.06f,
+                                                    node_light_colour, .61f * alpha, .70f));
+                g.strokePath(path, juce::PathStrokeType(thickness * 1.01f,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
             }
@@ -124,7 +125,7 @@ namespace zlpanel {
                     const auto portion = static_cast<float>(kFFTSizeOverWidth) * std::log(freq * .1f) / denominator;
                     node_light_x = juce::jlimit(0.f, static_cast<float>(getWidth()),
                                                static_cast<float>(getWidth()) * portion);
-                    node_light_radius = juce::jmax(base_.getFontSize() * 4.65f, 52.f);
+                    node_light_radius = juce::jmax(base_.getFontSize() * 3.45f, 40.f);
                     node_light_colour = base_.getColourMap1(selected_band);
                 }
             }
@@ -207,9 +208,6 @@ namespace zlpanel {
             }
         }
 
-        // Build the response colour field from each band's actual local contribution.
-        // The neutral base keeps low-contribution regions calm while overlapping active
-        // bands mix continuously into the same pastel language used by the mockup.
         auto& gradient = gradients_[lr].getWriter();
         gradient.valid = !on_indices.empty() && xs.size() >= kGradientStops;
         if (gradient.valid) {
