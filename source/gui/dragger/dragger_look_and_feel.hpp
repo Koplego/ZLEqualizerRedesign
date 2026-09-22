@@ -25,8 +25,7 @@ namespace zlgui::dragger {
             kLeftArrow
         };
 
-        explicit DraggerLookAndFeel(UIBase& base) : base_(base) {
-        }
+        explicit DraggerLookAndFeel(UIBase& base) : base_(base) {}
 
         void drawToggleButton(juce::Graphics& g, juce::ToggleButton& button,
                               bool should_draw_button_as_highlighted,
@@ -36,8 +35,8 @@ namespace zlgui::dragger {
             const auto visibility = juce::jlimit(0.f, 1.f, alpha_);
 
             if (dragger_shape_ == kRound) {
-                // Treat the node as the lamp, not as another piece of glass. The body stays
-                // saturated and calm; the broad optical perimeter is the luminous source.
+                // The node is the lamp. Keep the body saturated and relatively calm while
+                // giving the perimeter enough physical width to read as the emitting edge.
                 const juce::DropShadow edgeBloom{
                     colour_.interpolatedWith(juce::Colours::white, .15f)
                            .withAlpha((active ? .24f : hover ? .17f : .105f) * visibility),
@@ -49,8 +48,6 @@ namespace zlgui::dragger {
                 const auto centre = outerBounds.getCentre();
                 const auto radius = juce::jmax(1.f, outerBounds.getWidth() * .50f);
 
-                // Almost-flat coloured emitter. There is only a gentle lift toward the
-                // perimeter so the node does not read as a glossy sphere.
                 juce::ColourGradient body(
                     colour_.interpolatedWith(juce::Colours::black, active ? .045f : .070f)
                            .withAlpha((active ? .98f : .92f) * visibility),
@@ -64,25 +61,22 @@ namespace zlgui::dragger {
                 g.setGradientFill(body);
                 g.fillPath(outline_path_);
 
-                // A quiet coloured cushion behind the edge softens the transfer into the
-                // surrounding light field without creating another visible ring.
+                // Soft coloured transition underneath the luminous rim.
                 g.setColour(colour_.withAlpha((active ? .13f : hover ? .095f : .055f) * visibility));
                 g.strokePath(outline_path_, juce::PathStrokeType(
-                    juce::jmax(2.5f, base_.getFontSize() * .225f),
+                    juce::jmax(3.1f, base_.getFontSize() * .275f),
                     juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
-                // This is deliberately thicker than a normal UI outline. It is the lamp's
-                // emitting surface, analogous to the bright edge of the sun in the visual
-                // metaphor, while the coloured band behaves like stained glass around it.
-                const auto rimThickness = juce::jmax(active ? 2.4f : 2.0f,
-                    base_.getFontSize() * (active ? .180f : hover ? .160f : .145f));
+                // Deliberately substantial: this is the light-emitting surface, not a
+                // decorative one-pixel border. Most of the node's brightness lives here.
+                const auto rimThickness = juce::jmax(active ? 3.0f : 2.45f,
+                    base_.getFontSize() * (active ? .225f : hover ? .205f : .185f));
                 g.setColour(colour_.interpolatedWith(juce::Colours::white,
                                                      active ? .79f : hover ? .73f : .66f)
                             .withAlpha((active ? .99f : hover ? .91f : .83f) * visibility));
                 g.strokePath(outline_path_, juce::PathStrokeType(
                     rimThickness, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
             } else {
-                // Preserve the existing readable treatment for non-round utility draggers.
                 g.setColour(colour_.withAlpha((active ? .88f : .68f) * visibility));
                 g.fillPath(outline_path_);
                 g.setColour(glass::textPrimary().withAlpha((active ? .82f : .58f) * visibility));
@@ -109,7 +103,6 @@ namespace zlgui::dragger {
         [[nodiscard]] DraggerShape getDraggerShape() const { return dragger_shape_; }
 
         void setIsSelected(const bool f) { is_selected_ = f; }
-
         [[nodiscard]] bool getIsSelected() const { return is_selected_; }
 
         void setDraggerShape(const DraggerShape s) { dragger_shape_ = s; }
@@ -120,26 +113,11 @@ namespace zlgui::dragger {
             const auto padding = padding_scale_ * base_.getFontSize();
             auto reduced_bound = bound.reduced(padding * .5f);
             switch (dragger_shape_) {
-            case kRound: {
-                updateRoundPaths(reduced_bound);
-                break;
-            }
-            case kRectangle: {
-                updateRectanglePaths(reduced_bound);
-                break;
-            }
-            case kUpDownArrow: {
-                updateUpDownArrowPaths(reduced_bound);
-                break;
-            }
-            case kRightArrow: {
-                updateRightArrowPaths(reduced_bound);
-                break;
-            }
-            case kLeftArrow: {
-                updateLeftArrowPaths(reduced_bound);
-                break;
-            }
+            case kRound: updateRoundPaths(reduced_bound); break;
+            case kRectangle: updateRectanglePaths(reduced_bound); break;
+            case kUpDownArrow: updateUpDownArrowPaths(reduced_bound); break;
+            case kRightArrow: updateRightArrowPaths(reduced_bound); break;
+            case kLeftArrow: updateLeftArrowPaths(reduced_bound); break;
             }
         }
 
@@ -198,9 +176,7 @@ namespace zlgui::dragger {
         }
 
         void setLabel(const juce::String& l) { label_ = l; }
-
         void setLabelScale(const float x) { label_scale_ = x; }
-
         void setPaddingScale(const float x) { padding_scale_ = x; }
 
         void setAlpha(const float a) {
