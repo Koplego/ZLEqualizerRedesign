@@ -45,13 +45,12 @@ namespace zlgui::glass {
                                          const float alpha_scale) {
         if (sources.empty() || clip_bounds.isEmpty()) return;
 
-        // A shallow Glass surface should look like a translucent object sitting in the same
-        // coloured room as the graph. Earlier passes made the tails so wide that every source
-        // contributed almost equally everywhere and the result collapsed back to blue-grey.
-        // Keep a long ambient tail, but give every lamp a much more local colour-preserving
-        // lobe. Selection changes emphasis only; every active node remains a real lamp.
+        // Calibrated directly against the agreed liquid-glass reference: the receiver itself
+        // is visibly brighter and more saturated than the old runtime build, while the nodes
+        // do not become harsher. A local lobe keeps each lamp spatially identifiable; a broad
+        // low-energy tail gives the YouTube-ambient style spread across the full glass shelf.
         constexpr int kSamples = 49;
-        constexpr float kReceiverTransmission = 8.2f;
+        constexpr float kReceiverTransmission = 11.8f;
 
         auto sampleColour = [&](const float portion) {
             const auto x = clip_bounds.getX() + clip_bounds.getWidth() * portion;
@@ -63,8 +62,8 @@ namespace zlgui::glass {
             for (const auto& source : sources) {
                 if (source.strength <= .0001f || source.radius <= 1.f) continue;
 
-                // Unselected bands must still illuminate the material. The source strength
-                // coming from MainPanel is a hierarchy value, not an on/off light level.
+                // Unselected bands are still real lamps. Selection changes focus, not whether
+                // the surrounding glass receives that band's colour.
                 const auto perceptual_strength = .68f + .32f *
                     std::pow(juce::jlimit(0.f, 1.f, source.strength), .42f);
 
@@ -74,9 +73,6 @@ namespace zlgui::glass {
                 const auto vertical_gain = std::pow(juce::jmax(0.f, 1.f - vertical_t), .24f);
                 if (vertical_gain <= .001f) continue;
 
-                // The reference has clearly identifiable pools of amber, cyan/mint, blue and
-                // violet even though their ambience overlaps. Use width-relative lobes so the
-                // look stays consistent at every plugin size.
                 const auto core_reach = juce::jmax(clip_bounds.getHeight() * 3.4f,
                                                    clip_bounds.getWidth() * .125f);
                 const auto tail_reach = juce::jmax(clip_bounds.getHeight() * 8.0f,
@@ -102,12 +98,10 @@ namespace zlgui::glass {
             if (total <= .0001f) return juce::Colours::transparentBlack;
 
             auto mixed = juce::Colour::fromFloatRGBA(red / total, green / total, blue / total, 1.f);
-            // Preserve the nearest lamp strongly enough that the eye can read where the light
-            // comes from. No white is added here: this is coloured transmitted light, not glow.
             mixed = mixed.interpolatedWith(dominant, .52f);
 
             const auto occupancy = 1.f - std::exp(-total * 1.18f);
-            const auto alpha = juce::jlimit(0.f, .19f,
+            const auto alpha = juce::jlimit(0.f, .28f,
                 alpha_scale * kReceiverTransmission * (.42f + .58f * occupancy));
             return mixed.withAlpha(alpha);
         };
