@@ -37,5 +37,6 @@ jobs:
             -DZL_HWY_STATIC_TARGET="NEON" \
             .
 
+      # Clean compile of the full v1.9 reference-copy rendering pass.
       - name: Build Glass EQ
         run: cmake --build "$BUILD_DIR" --config "$BUILD_TYPE"
