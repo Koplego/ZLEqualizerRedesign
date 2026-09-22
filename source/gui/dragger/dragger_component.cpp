@@ -40,22 +40,31 @@ namespace zlgui::dragger {
         const auto colour = dragger_laf_.getColour();
         const auto font = base_.getFontSize();
 
-        // Keep only a close aura around the source itself. The meaningful illumination is
-        // now painted onto the band's EQ line and fill in SinglePanel, so the graph does
-        // not get covered by a broad coloured fog.
-        const auto radius = font * (active ? 1.34f : hover ? 1.10f : .92f);
-        const auto alpha = active ? .145f : hover ? .095f : .055f;
-        const auto hot = colour.interpolatedWith(juce::Colours::white, active ? .40f : .28f)
-                               .withAlpha(alpha * visibility);
-        juce::ColourGradient aura(hot,
-                                  button_pos_.x, button_pos_.y,
-                                  colour.withAlpha(0.f),
-                                  button_pos_.x + radius, button_pos_.y,
-                                  true);
-        aura.addColour(.42, colour.withAlpha(alpha * .42f * visibility));
-        g.setGradientFill(aura);
-        g.fillEllipse(button_pos_.x - radius, button_pos_.y - radius,
-                      radius * 2.f, radius * 2.f);
+        // The mockup's light starts at the node perimeter. Paint an annular colour bloom
+        // behind the child button rather than a centre-hot radial fog. The child itself
+        // supplies the bright white-tinted rim; these rings are the colour spilling out.
+        const auto source_radius = font * 1.12f;
+        auto drawRingBloom = [&](const float expansion,
+                                 const float stroke_width,
+                                 const float alpha,
+                                 const float white_mix) {
+            const auto r = source_radius + expansion;
+            auto ring = juce::Rectangle<float>(button_pos_.x - r, button_pos_.y - r,
+                                               r * 2.f, r * 2.f);
+            g.setColour(colour.interpolatedWith(juce::Colours::white, white_mix)
+                              .withAlpha(alpha * visibility));
+            g.drawEllipse(ring, stroke_width);
+        };
+
+        drawRingBloom(font * .46f, font * .52f,
+                      active ? .050f : hover ? .034f : .020f,
+                      .08f);
+        drawRingBloom(font * .24f, font * .30f,
+                      active ? .105f : hover ? .072f : .042f,
+                      .16f);
+        drawRingBloom(font * .08f, font * .16f,
+                      active ? .205f : hover ? .135f : .078f,
+                      .28f);
     }
 
     bool Dragger::updateButton(const juce::Point<float>& center) {
@@ -65,7 +74,7 @@ namespace zlgui::dragger {
                 button_pos_ = center;
                 button_.setTransform(juce::AffineTransform::translation(button_pos_.x, button_pos_.y));
 
-                const auto r = juce::roundToInt(base_.getFontSize() * 1.7f);
+                const auto r = juce::roundToInt(base_.getFontSize() * 2.1f);
                 if (std::isfinite(old.x) && std::isfinite(old.y) && old.x > -1000.f && old.y > -1000.f)
                     repaint(juce::roundToInt(old.x) - r, juce::roundToInt(old.y) - r, r * 2, r * 2);
                 repaint(juce::roundToInt(center.x) - r, juce::roundToInt(center.y) - r, r * 2, r * 2);
