@@ -87,7 +87,34 @@ namespace zlpanel {
     }
 
     void TopPanel::paint(juce::Graphics& g) {
-        auto bounds = getLocalBounds().toFloat();
+        const auto full_bounds = getLocalBounds().toFloat();
+        const auto header_radius = juce::jmax(10.f, full_bounds.getHeight() * .28f);
+
+        // Paint an actual neutral-blue header instead of letting the transparent header show
+        // the parent shell's horizontal colour field. This is the biggest difference between
+        // the current build and the supplied reference.
+        juce::ColourGradient header(juce::Colour(25, 55, 79), full_bounds.getCentreX(), full_bounds.getY(),
+                                    juce::Colour(11, 31, 49), full_bounds.getCentreX(), full_bounds.getBottom(), false);
+        header.addColour(.52, juce::Colour(18, 43, 65));
+        g.setGradientFill(header);
+        g.fillRoundedRectangle(full_bounds.reduced(.5f), header_radius);
+
+        juce::ColourGradient header_light(
+            juce::Colour(119, 191, 234).withAlpha(.040f),
+            full_bounds.getCentreX(), full_bounds.getY() + full_bounds.getHeight() * .05f,
+            juce::Colours::transparentBlack,
+            full_bounds.getCentreX(), full_bounds.getBottom(), true);
+        g.setGradientFill(header_light);
+        g.fillRoundedRectangle(full_bounds.reduced(.5f), header_radius);
+
+        g.setColour(zlgui::glass::rim().withMultipliedAlpha(.40f));
+        g.drawLine(full_bounds.getX() + header_radius,
+                   full_bounds.getBottom() - .6f,
+                   full_bounds.getRight() - header_radius,
+                   full_bounds.getBottom() - .6f,
+                   .70f);
+
+        auto bounds = full_bounds;
         const auto font = base_.getFontSize();
         const auto padding = static_cast<float>(getPaddingSize(font));
         auto title_area_full = bounds.removeFromLeft(juce::jmax(205.f, font * 14.2f)).reduced(.5f);
@@ -177,7 +204,6 @@ namespace zlpanel {
                 const auto dot = juce::jmax(2.4f, font * .16f);
                 g.fillEllipse(r.getX() + r.getWidth() * .42f, r.getY() + r.getHeight() * .10f, dot, dot);
             }
-
             {
                 auto er = ext_button_.getBounds().toFloat().reduced(font * .52f);
                 const auto alpha = ext_button_.getToggleState() ? .92f : .54f;
