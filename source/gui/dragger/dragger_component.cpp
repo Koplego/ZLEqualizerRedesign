@@ -40,23 +40,21 @@ namespace zlgui::dragger {
         const auto colour = dragger_laf_.getColour();
         const auto font = base_.getFontSize();
 
-        // Reference-match the concept: no visible concentric rings, but a soft halo that
-        // is strongest immediately outside the bright rim and becomes almost invisible
-        // within roughly half a node radius. The opaque child disc hides the centre of
-        // this gradient, so the apparent source is the perimeter rather than the middle.
-        const auto radius = font * (active ? 1.72f : hover ? 1.62f : 1.55f);
-        const auto centreAlpha = active ? .180f : hover ? .125f : .085f;
+        // The node is the source, but not a flare. Keep the immediate corona restrained;
+        // most of the perceived illumination should live in the curve, fill and nearby
+        // glass surfaces, like ambient light leaking through stained glass.
+        const auto radius = font * (active ? 1.52f : hover ? 1.44f : 1.34f);
+        const auto centreAlpha = active ? .068f : hover ? .047f : .027f;
         juce::ColourGradient bloom(
-            colour.interpolatedWith(juce::Colours::white, active ? .20f : .13f)
+            colour.interpolatedWith(juce::Colours::white, active ? .16f : .10f)
                   .withAlpha(centreAlpha * visibility),
             button_pos_.x, button_pos_.y,
             colour.withAlpha(0.f),
             button_pos_.x + radius, button_pos_.y, true);
-        bloom.addColour(.52, colour.interpolatedWith(juce::Colours::white, .09f)
-                                  .withAlpha(centreAlpha * .72f * visibility));
-        bloom.addColour(.72, colour.withAlpha(centreAlpha * .38f * visibility));
-        bloom.addColour(.90, colour.withAlpha(centreAlpha * .070f * visibility));
-        bloom.addColour(.98, colour.withAlpha(0.f));
+        bloom.addColour(.56, colour.interpolatedWith(juce::Colours::white, .07f)
+                                  .withAlpha(centreAlpha * .48f * visibility));
+        bloom.addColour(.78, colour.withAlpha(centreAlpha * .18f * visibility));
+        bloom.addColour(.92, colour.withAlpha(centreAlpha * .035f * visibility));
         g.setGradientFill(bloom);
         g.fillEllipse(button_pos_.x - radius, button_pos_.y - radius,
                       radius * 2.f, radius * 2.f);
@@ -69,7 +67,7 @@ namespace zlgui::dragger {
                 button_pos_ = center;
                 button_.setTransform(juce::AffineTransform::translation(button_pos_.x, button_pos_.y));
 
-                const auto r = juce::roundToInt(base_.getFontSize() * 1.95f);
+                const auto r = juce::roundToInt(base_.getFontSize() * 1.85f);
                 if (std::isfinite(old.x) && std::isfinite(old.y) && old.x > -1000.f && old.y > -1000.f)
                     repaint(juce::roundToInt(old.x) - r, juce::roundToInt(old.y) - r, r * 2, r * 2);
                 repaint(juce::roundToInt(center.x) - r, juce::roundToInt(center.y) - r, r * 2, r * 2);
