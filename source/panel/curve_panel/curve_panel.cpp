@@ -26,19 +26,53 @@ namespace zlpanel {
 
     void GlassOutputMeter::paint(juce::Graphics& g) {
         auto bounds = getLocalBounds().toFloat().reduced(.5f);
-        const auto radius = juce::jmax(6.f, base_.getFontSize() * .52f);
-        zlgui::glass::fillGlassSurface(g, bounds, radius, .055f, .13f, .12f);
+        const auto radius = juce::jmax(7.f, base_.getFontSize() * .56f);
+
+        // The reference meter sits in its own blue-violet glass channel. Do not use the
+        // generic dark control material here; its enclosure is visibly lighter than the
+        // previous build and picks up the purple field from the right side of the shell.
+        juce::Path meter_clip;
+        meter_clip.addRoundedRectangle(bounds, radius);
+        {
+            juce::Graphics::ScopedSaveState state(g);
+            g.reduceClipRegion(meter_clip);
+            juce::ColourGradient housing(juce::Colour(64, 87, 136).withAlpha(.88f),
+                                         bounds.getX(), bounds.getY(),
+                                         juce::Colour(42, 54, 102).withAlpha(.94f),
+                                         bounds.getRight(), bounds.getBottom(), false);
+            housing.addColour(.46, juce::Colour(53, 73, 119).withAlpha(.92f));
+            g.setGradientFill(housing);
+            g.fillRect(bounds.expanded(1.f));
+
+            juce::ColourGradient violet(juce::Colour(170, 129, 239).withAlpha(.11f),
+                                        bounds.getRight() - bounds.getWidth() * .18f,
+                                        bounds.getY() + bounds.getHeight() * .24f,
+                                        juce::Colours::transparentBlack,
+                                        bounds.getX() + bounds.getWidth() * .30f,
+                                        bounds.getY() + bounds.getHeight() * .70f, true);
+            g.setGradientFill(violet);
+            g.fillRect(bounds);
+
+            juce::ColourGradient sheen(juce::Colour(232, 244, 252).withAlpha(.105f),
+                                       bounds.getCentreX(), bounds.getY(),
+                                       juce::Colours::transparentBlack,
+                                       bounds.getCentreX(), bounds.getBottom() * .55f, false);
+            g.setGradientFill(sheen);
+            g.fillRect(bounds);
+        }
+        g.setColour(juce::Colour(239, 248, 253).withAlpha(.18f));
+        g.drawRoundedRectangle(bounds, radius, .80f);
 
         const auto label_w = juce::jmax(18.f, base_.getFontSize() * 1.55f);
-        auto meter_area = bounds.reduced(base_.getFontSize() * .45f, base_.getFontSize() * .52f);
+        auto meter_area = bounds.reduced(base_.getFontSize() * .42f, base_.getFontSize() * .52f);
         auto labels = meter_area.removeFromRight(label_w);
-        meter_area.removeFromRight(base_.getFontSize() * .20f);
+        meter_area.removeFromRight(base_.getFontSize() * .18f);
 
-        const auto gap = juce::jmax(2.f, base_.getFontSize() * .22f);
+        const auto gap = juce::jmax(2.f, base_.getFontSize() * .20f);
         const auto bar_w = (meter_area.getWidth() - gap) * .5f;
         const std::array<float, 6> marks{{0.f, -6.f, -12.f, -24.f, -36.f, -60.f}};
         g.setFont(juce::FontOptions(base_.getFontSize() * .55f));
-        g.setColour(zlgui::glass::textSecondary().withMultipliedAlpha(.88f));
+        g.setColour(juce::Colour(238, 246, 252).withAlpha(.48f));
         for (const auto mark : marks) {
             const auto norm = juce::jlimit(0.f, 1.f, (mark + 60.f) / 60.f);
             const auto y = meter_area.getBottom() - norm * meter_area.getHeight();
@@ -51,17 +85,20 @@ namespace zlpanel {
         for (size_t channel = 0; channel < 2; ++channel) {
             auto track = juce::Rectangle<float>(meter_area.getX() + static_cast<float>(channel) * (bar_w + gap),
                                                  meter_area.getY(), bar_w, meter_area.getHeight());
-            g.setColour(juce::Colour(5, 16, 24).withAlpha(.58f));
+            g.setColour(juce::Colour(10, 27, 48).withAlpha(.74f));
             g.fillRoundedRectangle(track, bar_w * .42f);
+            g.setColour(juce::Colour(226, 241, 250).withAlpha(.075f));
+            g.drawRoundedRectangle(track, bar_w * .42f, .55f);
 
             const auto norm = juce::jlimit(0.f, 1.f, (level_db_[channel] + 60.f) / 60.f);
             auto active = track.withTop(track.getBottom() - norm * track.getHeight());
-            juce::ColourGradient meter(juce::Colour(111, 238, 187), active.getCentreX(), active.getBottom(),
-                                       juce::Colour(255, 197, 96), active.getCentreX(), active.getY(), false);
-            meter.addColour(.72, juce::Colour(137, 224, 164));
+            juce::ColourGradient meter(juce::Colour(105, 237, 184), active.getCentreX(), active.getBottom(),
+                                       juce::Colour(255, 194, 88), active.getCentreX(), active.getY(), false);
+            meter.addColour(.68, juce::Colour(128, 229, 161));
+            meter.addColour(.88, juce::Colour(226, 217, 111));
             if (active.getHeight() > 1.f) {
-                const juce::DropShadow meter_glow{juce::Colour(105, 231, 187).withAlpha(.22f),
-                                                   juce::jmax(2, juce::roundToInt(bar_w * .65f)), {0, 0}};
+                const juce::DropShadow meter_glow{juce::Colour(108, 232, 184).withAlpha(.30f),
+                                                   juce::jmax(2, juce::roundToInt(bar_w * .82f)), {0, 0}};
                 juce::Path glow_path;
                 glow_path.addRoundedRectangle(active, bar_w * .42f);
                 meter_glow.drawForPath(g, glow_path);
@@ -71,7 +108,7 @@ namespace zlpanel {
 
             const auto peak_norm = juce::jlimit(0.f, 1.f, (peak_db_[channel] + 60.f) / 60.f);
             const auto peak_y = track.getBottom() - peak_norm * track.getHeight();
-            g.setColour(juce::Colour(255, 224, 154).withAlpha(.88f));
+            g.setColour(juce::Colour(255, 224, 147).withAlpha(.92f));
             g.fillRect(track.getX(), peak_y, track.getWidth(), juce::jmax(1.f, base_.getFontSize() * .08f));
         }
     }
@@ -130,7 +167,7 @@ namespace zlpanel {
         auto bound = getLocalBounds();
         const auto font_size = base_.getFontSize();
         const auto padding = getPaddingSize(font_size);
-        const auto meter_width = juce::jmax(48, juce::roundToInt(font_size * 4.2f));
+        const auto meter_width = juce::jmax(50, juce::roundToInt(font_size * 4.35f));
         auto meter_bound = bound.removeFromRight(meter_width);
         bound.removeFromRight(juce::jmax(3, padding / 2));
         output_meter_.setBounds(meter_bound.reduced(0, juce::jmax(2, padding / 3)));
@@ -187,12 +224,8 @@ namespace zlpanel {
     }
 
     void CurvePanel::stopThreads() {
-        if (isThreadRunning()) {
-            stopThread(-1);
-        }
-        if (response_panel_.isThreadRunning()) {
-            response_panel_.stopThread(-1);
-        }
+        if (isThreadRunning()) stopThread(-1);
+        if (response_panel_.isThreadRunning()) response_panel_.stopThread(-1);
     }
 
     void CurvePanel::valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property) {
