@@ -200,18 +200,10 @@ namespace zlpanel {
             : juce::jmax(10.f, base_.getFontSize() * .76f);
         zlgui::glass::fillGlassSurface(g, surface, radius, .072f, .12f, .14f);
 
-        // The Hub is glass that receives light, not a light strip of its own. Keep only a
-        // faint material tint from the selected band; MainPanel supplies the spatial
-        // ambient reflection from the actual node position.
-        const auto accent = base_.getColourMap1(attached_band_);
-        juce::ColourGradient materialTint(
-            accent.interpolatedWith(juce::Colours::white, .08f).withAlpha(.025f),
-            surface.getCentreX(), surface.getY(),
-            accent.withAlpha(0.f),
-            surface.getCentreX(), surface.getBottom(), false);
-        materialTint.addColour(.42, accent.withAlpha(.014f));
-        g.setGradientFill(materialTint);
-        g.fillRoundedRectangle(surface.reduced(1.f), juce::jmax(1.f, radius - 1.f));
+        // True spatial transmission replaces the old decorative accent gradient. Because
+        // these source coordinates have already been converted into Hub-local space, the
+        // selected node illuminates whichever edge of the glass is physically nearest it.
+        zlgui::glass::paintAmbientSources(g, ambient_sources_, surface, .030f);
 
         static constexpr std::array<const char*, 11> names{
             "Bell", "Low Shelf", "High Cut", "High Shelf", "Low Cut", "Notch",
