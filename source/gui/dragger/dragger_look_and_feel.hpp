@@ -35,12 +35,13 @@ namespace zlgui::dragger {
             const auto visibility = juce::jlimit(0.f, 1.f, alpha_);
 
             if (dragger_shape_ == kRound) {
-                // The node is the lamp. Keep the body saturated and relatively calm while
-                // giving the perimeter enough physical width to read as the emitting edge.
+                // The node is the lamp. The reference has a thick luminous perimeter and a
+                // soft corona that is clearly visible beyond the disc, while the centre stays
+                // saturated and comparatively calm.
                 const juce::DropShadow edgeBloom{
-                    colour_.interpolatedWith(juce::Colours::white, .15f)
-                           .withAlpha((active ? .24f : hover ? .17f : .105f) * visibility),
-                    juce::jmax(2, juce::roundToInt(base_.getFontSize() * (active ? .48f : .36f))),
+                    colour_.interpolatedWith(juce::Colours::white, .12f)
+                           .withAlpha((active ? .34f : hover ? .27f : .20f) * visibility),
+                    juce::jmax(3, juce::roundToInt(base_.getFontSize() * (active ? .72f : .58f))),
                     {0, 0}};
                 edgeBloom.drawForPath(g, outline_path_);
 
@@ -49,31 +50,30 @@ namespace zlgui::dragger {
                 const auto radius = juce::jmax(1.f, outerBounds.getWidth() * .50f);
 
                 juce::ColourGradient body(
-                    colour_.interpolatedWith(juce::Colours::black, active ? .045f : .070f)
-                           .withAlpha((active ? .98f : .92f) * visibility),
+                    colour_.interpolatedWith(juce::Colours::black, active ? .035f : .060f)
+                           .withAlpha((active ? .98f : .93f) * visibility),
                     centre.x, centre.y,
-                    colour_.interpolatedWith(juce::Colours::white, active ? .10f : .065f)
-                           .withAlpha((active ? .98f : .91f) * visibility),
+                    colour_.interpolatedWith(juce::Colours::white, active ? .09f : .055f)
+                           .withAlpha((active ? .98f : .92f) * visibility),
                     centre.x + radius, centre.y, true);
-                body.addColour(.72, colour_.withAlpha((active ? .99f : .93f) * visibility));
+                body.addColour(.72, colour_.withAlpha((active ? .99f : .94f) * visibility));
                 body.addColour(.92, colour_.interpolatedWith(juce::Colours::white, active ? .10f : .06f)
-                                           .withAlpha((active ? .99f : .92f) * visibility));
+                                           .withAlpha((active ? .99f : .93f) * visibility));
                 g.setGradientFill(body);
                 g.fillPath(outline_path_);
 
-                // Soft coloured transition underneath the luminous rim.
-                g.setColour(colour_.withAlpha((active ? .13f : hover ? .095f : .055f) * visibility));
+                // Soft colour transition beneath the luminous edge.
+                g.setColour(colour_.withAlpha((active ? .18f : hover ? .14f : .095f) * visibility));
                 g.strokePath(outline_path_, juce::PathStrokeType(
-                    juce::jmax(3.1f, base_.getFontSize() * .275f),
+                    juce::jmax(3.6f, base_.getFontSize() * .31f),
                     juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
-                // Deliberately substantial: this is the light-emitting surface, not a
-                // decorative one-pixel border. Most of the node's brightness lives here.
-                const auto rimThickness = juce::jmax(active ? 3.0f : 2.45f,
-                    base_.getFontSize() * (active ? .225f : hover ? .205f : .185f));
+                // The edge is the emitting surface: broad, pale and brighter than the centre.
+                const auto rimThickness = juce::jmax(active ? 3.35f : 2.80f,
+                    base_.getFontSize() * (active ? .245f : hover ? .225f : .205f));
                 g.setColour(colour_.interpolatedWith(juce::Colours::white,
-                                                     active ? .79f : hover ? .73f : .66f)
-                            .withAlpha((active ? .99f : hover ? .91f : .83f) * visibility));
+                                                     active ? .80f : hover ? .75f : .69f)
+                            .withAlpha((active ? .995f : hover ? .94f : .88f) * visibility));
                 g.strokePath(outline_path_, juce::PathStrokeType(
                     rimThickness, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
             } else {
