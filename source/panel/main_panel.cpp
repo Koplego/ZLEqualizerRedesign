@@ -3,6 +3,7 @@
 
 #include "main_panel.hpp"
 #include "../gui/glass_tokens.hpp"
+#include "../zlp/sample_rate_helper.hpp"
 
 namespace zlpanel {
     MainPanel::MainPanel(PluginProcessor& p, zlgui::UIBase& base, const multilingual::TooltipLanguage language) :
@@ -61,71 +62,108 @@ namespace zlpanel {
             juce::Graphics::ScopedSaveState state(g);
             g.reduceClipRegion(clip_path);
 
-            // Direct reference-derived shell colour field. v1.8 was still treating the
-            // screenshot as a dark theme plus tiny tint overlays; the target is instead a
-            // visibly coloured piece of glass across the whole instrument.
-            juce::ColourGradient horizontal(juce::Colour(91, 98, 94), shell.getX(), shell.getCentreY(),
-                                            juce::Colour(61, 73, 122), shell.getRight(), shell.getCentreY(), false);
-            horizontal.addColour(.12, juce::Colour(74, 89, 96));
-            horizontal.addColour(.25, juce::Colour(48, 101, 137));
-            horizontal.addColour(.36, juce::Colour(57, 113, 139));
-            horizontal.addColour(.48, juce::Colour(48, 92, 136));
-            horizontal.addColour(.62, juce::Colour(44, 82, 131));
-            horizontal.addColour(.76, juce::Colour(40, 72, 113));
-            horizontal.addColour(.88, juce::Colour(61, 70, 124));
-            g.setGradientFill(horizontal);
+            // The material itself is deliberately neutral. There is no baked-in amber,
+            // cyan, blue or violet field here. Chroma enters the interface only through
+            // active EQ nodes below, exactly as a coloured light would enter clear glass.
+            juce::ColourGradient material(juce::Colour(39, 52, 63), shell.getX(), shell.getCentreY(),
+                                          juce::Colour(25, 38, 53), shell.getRight(), shell.getCentreY(), false);
+            material.addColour(.38, juce::Colour(34, 49, 62));
+            material.addColour(.72, juce::Colour(29, 43, 58));
+            g.setGradientFill(material);
             g.fillRect(shell.expanded(2.f));
 
-            // The top of the reference is hazy and reflective; the lower body is deeper.
-            juce::ColourGradient vertical(juce::Colour(229, 241, 248).withAlpha(.085f),
+            // Neutral liquid-glass depth: pale reflected sky at the top, absorption at the bottom.
+            juce::ColourGradient vertical(juce::Colour(231, 242, 248).withAlpha(.085f),
                                           shell.getCentreX(), shell.getY(),
-                                          juce::Colour(2, 13, 26).withAlpha(.34f),
+                                          juce::Colour(2, 10, 18).withAlpha(.34f),
                                           shell.getCentreX(), shell.getBottom(), false);
-            vertical.addColour(.28, juce::Colours::transparentBlack);
-            vertical.addColour(.77, juce::Colour(5, 20, 37).withAlpha(.11f));
+            vertical.addColour(.26, juce::Colours::transparentBlack);
+            vertical.addColour(.78, juce::Colour(5, 14, 24).withAlpha(.12f));
             g.setGradientFill(vertical);
             g.fillRect(shell);
 
-            // Large colour pools corresponding to the generated reference, not generic
-            // decorative glows. These are intentionally visible in the header/footer.
-            juce::ColourGradient warm(juce::Colour(246, 194, 111).withAlpha(.30f),
-                                      shell.getX() + shell.getWidth() * .055f,
-                                      shell.getY() + shell.getHeight() * .23f,
-                                      juce::Colours::transparentBlack,
-                                      shell.getX() + shell.getWidth() * .28f,
-                                      shell.getY() + shell.getHeight() * .71f, true);
-            warm.addColour(.42, juce::Colour(224, 181, 102).withAlpha(.12f));
-            g.setGradientFill(warm);
-            g.fillRect(shell);
+            // Reconstruct the visible EQ-node positions from the same live parameters used by
+            // ResponsePanel. These are the ONLY coloured illumination sources for the shell.
+            const auto font = base_.getFontSize();
+            const auto meter_width = juce::jmax(48, juce::roundToInt(font * 4.2f));
+            const auto meter_gap = juce::jmax(3, getPaddingSize(font) / 2);
+            const auto graph_w = juce::jmax(1.f, static_cast<float>(curve_panel_.getWidth() - meter_width - meter_gap));
+            const auto graph_h = juce::jmax(1.f, static_cast<float>(curve_panel_.getHeight()));
+            const auto sample_rate = juce::jmax(1.0, p_ref_.getAtomicSampleRate());
+            const auto fft_max = freq_helper::getFFTMax(sample_rate);
+            const auto freq_to_x = graph_w * kFFTSizeOverWidth / static_cast<float>(std::log(fft_max * .1));
 
-            juce::ColourGradient cyan(juce::Colour(72, 192, 187).withAlpha(.22f),
-                                      shell.getX() + shell.getWidth() * .31f,
-                                      shell.getY() + shell.getHeight() * .42f,
-                                      juce::Colours::transparentBlack,
-                                      shell.getX() + shell.getWidth() * .50f,
-                                      shell.getY() + shell.getHeight() * .86f, true);
-            cyan.addColour(.48, juce::Colour(62, 166, 177).withAlpha(.075f));
-            g.setGradientFill(cyan);
-            g.fillRect(shell);
+            float db_scale = 12.f;
+            if (const auto* eq_max_ref = p_ref_.parameters_NA_.getRawParameterValue(zlstate::PEQMaxDB::kID)) {
+                const auto idx = static_cast<size_t>(juce::jmax(0, static_cast<int>(std::round(
+                    eq_max_ref->load(std::memory_order_relaxed)))));
+                db_scale = base_.getCurveDBScale(idx);
+            }
+            const auto response_h = graph_h - static_cast<float>(getBottomAreaHeight(font));
+            const auto dragger_padding = font * kDraggerScale;
+            const auto zero_y = response_h * .5f;
+            const auto bottom_y = response_h - dragger_padding;
+            const auto db_to_y = (zero_y - bottom_y) / juce::jmax(1.f, db_scale);
 
-            juce::ColourGradient blue(juce::Colour(75, 151, 226).withAlpha(.20f),
-                                      shell.getX() + shell.getWidth() * .51f,
-                                      shell.getY() + shell.getHeight() * .20f,
-                                      juce::Colours::transparentBlack,
-                                      shell.getX() + shell.getWidth() * .70f,
-                                      shell.getY() + shell.getHeight() * .72f, true);
-            g.setGradientFill(blue);
-            g.fillRect(shell);
+            const auto graph_origin = curve_panel_.getBounds().getPosition().toFloat();
+            const auto selected = base_.getSelectedBand();
+            const auto local_radius = juce::jmax(82.f, font * 7.1f);
+            const auto reflected_radius = juce::jmax(170.f, font * 13.2f);
 
-            juce::ColourGradient violet(juce::Colour(166, 124, 238).withAlpha(.23f),
-                                        shell.getX() + shell.getWidth() * .91f,
-                                        shell.getY() + shell.getHeight() * .43f,
-                                        juce::Colours::transparentBlack,
-                                        shell.getX() + shell.getWidth() * .70f,
-                                        shell.getY() + shell.getHeight() * .84f, true);
-            violet.addColour(.47, juce::Colour(132, 105, 213).withAlpha(.080f));
-            g.setGradientFill(violet);
-            g.fillRect(shell);
+            for (size_t band = 0; band < zlp::kBandNum; ++band) {
+                const auto suffix = std::to_string(band);
+                const auto* status_ref = p_ref_.parameters_.getRawParameterValue(zlp::PFilterStatus::kID + suffix);
+                const auto* freq_ref = p_ref_.parameters_.getRawParameterValue(zlp::PFreq::kID + suffix);
+                const auto* gain_ref = p_ref_.parameters_.getRawParameterValue(zlp::PGain::kID + suffix);
+                const auto* type_ref = p_ref_.parameters_.getRawParameterValue(zlp::PFilterType::kID + suffix);
+                if (status_ref == nullptr || freq_ref == nullptr || gain_ref == nullptr || type_ref == nullptr) continue;
+
+                const auto status = static_cast<zlp::FilterStatus>(std::round(
+                    status_ref->load(std::memory_order_relaxed)));
+                if (status == zlp::FilterStatus::kOff) continue;
+
+                const auto freq = juce::jlimit(10.f, static_cast<float>(fft_max),
+                                               freq_ref->load(std::memory_order_relaxed));
+                const auto x = static_cast<float>(std::log(freq * .1f)) * freq_to_x;
+                if (!std::isfinite(x)) continue;
+
+                const auto type = static_cast<zldsp::filter::FilterType>(std::round(
+                    type_ref->load(std::memory_order_relaxed)));
+                auto button_gain = gain_ref->load(std::memory_order_relaxed);
+                if (type == zldsp::filter::kLowShelf || type == zldsp::filter::kHighShelf
+                    || type == zldsp::filter::kTiltShelf || type == zldsp::filter::kFlatTilt) {
+                    button_gain *= .5f;
+                } else if (type != zldsp::filter::kPeak && type != zldsp::filter::kFlatGain) {
+                    button_gain = 0.f;
+                }
+                const auto y = db_to_y * button_gain + zero_y;
+                const auto centre = graph_origin + juce::Point<float>(x, y);
+
+                const auto intensity = band == selected ? 1.f : .66f;
+                const auto colour = base_.getColourMap1(band);
+
+                // Wide, weak internal reflection: this is what reaches header/footer/control glass.
+                juce::ColourGradient reflected(colour.withAlpha(.060f * intensity), centre.x, centre.y,
+                                               colour.withAlpha(0.f), centre.x + reflected_radius,
+                                               centre.y, true);
+                reflected.addColour(.26, colour.withAlpha(.042f * intensity));
+                reflected.addColour(.58, colour.withAlpha(.016f * intensity));
+                reflected.addColour(.84, colour.withAlpha(.0035f * intensity));
+                g.setGradientFill(reflected);
+                g.fillEllipse(centre.x - reflected_radius, centre.y - reflected_radius,
+                              reflected_radius * 2.f, reflected_radius * 2.f);
+
+                // Tighter transmitted/reflected pool immediately around the actual source.
+                juce::ColourGradient local(
+                    colour.interpolatedWith(juce::Colours::white, .12f).withAlpha(.17f * intensity),
+                    centre.x, centre.y, colour.withAlpha(0.f), centre.x + local_radius, centre.y, true);
+                local.addColour(.22, colour.withAlpha(.12f * intensity));
+                local.addColour(.52, colour.withAlpha(.044f * intensity));
+                local.addColour(.80, colour.withAlpha(.006f * intensity));
+                g.setGradientFill(local);
+                g.fillEllipse(centre.x - local_radius, centre.y - local_radius,
+                              local_radius * 2.f, local_radius * 2.f);
+            }
         }
 
         g.setColour(juce::Colour(245, 251, 255).withAlpha(.26f));
@@ -247,6 +285,10 @@ namespace zlpanel {
         }
         if (ui_setting_panel_.isVisible()) ui_setting_panel_.flushPendingScroll();
         if (preset_browser_.isVisible()) preset_browser_.flushPendingScroll();
+
+        // Node positions are light-source positions now, so the parent glass must refresh
+        // whenever the response refreshes instead of keeping a stale coloured reflection.
+        repaint();
         curve_panel_.repaintCallBack();
         control_panel_.repaintCallBack();
         const auto c_refresh_rate = refresh_handler_.getActualRefreshRate();
