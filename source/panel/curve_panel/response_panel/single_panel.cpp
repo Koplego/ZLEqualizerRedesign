@@ -94,8 +94,8 @@ namespace zlpanel {
         base_stroke_alpha_[band] = multiplier;
 
         const auto band_colour = base_.getColourMap1(band);
-        base_stroke_colour_[band] = band_colour.interpolatedWith(juce::Colours::white, is_selected ? .12f : .07f)
-            .withAlpha(std::clamp(multiplier * (is_selected ? .98f : .78f), .08f, .98f));
+        base_stroke_colour_[band] = band_colour.interpolatedWith(juce::Colours::white, is_selected ? .14f : .08f)
+            .withAlpha(std::clamp(multiplier * (is_selected ? .99f : .82f), .08f, .99f));
 
         is_same_stereo_[band] = is_same_stereo;
     }
@@ -182,27 +182,27 @@ namespace zlpanel {
         const auto colour = base_.getColourMap1(band);
         const auto node_x = node_x_[band].load(std::memory_order_relaxed);
         const auto node_y = node_y_[band].load(std::memory_order_relaxed);
-        const auto glow_radius = juce::jmax(base_.getFontSize() * 4.75f, 50.f);
+        const auto glow_radius = juce::jmax(base_.getFontSize() * 5.45f, 58.f);
 
         if (base_fill_alpha_[band] > 0.01f) {
             base_fills_[band].pull();
             const auto& fill = base_fills_[band].getReader();
 
-            // Only a trace of flat colour is allowed across the complete filter shape.
-            // The saturated part of the reference comes from the radial light below.
-            g.setColour(colour.withAlpha(base_fill_alpha_[band] * .30f));
+            // The reference keeps the broad band fill subtle, while allowing the node area
+            // to emit a conspicuous pool of coloured light.
+            g.setColour(colour.withAlpha(base_fill_alpha_[band] * .34f));
             g.fillPath(fill);
 
-            const auto bloom_alpha = thick ? .205f : .078f;
-            const auto bloom_mid = thick ? .110f : .040f;
-            const auto bloom_radius = glow_radius * (thick ? 1.0f : .78f);
+            const auto bloom_alpha = thick ? .285f : .110f;
+            const auto bloom_mid = thick ? .155f : .060f;
+            const auto bloom_radius = glow_radius * (thick ? 1.0f : .82f);
             juce::ColourGradient illumination(
-                colour.interpolatedWith(juce::Colours::white, thick ? .16f : .08f).withAlpha(bloom_alpha),
+                colour.interpolatedWith(juce::Colours::white, thick ? .20f : .10f).withAlpha(bloom_alpha),
                 node_x, node_y,
                 colour.withAlpha(0.f), node_x + bloom_radius, node_y, true);
-            illumination.addColour(.25, colour.withAlpha(bloom_mid));
-            illumination.addColour(.52, colour.withAlpha(bloom_mid * .38f));
-            illumination.addColour(.78, colour.withAlpha(.006f));
+            illumination.addColour(.23, colour.interpolatedWith(juce::Colours::white, .08f).withAlpha(bloom_mid));
+            illumination.addColour(.52, colour.withAlpha(bloom_mid * .40f));
+            illumination.addColour(.80, colour.withAlpha(.010f));
             g.setGradientFill(illumination);
             g.fillPath(fill);
         }
@@ -210,15 +210,15 @@ namespace zlpanel {
         if (target_fill_alpha_[band] > 0.01f) {
             target_fills_[band].pull();
             const auto& fill = target_fills_[band].getReader();
-            g.setColour(colour.withAlpha(target_fill_alpha_[band] * .24f));
+            g.setColour(colour.withAlpha(target_fill_alpha_[band] * .27f));
             g.fillPath(fill);
 
-            const auto target_alpha = thick ? .145f : .052f;
+            const auto target_alpha = thick ? .185f : .068f;
             juce::ColourGradient target_light(
-                colour.interpolatedWith(juce::Colours::white, .10f).withAlpha(target_alpha),
+                colour.interpolatedWith(juce::Colours::white, .12f).withAlpha(target_alpha),
                 node_x, node_y,
-                colour.withAlpha(0.f), node_x + glow_radius * (thick ? .74f : .56f), node_y, true);
-            target_light.addColour(.45, colour.withAlpha(target_alpha * .28f));
+                colour.withAlpha(0.f), node_x + glow_radius * (thick ? .78f : .60f), node_y, true);
+            target_light.addColour(.45, colour.withAlpha(target_alpha * .30f));
             g.setGradientFill(target_light);
             g.fillPath(fill);
         }
@@ -229,35 +229,33 @@ namespace zlpanel {
             const auto& path = base_paths_[band].getReader();
 
             if constexpr (thick) {
-                // Two very soft strokes make the selected response glow without making it
-                // thicker than the final sum curve.
                 juce::ColourGradient outer_light(
-                    colour.interpolatedWith(juce::Colours::white, .12f).withAlpha(.085f),
+                    colour.interpolatedWith(juce::Colours::white, .14f).withAlpha(.120f),
                     node_x, node_y,
-                    colour.withAlpha(0.f), node_x + glow_radius * .92f, node_y, true);
+                    colour.withAlpha(0.f), node_x + glow_radius * .96f, node_y, true);
                 g.setGradientFill(outer_light);
-                g.strokePath(path, juce::PathStrokeType(curve_thickness * 2.45f,
+                g.strokePath(path, juce::PathStrokeType(curve_thickness * 2.65f,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
 
                 juce::ColourGradient core_light(
-                    colour.interpolatedWith(juce::Colours::white, .22f).withAlpha(.18f),
+                    colour.interpolatedWith(juce::Colours::white, .25f).withAlpha(.235f),
                     node_x, node_y,
-                    colour.withAlpha(0.f), node_x + glow_radius * .43f, node_y, true);
+                    colour.withAlpha(0.f), node_x + glow_radius * .46f, node_y, true);
                 g.setGradientFill(core_light);
-                g.strokePath(path, juce::PathStrokeType(curve_thickness * 1.28f,
+                g.strokePath(path, juce::PathStrokeType(curve_thickness * 1.34f,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
             }
 
             if constexpr (thick) {
                 juce::ColourGradient lit_stroke(
-                    colour.interpolatedWith(juce::Colours::white, .30f).withAlpha(.99f),
+                    colour.interpolatedWith(juce::Colours::white, .34f).withAlpha(.99f),
                     node_x, node_y,
-                    colour.interpolatedWith(juce::Colours::white, .04f).withAlpha(.54f),
-                    node_x + glow_radius * 1.06f, node_y, true);
-                lit_stroke.addColour(.34, colour.interpolatedWith(juce::Colours::white, .16f).withAlpha(.88f));
-                lit_stroke.addColour(.70, colour.interpolatedWith(juce::Colours::white, .06f).withAlpha(.66f));
+                    colour.interpolatedWith(juce::Colours::white, .05f).withAlpha(.58f),
+                    node_x + glow_radius * 1.10f, node_y, true);
+                lit_stroke.addColour(.34, colour.interpolatedWith(juce::Colours::white, .19f).withAlpha(.92f));
+                lit_stroke.addColour(.70, colour.interpolatedWith(juce::Colours::white, .07f).withAlpha(.70f));
                 g.setGradientFill(lit_stroke);
             } else {
                 g.setColour(base_stroke_colour_[band]);
