@@ -118,7 +118,7 @@ namespace zlpanel {
         while (!threadShouldExit()) {
             const auto flag = wait(-1);
             juce::ignoreUnused(flag);
-            if (is_match_on_.load(std::memory_order::relaxed)) {
+            if (is_match_on_.load(std::memory_order_relaxed)) {
                 match_fft_panel_.run(*this);
             } else {
                 fft_panel_.run(*this);
@@ -161,6 +161,10 @@ namespace zlpanel {
     }
 
     void CurvePanel::repaintCallBack() {
+        // Background is buffered, so explicitly invalidate it while nodes move. This keeps
+        // the new spatial colour field attached to the bands instead of freezing at the
+        // position where the cache was first rendered.
+        background_panel_.repaint();
         repaint();
         response_panel_.repaintCallBack();
     }
@@ -200,7 +204,7 @@ namespace zlpanel {
             const auto f = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel));
             const auto idx = static_cast<int>(std::round(f));
             match_fft_panel_.setVisible(idx > 0);
-            is_match_on_.store(idx > 0, std::memory_order::relaxed);
+            is_match_on_.store(idx > 0, std::memory_order_relaxed);
             scale_panel_.setVisible(idx > 0);
             fft_panel_.setVisible(idx == 0);
             response_panel_.setVisible(idx != 1 && idx != 2);
