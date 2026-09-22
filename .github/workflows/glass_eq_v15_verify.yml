@@ -1,0 +1,41 @@
+name: Glass EQ v1.5 Verify
+
+on:
+  push:
+    branches: [glass-eq-v1.5-reference-match]
+  workflow_dispatch:
+
+concurrency:
+  group: glass-eq-v15-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  BUILD_TYPE: Release
+  BUILD_DIR: BuildsGlassV15CI
+
+jobs:
+  macos-vst3:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install Ninja
+        run: brew install ninja
+
+      - name: Configure
+        run: |
+          cmake -B "$BUILD_DIR" -G Ninja \
+            -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+            -DZL_JUCE_FORMATS="VST3" \
+            -DZL_HWY_STATIC_TARGET="NEON" \
+            .
+
+      - name: Build Glass EQ
+        run: cmake --build "$BUILD_DIR" --config "$BUILD_TYPE"
