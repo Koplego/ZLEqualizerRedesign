@@ -21,9 +21,7 @@ namespace zlpanel {
                              std::vector<size_t>& not_off_indices);
 
         void paintSameStereo(juce::Graphics& g);
-
         void paintDifferentStereo(juce::Graphics& g);
-
         void resized() override;
 
         void updateDrawingParas(size_t band,
@@ -35,7 +33,8 @@ namespace zlpanel {
                  zlp::FilterStatus filter_status,
                  bool to_update_base, bool to_update_target,
                  std::span<float> xs, float k, float b,
-                 zldsp::vector::aligned_vector<float>& base_mag, zldsp::vector::aligned_vector<float>& target_mag,
+                 zldsp::vector::aligned_vector<float>& base_mag,
+                 zldsp::vector::aligned_vector<float>& target_mag,
                  float center_x, float center_mag, float button_mag,
                  float base_left_x, float base_right_x,
                  bool to_update_side,
@@ -46,16 +45,15 @@ namespace zlpanel {
     private:
         static constexpr size_t kNumPoints = 400;
 
-        // The reference has very little flat colour painted across an entire filter shape.
-        // Most of the saturation comes from local light around the node and curve. Keeping
-        // these structural fills low is what prevents the graph from turning into a pale
-        // cyan/green sheet when a wide bell is selected.
-        static constexpr float kFillingAlpha = .040f;
-        static constexpr float kDynamicFillingAlpha = .072f;
-        static constexpr float kNotSelectedAlphaMultiplier = .70f;
+        // Calibrated against the approved reference. The filter areas remain translucent,
+        // but they must still be clearly visible; the previous .040 value made the coloured
+        // glass practically disappear whenever a band was not selected.
+        static constexpr float kFillingAlpha = .068f;
+        static constexpr float kDynamicFillingAlpha = .085f;
+        static constexpr float kNotSelectedAlphaMultiplier = .78f;
         static constexpr float kBypassAlphaMultiplier = .75f;
         static constexpr float kDiffStereoAlphaMultiplier = .33333f;
-        static constexpr float kNoBandSelectedAlphaMultiplier = .66f;
+        static constexpr float kNoBandSelectedAlphaMultiplier = .86f;
         static constexpr float kThickMultiplier = 1.03f;
 
         PluginProcessor& p_ref_;
@@ -81,7 +79,6 @@ namespace zlpanel {
         std::array<bool, zlp::kBandNum> is_same_stereo_{};
 
         float curve_thickness_{0.f};
-
         zldsp::vector::aligned_vector<float> temp_db_{};
 
         template <bool thick = false>
