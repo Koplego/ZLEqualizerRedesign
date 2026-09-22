@@ -2,7 +2,7 @@ name: Glass EQ Reference Verify
 
 on:
   push:
-    branches: [glass-eq-v1.7-reference-rebuild, glass-eq-v1.8-reference-lock]
+    branches: [glass-eq-v1.7-reference-rebuild, glass-eq-v1.8-reference-lock, glass-eq-v1.9-reference-copy]
   workflow_dispatch:
 
 concurrency:
@@ -37,6 +37,5 @@ jobs:
             -DZL_HWY_STATIC_TARGET="NEON" \
             .
 
-      # Full clean build at the actual visual-lock branch head.
       - name: Build Glass EQ
         run: cmake --build "$BUILD_DIR" --config "$BUILD_TYPE"

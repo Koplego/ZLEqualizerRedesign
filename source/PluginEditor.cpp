@@ -21,11 +21,8 @@ PluginEditor::PluginEditor(PluginProcessor& p) :
     base_(state_),
     main_panel_(p, base_, static_cast<zlpanel::multilingual::TooltipLanguage>(std::round(
                     zlpanel::getValue(state_, zlstate::PTooltipLang::kID)))) {
-    // Keep the editor opaque and render the material deliberately. This avoids host-specific
-    // transparency artefacts while preserving the Liquid Glass depth inside the plugin.
     setOpaque(true);
 
-    // set font
 #if defined(JUCE_WINDOWS)
     base_.font_ = juce::Typeface::createSystemTypefaceFor(
         BinaryData::InterSubsetMediumNoHinting_ttf, BinaryData::InterSubsetMediumNoHinting_ttfSize);
@@ -35,27 +32,25 @@ PluginEditor::PluginEditor(PluginProcessor& p) :
 #endif
     juce::LookAndFeel::getDefaultLookAndFeel().setDefaultSansSerifTypeface(base_.font_);
 
-    // Liquid Glass personal theme. UIBase normally loads the user's persisted ZL theme,
-    // which is why changing defaults alone does not affect an existing installation.
-    // Override the live colours here so the redesigned editor is deterministic.
-    base_.setColourByIdx(zlgui::kTextColour,       juce::Colour(238, 245, 252));
-    base_.setColourByIdx(zlgui::kBackgroundColour, juce::Colour(18, 37, 55));
-    base_.setColourByIdx(zlgui::kShadowColour,     juce::Colour(3, 10, 18));
-    base_.setColourByIdx(zlgui::kGlowColour,       juce::Colour(166, 210, 246).withAlpha(0.30f));
-    base_.setColourByIdx(zlgui::kGridColour,       juce::Colour(218, 237, 250).withAlpha(0.06f));
-    base_.setColourByIdx(zlgui::kPreColour,        juce::Colour(200, 220, 234).withAlpha(0.16f));
-    base_.setColourByIdx(zlgui::kPostColour,       juce::Colour(235, 245, 251).withAlpha(0.22f));
-    base_.setColourByIdx(zlgui::kSideColour,       juce::Colour(195, 185, 231).withAlpha(0.13f));
+    // Reference-locked live palette. These values are deliberately brighter and less
+    // desaturated than the v1.8 pass because the approved image has a visible steel-blue
+    // body and a much clearer analyzer against it.
+    base_.setColourByIdx(zlgui::kTextColour,       juce::Colour(242, 248, 252));
+    base_.setColourByIdx(zlgui::kBackgroundColour, juce::Colour(31, 63, 91));
+    base_.setColourByIdx(zlgui::kShadowColour,     juce::Colour(5, 14, 25));
+    base_.setColourByIdx(zlgui::kGlowColour,       juce::Colour(177, 218, 247).withAlpha(0.38f));
+    base_.setColourByIdx(zlgui::kGridColour,       juce::Colour(219, 237, 248).withAlpha(0.075f));
+    base_.setColourByIdx(zlgui::kPreColour,        juce::Colour(192, 211, 226).withAlpha(0.205f));
+    base_.setColourByIdx(zlgui::kPostColour,       juce::Colour(231, 243, 251).withAlpha(0.295f));
+    base_.setColourByIdx(zlgui::kSideColour,       juce::Colour(197, 186, 232).withAlpha(0.155f));
     base_.setColourByIdx(zlgui::kCollisionColour,  juce::Colour(255, 132, 153));
 
-    // add the main panel
     addAndMakeVisible(main_panel_);
     main_panel_.getControlPanel().addMouseListener(this, true);
     main_panel_.getOutputPanel().addMouseListener(this, true);
 
-    // The mockup is a wide, focused instrument panel. Keep that silhouette across hosts
-    // instead of allowing the editor to drift into the tall legacy ZL layout.
-    constexpr double glass_aspect = 2.05;
+    // The target body is very close to 2:1 once the host chrome is excluded.
+    constexpr double glass_aspect = 2.00;
     setResizeLimits(708,
                     static_cast<int>(zlstate::PWindowH::kMinV - 1),
                     static_cast<int>(zlstate::PWindowW::kMaxV + 1),
@@ -79,7 +74,6 @@ PluginEditor::PluginEditor(PluginProcessor& p) :
 
     base_.setPanelProperty(zlgui::kUISettingChanged, true);
     base_.getPanelValueTree().addListener(this);
-
     sendLookAndFeelChange();
 }
 
@@ -109,23 +103,13 @@ void PluginEditor::resized() {
         last_ui_width_ = width;
         last_ui_height_ = height;
         triggerAsyncUpdate();
-        if (size_changed) {
-            schedulePropertySave();
-        }
+        if (size_changed) schedulePropertySave();
     }
 }
 
-void PluginEditor::visibilityChanged() {
-    updateIsShowing();
-}
-
-void PluginEditor::parentHierarchyChanged() {
-    updateIsShowing();
-}
-
-void PluginEditor::minimisationStateChanged(bool) {
-    updateIsShowing();
-}
+void PluginEditor::visibilityChanged() { updateIsShowing(); }
+void PluginEditor::parentHierarchyChanged() { updateIsShowing(); }
+void PluginEditor::minimisationStateChanged(bool) { updateIsShowing(); }
 
 void PluginEditor::valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property) {
     if (base_.isPanelIdentifier(zlgui::kUISettingChanged, property)) {
@@ -134,9 +118,7 @@ void PluginEditor::valueTreePropertyChanged(juce::ValueTree&, const juce::Identi
     }
 }
 
-void PluginEditor::handleAsyncUpdate() {
-    sendLookAndFeelChange();
-}
+void PluginEditor::handleAsyncUpdate() { sendLookAndFeelChange(); }
 
 void PluginEditor::timerCallback(const int timer_id) {
     if (timer_id == kVisibilityTimer) {
@@ -175,9 +157,7 @@ void PluginEditor::updateIsShowing() {
 
 int PluginEditor::getControlParameterIndex(Component& c) {
     const auto id = c.getComponentID();
-    if (id.isEmpty()) {
-        return -1;
-    }
+    if (id.isEmpty()) return -1;
     if (const auto para = p_ref_.parameters_.getParameter(id); para == nullptr) {
         return -1;
     } else {
