@@ -75,59 +75,35 @@ namespace zlpanel {
             juce::Graphics::ScopedSaveState clip(g);
             g.reduceClipRegion(shell_clip);
 
-            // The shell is primarily deep blue glass.  Colour in the reference is emitted
-            // by the bands and only very lightly transmitted through the surrounding shell.
-            juce::ColourGradient body(juce::Colour(30, 61, 87), shell.getCentreX(), shell.getY(),
-                                      juce::Colour(6, 21, 36), shell.getCentreX(), shell.getBottom(), false);
-            body.addColour(.36, juce::Colour(20, 47, 70));
-            body.addColour(.72, juce::Colour(10, 31, 50));
+            // The shell is one material: deep blue glass. Band colours belong to the graph
+            // and must never be painted across the entire plugin shell.
+            juce::ColourGradient body(juce::Colour(28, 58, 83), shell.getCentreX(), shell.getY(),
+                                      juce::Colour(5, 19, 33), shell.getCentreX(), shell.getBottom(), false);
+            body.addColour(.36, juce::Colour(18, 44, 66));
+            body.addColour(.72, juce::Colour(9, 29, 47));
             g.setGradientFill(body);
             g.fillRect(shell.expanded(2.f));
 
-            // Keep the cross-shell colour field nearly subliminal.  The previous pass made
-            // the complete header/footer look like a rainbow overlay, unlike the reference.
-            juce::ColourGradient transmitted(
-                juce::Colour(235, 183, 105).withAlpha(.018f),
-                shell.getX(), shell.getCentreY(),
-                juce::Colour(157, 119, 235).withAlpha(.016f),
-                shell.getRight(), shell.getCentreY(), false);
-            transmitted.addColour(.20, juce::Colour(77, 182, 177).withAlpha(.018f));
-            transmitted.addColour(.43, juce::Colour(71, 146, 220).withAlpha(.014f));
-            transmitted.addColour(.68, juce::Colour(69, 119, 207).withAlpha(.012f));
-            g.setGradientFill(transmitted);
-            g.fillRect(shell);
-
+            // A restrained neutral optical highlight is enough to keep the shell feeling
+            // translucent. No yellow/cyan/purple horizontal field remains here.
             juce::ColourGradient cool_bloom(
-                juce::Colour(88, 174, 226).withAlpha(.024f),
-                shell.getX() + shell.getWidth() * .34f,
-                shell.getY() + shell.getHeight() * .06f,
+                juce::Colour(108, 181, 226).withAlpha(.034f),
+                shell.getCentreX(),
+                shell.getY() + shell.getHeight() * .05f,
                 juce::Colours::transparentBlack,
-                shell.getX() + shell.getWidth() * .56f,
-                shell.getY() + shell.getHeight() * .58f,
+                shell.getCentreX(),
+                shell.getY() + shell.getHeight() * .62f,
                 true);
+            cool_bloom.addColour(.38, juce::Colour(76, 148, 196).withAlpha(.015f));
             g.setGradientFill(cool_bloom);
             g.fillRect(shell);
 
-            juce::ColourGradient warm_bloom(
-                juce::Colour(242, 192, 112).withAlpha(.010f),
-                shell.getX() + shell.getWidth() * .06f,
-                shell.getY() + shell.getHeight() * .20f,
+            juce::ColourGradient lower_absorption(
                 juce::Colours::transparentBlack,
-                shell.getX() + shell.getWidth() * .25f,
-                shell.getY() + shell.getHeight() * .64f,
-                true);
-            g.setGradientFill(warm_bloom);
-            g.fillRect(shell);
-
-            juce::ColourGradient violet_bloom(
-                juce::Colour(159, 120, 236).withAlpha(.010f),
-                shell.getX() + shell.getWidth() * .94f,
-                shell.getY() + shell.getHeight() * .28f,
-                juce::Colours::transparentBlack,
-                shell.getX() + shell.getWidth() * .78f,
-                shell.getY() + shell.getHeight() * .68f,
-                true);
-            g.setGradientFill(violet_bloom);
+                shell.getCentreX(), shell.getY() + shell.getHeight() * .46f,
+                juce::Colour(1, 9, 17).withAlpha(.15f),
+                shell.getCentreX(), shell.getBottom(), false);
+            g.setGradientFill(lower_absorption);
             g.fillRect(shell);
         }
 
