@@ -62,9 +62,7 @@ namespace zlpanel {
                     gain_value->load(std::memory_order_relaxed) * gain_scale);
                 const auto y_portion = juce::jlimit(0.f, 1.f, .5f - gain / (2.f * max_db));
 
-                // Selected light dominates, but the rest of the active bands still colour
-                // their nearby glass just enough to make the whole interface feel alive.
-                auto strength = band == selected_band ? 1.f : .26f;
+                auto strength = band == selected_band ? 1.f : .30f;
                 if (status == zlp::FilterStatus::kBypass) strength *= .42f;
 
                 result[band] = {
@@ -86,17 +84,18 @@ namespace zlpanel {
             juce::Graphics::ScopedSaveState state(g);
             g.reduceClipRegion(clip_bounds.toNearestInt());
 
-            // YouTube-style ambient light: broad colour, no rays, no hard hotspot.
+            // Wide, slow ambient falloff. The peak is intentionally modest; the new
+            // reference gets its richness from reach and overlap, not from brighter lamps.
             juce::ColourGradient ambient(
-                colour.interpolatedWith(juce::Colours::white, .035f).withAlpha(alpha),
+                colour.interpolatedWith(juce::Colours::white, .025f).withAlpha(alpha),
                 source.x, source.y,
                 colour.withAlpha(0.f),
                 source.x + radius, source.y, true);
-            ambient.addColour(.20, colour.withAlpha(alpha * .90f));
-            ambient.addColour(.46, colour.withAlpha(alpha * .54f));
-            ambient.addColour(.70, colour.withAlpha(alpha * .24f));
-            ambient.addColour(.88, colour.withAlpha(alpha * .065f));
-            ambient.addColour(.98, colour.withAlpha(0.f));
+            ambient.addColour(.22, colour.withAlpha(alpha * .92f));
+            ambient.addColour(.48, colour.withAlpha(alpha * .60f));
+            ambient.addColour(.72, colour.withAlpha(alpha * .30f));
+            ambient.addColour(.90, colour.withAlpha(alpha * .09f));
+            ambient.addColour(.985, colour.withAlpha(alpha * .012f));
             g.setGradientFill(ambient);
             g.fillEllipse(source.x - radius, source.y - radius, radius * 2.f, radius * 2.f);
         }
@@ -178,12 +177,12 @@ namespace zlpanel {
             const auto nodes = collectAmbientNodes(p_ref_, base_, curve_panel_.getBounds().toFloat(), sample_rate);
             for (const auto& node : nodes) {
                 if (!node.valid) continue;
-                const auto broad_radius = juce::jmax(base_.getFontSize() * 18.f, shell.getWidth() * .18f);
-                const auto near_radius = juce::jmax(base_.getFontSize() * 8.f, shell.getWidth() * .080f);
+                const auto broad_radius = juce::jmax(base_.getFontSize() * 30.f, shell.getWidth() * .30f);
+                const auto near_radius = juce::jmax(base_.getFontSize() * 13.f, shell.getWidth() * .15f);
                 paintAmbientField(g, node.point, node.colour, broad_radius,
-                                  .032f * node.strength, shell);
+                                  .022f * node.strength, shell);
                 paintAmbientField(g, node.point, node.colour, near_radius,
-                                  .036f * node.strength, shell);
+                                  .024f * node.strength, shell);
             }
         }
 
@@ -206,18 +205,26 @@ namespace zlpanel {
     void MainPanel::paintOverChildren(juce::Graphics& g) {
         const auto sample_rate = c_sample_rate_ > 1000.0 ? c_sample_rate_ : p_ref_.getSampleRate();
         const auto nodes = collectAmbientNodes(p_ref_, base_, curve_panel_.getBounds().toFloat(), sample_rate);
-        const auto surface_radius = juce::jmax(base_.getFontSize() * 28.f, getWidth() * .32f);
+        const auto surface_radius = juce::jmax(base_.getFontSize() * 40.f, getWidth() * .44f);
+        const auto graph_radius = juce::jmax(base_.getFontSize() * 31.f, getWidth() * .34f);
 
         for (const auto& node : nodes) {
             if (!node.valid) continue;
-            const auto alpha = .028f * node.strength;
+
+            // A tiny over-glass pass makes the graph/meter housing participate in the same
+            // light field without washing out the analyzer, labels or response curves.
+            paintAmbientField(g, node.point, node.colour, graph_radius,
+                              .009f * node.strength,
+                              curve_panel_.getBounds().toFloat());
+
+            const auto alpha = .020f * node.strength;
             paintAmbientField(g, node.point, node.colour, surface_radius, alpha,
                               top_panel_.getBounds().toFloat());
             paintAmbientField(g, node.point, node.colour, surface_radius, alpha,
                               footer_panel_.getBounds().toFloat());
             if (band_hub_panel_.isVisible()) {
-                paintAmbientField(g, node.point, node.colour, surface_radius * .78f,
-                                  .040f * node.strength,
+                paintAmbientField(g, node.point, node.colour, surface_radius * .90f,
+                                  .029f * node.strength,
                                   band_hub_panel_.getBounds().toFloat());
             }
         }
@@ -351,7 +358,11 @@ namespace zlpanel {
             curve_panel_.repaintCallBack();
             control_panel_.repaintCallBack();
 
-            auto ambient_dirty = top_panel_.getBounds().getUnion(footer_panel_.getBounds());
+            // Parent-owned ambient fields move with every node, so repaint all receiving
+            // glass zones. The graph is already repainting at the analyzer rate; including
+            // it here keeps the very faint shell reflection spatially attached to the nodes.
+            auto ambient_dirty = curve_panel_.getBounds().getUnion(top_panel_.getBounds())
+                                                    .getUnion(footer_panel_.getBounds());
             if (band_hub_panel_.isVisible()) ambient_dirty = ambient_dirty.getUnion(band_hub_panel_.getBounds());
             repaint(ambient_dirty.expanded(3));
 
