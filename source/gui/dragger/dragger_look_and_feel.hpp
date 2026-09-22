@@ -36,9 +36,8 @@ namespace zlgui::dragger {
             const auto visibility = juce::jlimit(0.f, 1.f, alpha_);
 
             if (dragger_shape_ == kRound) {
-                // Mockup reference: the node keeps a saturated coloured interior while its
-                // perimeter is the luminous part. It should read as a small coloured light
-                // with an energized rim, not as a white-hot centre or a reflective marble.
+                // Mockup reference: a saturated coloured disc with one luminous perimeter.
+                // The edge is the light source; the centre stays coloured and calm.
                 const juce::DropShadow edgeBloom{
                     colour_.interpolatedWith(juce::Colours::white, .28f)
                            .withAlpha((active ? .48f : hover ? .31f : .19f) * visibility),
@@ -50,8 +49,8 @@ namespace zlgui::dragger {
                 const auto centre = outerBounds.getCentre();
                 const auto radius = juce::jmax(1.f, outerBounds.getWidth() * .50f);
 
-                // Saturated centre -> gently lifted colour at the perimeter. Crucially the
-                // centre is never white; the white energy belongs to the edge ring.
+                // Keep the centre saturated. Only the last portion of the radius lifts
+                // toward white so the perimeter, rather than the centre, feels energized.
                 juce::ColourGradient body(
                     colour_.interpolatedWith(juce::Colours::black, active ? .015f : .045f)
                            .withAlpha((active ? .98f : .91f) * visibility),
@@ -59,33 +58,23 @@ namespace zlgui::dragger {
                     colour_.interpolatedWith(juce::Colours::white, active ? .24f : .16f)
                            .withAlpha((active ? .98f : .90f) * visibility),
                     centre.x + radius, centre.y, true);
-                body.addColour(.64, colour_.withAlpha((active ? .99f : .92f) * visibility));
-                body.addColour(.88, colour_.interpolatedWith(juce::Colours::white, active ? .16f : .10f)
+                body.addColour(.72, colour_.withAlpha((active ? .99f : .92f) * visibility));
+                body.addColour(.90, colour_.interpolatedWith(juce::Colours::white, active ? .18f : .11f)
                                            .withAlpha((active ? .99f : .91f) * visibility));
                 g.setGradientFill(body);
                 g.fillPath(outline_path_);
 
-                // A soft coloured band immediately outside the bright rim gives the edge
-                // somewhere to bloom into. This mirrors the mockup's orange/green/blue
-                // nodes, whose outline glows into the adjacent response line.
+                // Soft band-coloured energy immediately outside the rim.
                 g.setColour(colour_.withAlpha((active ? .25f : hover ? .17f : .10f) * visibility));
                 g.strokePath(outline_path_, juce::PathStrokeType(
                     juce::jmax(2.0f, base_.getFontSize() * .18f),
                     juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
-                // The optical rim is the brightest part of the node.
-                g.setColour(colour_.interpolatedWith(juce::Colours::white, active ? .82f : .70f)
-                            .withAlpha((active ? .98f : hover ? .88f : .76f) * visibility));
+                // Single bright optical rim, matching the mockup's coloured nodes.
+                g.setColour(colour_.interpolatedWith(juce::Colours::white, active ? .84f : .72f)
+                            .withAlpha((active ? .99f : hover ? .89f : .77f) * visibility));
                 g.strokePath(outline_path_, juce::PathStrokeType(
                     juce::jmax(.95f, base_.getFontSize() * .078f),
-                    juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-
-                // A second hairline of the band hue inside the white rim prevents the
-                // outline from becoming a generic white circle at small plugin sizes.
-                g.setColour(colour_.interpolatedWith(juce::Colours::white, .34f)
-                            .withAlpha((active ? .90f : .72f) * visibility));
-                g.strokePath(inner_path_, juce::PathStrokeType(
-                    juce::jmax(.45f, base_.getFontSize() * .034f),
                     juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
             } else {
                 // Preserve the existing readable treatment for non-round utility draggers.
