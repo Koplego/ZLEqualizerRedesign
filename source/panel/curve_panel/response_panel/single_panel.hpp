@@ -44,15 +44,15 @@ namespace zlpanel {
 
     private:
         static constexpr size_t kNumPoints = 400;
-        // The band area is stained glass receiving node light. The runtime screenshot showed
-        // that the transmission was finally wide enough, but the glass itself was still too
-        // optically thin. Raise density modestly without turning the graph into solid colour.
-        static constexpr float kFillingAlpha = .145f;
-        static constexpr float kDynamicFillingAlpha = .158f;
+        // The band is the stained glass receiving the node light. The latest runtime pass
+        // showed the light field correctly, but the glass itself was still too optically
+        // thin. Raise density without changing the lamp intensity or line weight.
+        static constexpr float kFillingAlpha = .168f;
+        static constexpr float kDynamicFillingAlpha = .185f;
         static constexpr float kNotSelectedAlphaMultiplier = .50f;
         static constexpr float kBypassAlphaMultiplier = .75f;
         static constexpr float kDiffStereoAlphaMultiplier = .33333f;
-        static constexpr float kNoBandSelectedAlphaMultiplier = .74f;
+        static constexpr float kNoBandSelectedAlphaMultiplier = .62f;
         static constexpr float kThickMultiplier = 1.06f;
 
         PluginProcessor& p_ref_;
