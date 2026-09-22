@@ -32,55 +32,42 @@ namespace zlpanel {
             juce::Graphics::ScopedSaveState clip(g);
             g.reduceClipRegion(panel_clip);
 
-            juce::ColourGradient glass(juce::Colour(18, 47, 72), panel.getCentreX(), panel.getY(),
-                                       juce::Colour(4, 17, 30), panel.getCentreX(), panel.getBottom(), false);
-            glass.addColour(.46, juce::Colour(10, 31, 52));
-            glass.addColour(.78, juce::Colour(6, 23, 39));
+            // The graph itself is neutral dark-blue glass. All strong colour must come from
+            // the actual EQ bands, never from a left-to-right rainbow painted behind them.
+            juce::ColourGradient glass(juce::Colour(17, 43, 66), panel.getCentreX(), panel.getY(),
+                                       juce::Colour(3, 15, 27), panel.getCentreX(), panel.getBottom(), false);
+            glass.addColour(.42, juce::Colour(9, 30, 49));
+            glass.addColour(.78, juce::Colour(5, 21, 36));
             g.setGradientFill(glass);
             g.fillRect(panel.expanded(2.f));
 
-            // Only a whisper of cross-panel transmission.  Strong colour comes from the
-            // active EQ bands themselves, exactly as in the reference.
-            juce::ColourGradient transmitted(
-                juce::Colour(236, 183, 104).withAlpha(.012f), panel.getX(), panel.getCentreY(),
-                juce::Colour(156, 118, 236).withAlpha(.012f), panel.getRight(), panel.getCentreY(), false);
-            transmitted.addColour(.20, juce::Colour(82, 185, 178).withAlpha(.010f));
-            transmitted.addColour(.46, juce::Colour(69, 142, 215).withAlpha(.008f));
-            transmitted.addColour(.73, juce::Colour(91, 123, 219).withAlpha(.008f));
-            g.setGradientFill(transmitted);
+            // One cool optical highlight gives the pane depth without tinting it by band.
+            juce::ColourGradient top_light(
+                juce::Colour(116, 188, 232).withAlpha(.040f),
+                panel.getX() + panel.getWidth() * .50f,
+                panel.getY() + panel.getHeight() * .05f,
+                juce::Colours::transparentBlack,
+                panel.getX() + panel.getWidth() * .50f,
+                panel.getY() + panel.getHeight() * .58f,
+                true);
+            top_light.addColour(.34, juce::Colour(87, 156, 203).withAlpha(.019f));
+            g.setGradientFill(top_light);
             g.fillRect(panel);
 
-            juce::ColourGradient cool_light(
-                juce::Colour(111, 183, 228).withAlpha(.025f),
-                panel.getX() + panel.getWidth() * .34f,
-                panel.getY() + panel.getHeight() * .11f,
-                juce::Colours::transparentBlack,
-                panel.getX() + panel.getWidth() * .56f,
-                panel.getY() + panel.getHeight() * .67f,
-                true);
-            g.setGradientFill(cool_light);
+            // Slight edge absorption makes the middle feel illuminated through glass while
+            // keeping the corners inky like the reference.
+            juce::ColourGradient left_vignette(
+                juce::Colour(1, 9, 17).withAlpha(.13f), panel.getX(), panel.getCentreY(),
+                juce::Colours::transparentBlack, panel.getX() + panel.getWidth() * .20f,
+                panel.getCentreY(), false);
+            g.setGradientFill(left_vignette);
             g.fillRect(panel);
 
-            juce::ColourGradient warm_light(
-                juce::Colour(245, 194, 112).withAlpha(.008f),
-                panel.getX() + panel.getWidth() * .05f,
-                panel.getY() + panel.getHeight() * .26f,
-                juce::Colours::transparentBlack,
-                panel.getX() + panel.getWidth() * .26f,
-                panel.getY() + panel.getHeight() * .64f,
-                true);
-            g.setGradientFill(warm_light);
-            g.fillRect(panel);
-
-            juce::ColourGradient violet_light(
-                juce::Colour(161, 121, 238).withAlpha(.008f),
-                panel.getX() + panel.getWidth() * .92f,
-                panel.getY() + panel.getHeight() * .28f,
-                juce::Colours::transparentBlack,
-                panel.getX() + panel.getWidth() * .76f,
-                panel.getY() + panel.getHeight() * .68f,
-                true);
-            g.setGradientFill(violet_light);
+            juce::ColourGradient right_vignette(
+                juce::Colour(1, 9, 17).withAlpha(.12f), panel.getRight(), panel.getCentreY(),
+                juce::Colours::transparentBlack, panel.getRight() - panel.getWidth() * .18f,
+                panel.getCentreY(), false);
+            g.setGradientFill(right_vignette);
             g.fillRect(panel);
         }
 
