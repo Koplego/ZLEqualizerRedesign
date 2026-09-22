@@ -37,6 +37,6 @@ jobs:
             -DZL_HWY_STATIC_TARGET="NEON" \
             .
 
-      # Keep this as a full clean build: incremental local builds previously hid stale WIP source mismatches.
+      # Full clean build at the actual visual-lock branch head.
       - name: Build Glass EQ
         run: cmake --build "$BUILD_DIR" --config "$BUILD_TYPE"
