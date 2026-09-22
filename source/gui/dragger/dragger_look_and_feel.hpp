@@ -35,48 +35,61 @@ namespace zlgui::dragger {
             const auto hover = should_draw_button_as_highlighted && !active;
             const auto visibility = juce::jlimit(0.f, 1.f, alpha_);
 
-            // Reference nodes are compact pieces of illuminated glass.  There is one soft
-            // bloom, one precise cool-white rim and one coloured lens — no radar rings.
+            // The reference uses a small glass lens surrounded by a much larger pool of
+            // emitted light. The previous implementation did the opposite: a large pastel
+            // disc with almost no bloom. Keep the hit target unchanged, but make the visible
+            // object smaller and the optical halo stronger.
             if (dragger_shape_ == kRound) {
-                const juce::DropShadow halo{
-                    colour_.withAlpha((active ? .20f : hover ? .115f : .075f) * visibility),
-                    juce::jmax(2, juce::roundToInt(base_.getFontSize() * (active ? .62f : .30f))),
+                const juce::DropShadow outer_halo{
+                    colour_.withAlpha((active ? .34f : hover ? .20f : .13f) * visibility),
+                    juce::jmax(3, juce::roundToInt(base_.getFontSize() * (active ? .92f : .52f))),
                     {0, 0}};
-                halo.drawForPath(g, outline_path_);
+                outer_halo.drawForPath(g, outline_path_);
+
+                if (active) {
+                    const juce::DropShadow hot_halo{
+                        colour_.interpolatedWith(juce::Colours::white, .20f).withAlpha(.24f * visibility),
+                        juce::jmax(2, juce::roundToInt(base_.getFontSize() * .46f)),
+                        {0, 0}};
+                    hot_halo.drawForPath(g, inner_path_);
+                }
             }
 
-            g.setColour(juce::Colour(5, 21, 35).withAlpha((active ? .34f : .22f) * visibility));
+            // Dark glass bezel.
+            g.setColour(juce::Colour(3, 15, 27).withAlpha((active ? .66f : .48f) * visibility));
             g.fillPath(outline_path_);
 
-            g.setColour(colour_.interpolatedWith(juce::Colours::white, .12f)
-                        .withAlpha((active ? .20f : hover ? .14f : .095f) * visibility));
+            g.setColour(colour_.interpolatedWith(juce::Colours::white, .10f)
+                        .withAlpha((active ? .16f : hover ? .115f : .075f) * visibility));
             g.fillPath(outline_path_);
 
-            g.setColour(glass::textPrimary().withAlpha((active ? .88f : hover ? .68f : .54f) * visibility));
-            g.strokePath(outline_path_, juce::PathStrokeType(juce::jmax(.8f, base_.getFontSize() * .076f)));
+            g.setColour(juce::Colours::white.withAlpha((active ? .88f : hover ? .66f : .50f) * visibility));
+            g.strokePath(outline_path_, juce::PathStrokeType(juce::jmax(.75f, base_.getFontSize() * .060f)));
 
             const auto innerBounds = inner_path_.getBounds();
             juce::ColourGradient lens(
-                colour_.interpolatedWith(juce::Colours::white, active ? .34f : .25f)
+                colour_.interpolatedWith(juce::Colours::white, active ? .42f : .30f)
+                    .withAlpha((active ? .99f : .93f) * visibility),
+                innerBounds.getX() + innerBounds.getWidth() * .27f,
+                innerBounds.getY() + innerBounds.getHeight() * .17f,
+                colour_.interpolatedWith(juce::Colours::black, .10f)
                     .withAlpha((active ? .98f : .91f) * visibility),
-                innerBounds.getX() + innerBounds.getWidth() * .28f,
-                innerBounds.getY() + innerBounds.getHeight() * .20f,
-                colour_.interpolatedWith(juce::Colours::black, .065f)
-                    .withAlpha((active ? .99f : .91f) * visibility),
                 innerBounds.getRight(), innerBounds.getBottom(), true);
-            lens.addColour(.50, colour_.interpolatedWith(juce::Colours::white, .08f)
-                                      .withAlpha((active ? .99f : .93f) * visibility));
+            lens.addColour(.46, colour_.interpolatedWith(juce::Colours::white, .12f)
+                                      .withAlpha((active ? .99f : .94f) * visibility));
             g.setGradientFill(lens);
             g.fillPath(inner_path_);
 
-            g.setColour(juce::Colours::white.withAlpha((active ? .92f : hover ? .72f : .62f) * visibility));
-            g.strokePath(inner_path_, juce::PathStrokeType(juce::jmax(.82f, base_.getFontSize() * .070f)));
+            // Bright optical rim: this is what gives the reference nodes their glass-lens
+            // quality instead of reading as filled UI buttons.
+            g.setColour(juce::Colours::white.withAlpha((active ? .98f : hover ? .80f : .69f) * visibility));
+            g.strokePath(inner_path_, juce::PathStrokeType(juce::jmax(.90f, base_.getFontSize() * .074f)));
 
             if (active && dragger_shape_ == kRound) {
-                auto glint = innerBounds.withSizeKeepingCentre(innerBounds.getWidth() * .38f,
-                                                               innerBounds.getHeight() * .22f);
-                glint.translate(-innerBounds.getWidth() * .13f, -innerBounds.getHeight() * .19f);
-                g.setColour(juce::Colours::white.withAlpha(.23f * visibility));
+                auto glint = innerBounds.withSizeKeepingCentre(innerBounds.getWidth() * .34f,
+                                                               innerBounds.getHeight() * .17f);
+                glint.translate(-innerBounds.getWidth() * .13f, -innerBounds.getHeight() * .22f);
+                g.setColour(juce::Colours::white.withAlpha(.30f * visibility));
                 g.fillEllipse(glint);
             }
 
@@ -132,8 +145,11 @@ namespace zlgui::dragger {
 
         void updateRoundPaths(juce::Rectangle<float>& bound) {
             const auto radius = bound.getWidth();
+            // Preserve the large invisible interaction target, but visually use only 88% of
+            // it. The inner coloured lens is about two thirds of the original node size.
+            bound = bound.withSizeKeepingCentre(radius * .88f, radius * .88f);
             outline_path_.addEllipse(bound);
-            bound = bound.withSizeKeepingCentre(radius * .82f, radius * .82f);
+            bound = bound.withSizeKeepingCentre(radius * .66f, radius * .66f);
             inner_path_.addEllipse(bound);
         }
 
@@ -146,7 +162,7 @@ namespace zlgui::dragger {
         }
 
         void updateUpDownArrowPaths(juce::Rectangle<float>& bound) {
-            auto updateOnePath = [](juce::Path& path, const juce::Rectangle<float>& temp) {
+            const auto updateOnePath = [](juce::Path& path, const juce::Rectangle<float>& temp) {
                 path.startNewSubPath(temp.getCentreX(), temp.getY());
                 path.lineTo(temp.getCentreX() + temp.getWidth() * .33f, temp.getCentreY());
                 path.lineTo(temp.getCentreX(), temp.getBottom());
@@ -159,7 +175,7 @@ namespace zlgui::dragger {
         }
 
         void updateRightArrowPaths(juce::Rectangle<float>& bound) {
-            auto updateOnePath = [](juce::Path& path, const juce::Rectangle<float>& temp) {
+            const auto updateOnePath = [](juce::Path& path, const juce::Rectangle<float> temp) {
                 const auto center = temp.getCentre();
                 path.startNewSubPath(center.getX() + temp.getWidth() * .5f, center.getY());
                 path.lineTo(center.getX(), center.getY() + temp.getHeight() * std::sqrt(3.f) * .25f);
@@ -172,7 +188,7 @@ namespace zlgui::dragger {
         }
 
         void updateLeftArrowPaths(juce::Rectangle<float>& bound) {
-            auto updateOnePath = [](juce::Path& path, const juce::Rectangle<float>& temp) {
+            const auto updateOnePath = [](juce::Path& path, const juce::Rectangle<float> temp) {
                 const auto center = temp.getCentre();
                 path.startNewSubPath(center.getX() - temp.getWidth() * .5f, center.getY());
                 path.lineTo(center.getX(), center.getY() + temp.getHeight() * std::sqrt(3.f) * .25f);
@@ -184,11 +200,17 @@ namespace zlgui::dragger {
             updateOnePath(inner_path_, bound);
         }
 
-        void setLabel(const juce::String& l) { label_ = l; }
+        void setLabel(const juce::String& l) {
+            label_ = l;
+        }
 
-        void setLabelScale(const float x) { label_scale_ = x; }
+        void setLabelScale(const float x) {
+            label_scale_ = x;
+        }
 
-        void setPaddingScale(const float x) { padding_scale_ = x; }
+        void setPaddingScale(const float x) {
+            padding_scale_ = x;
+        }
 
         void setAlpha(const float a) {
             alpha_ = a;
