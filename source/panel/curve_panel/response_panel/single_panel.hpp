@@ -45,13 +45,18 @@ namespace zlpanel {
 
     private:
         static constexpr size_t kNumPoints = 400;
-        static constexpr float kFillingAlpha = .082f;
-        static constexpr float kDynamicFillingAlpha = .100f;
-        static constexpr float kNotSelectedAlphaMultiplier = .58f;
+
+        // The reference has very little flat colour painted across an entire filter shape.
+        // Most of the saturation comes from local light around the node and curve. Keeping
+        // these structural fills low is what prevents the graph from turning into a pale
+        // cyan/green sheet when a wide bell is selected.
+        static constexpr float kFillingAlpha = .040f;
+        static constexpr float kDynamicFillingAlpha = .072f;
+        static constexpr float kNotSelectedAlphaMultiplier = .70f;
         static constexpr float kBypassAlphaMultiplier = .75f;
         static constexpr float kDiffStereoAlphaMultiplier = .33333f;
-        static constexpr float kNoBandSelectedAlphaMultiplier = .62f;
-        static constexpr float kThickMultiplier = 1.04f;
+        static constexpr float kNoBandSelectedAlphaMultiplier = .66f;
+        static constexpr float kThickMultiplier = 1.03f;
 
         PluginProcessor& p_ref_;
         zlgui::UIBase& base_;
