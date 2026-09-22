@@ -32,62 +32,59 @@ namespace zlpanel {
             juce::Graphics::ScopedSaveState clip(g);
             g.reduceClipRegion(panel_clip);
 
-            // Reference match: a deep, saturated blue pane.  Earlier passes used too much
-            // white/grey illumination and the graph lost the inky depth of the concept.
-            juce::ColourGradient glass(juce::Colour(22, 53, 78), panel.getCentreX(), panel.getY(),
-                                       juce::Colour(5, 20, 35), panel.getCentreX(), panel.getBottom(), false);
-            glass.addColour(.46, juce::Colour(12, 37, 59));
-            glass.addColour(.78, juce::Colour(8, 27, 45));
+            juce::ColourGradient glass(juce::Colour(18, 47, 72), panel.getCentreX(), panel.getY(),
+                                       juce::Colour(4, 17, 30), panel.getCentreX(), panel.getBottom(), false);
+            glass.addColour(.46, juce::Colour(10, 31, 52));
+            glass.addColour(.78, juce::Colour(6, 23, 39));
             g.setGradientFill(glass);
             g.fillRect(panel.expanded(2.f));
 
-            // A very quiet horizontal transmitted-light field gives the same stained-glass
-            // atmosphere as the reference without becoming a rainbow overlay.  Band fills
-            // and node light remain responsible for the strong local colour.
+            // Only a whisper of cross-panel transmission.  Strong colour comes from the
+            // active EQ bands themselves, exactly as in the reference.
             juce::ColourGradient transmitted(
-                juce::Colour(236, 183, 104).withAlpha(.030f), panel.getX(), panel.getCentreY(),
-                juce::Colour(156, 118, 236).withAlpha(.030f), panel.getRight(), panel.getCentreY(), false);
-            transmitted.addColour(.20, juce::Colour(82, 185, 178).withAlpha(.026f));
-            transmitted.addColour(.46, juce::Colour(69, 142, 215).withAlpha(.023f));
-            transmitted.addColour(.73, juce::Colour(91, 123, 219).withAlpha(.022f));
+                juce::Colour(236, 183, 104).withAlpha(.012f), panel.getX(), panel.getCentreY(),
+                juce::Colour(156, 118, 236).withAlpha(.012f), panel.getRight(), panel.getCentreY(), false);
+            transmitted.addColour(.20, juce::Colour(82, 185, 178).withAlpha(.010f));
+            transmitted.addColour(.46, juce::Colour(69, 142, 215).withAlpha(.008f));
+            transmitted.addColour(.73, juce::Colour(91, 123, 219).withAlpha(.008f));
             g.setGradientFill(transmitted);
             g.fillRect(panel);
 
             juce::ColourGradient cool_light(
-                juce::Colour(111, 183, 228).withAlpha(.052f),
+                juce::Colour(111, 183, 228).withAlpha(.025f),
                 panel.getX() + panel.getWidth() * .34f,
                 panel.getY() + panel.getHeight() * .11f,
                 juce::Colours::transparentBlack,
-                panel.getX() + panel.getWidth() * .58f,
-                panel.getY() + panel.getHeight() * .74f,
+                panel.getX() + panel.getWidth() * .56f,
+                panel.getY() + panel.getHeight() * .67f,
                 true);
             g.setGradientFill(cool_light);
             g.fillRect(panel);
 
             juce::ColourGradient warm_light(
-                juce::Colour(245, 194, 112).withAlpha(.022f),
+                juce::Colour(245, 194, 112).withAlpha(.008f),
                 panel.getX() + panel.getWidth() * .05f,
                 panel.getY() + panel.getHeight() * .26f,
                 juce::Colours::transparentBlack,
-                panel.getX() + panel.getWidth() * .31f,
-                panel.getY() + panel.getHeight() * .72f,
+                panel.getX() + panel.getWidth() * .26f,
+                panel.getY() + panel.getHeight() * .64f,
                 true);
             g.setGradientFill(warm_light);
             g.fillRect(panel);
 
             juce::ColourGradient violet_light(
-                juce::Colour(161, 121, 238).withAlpha(.020f),
+                juce::Colour(161, 121, 238).withAlpha(.008f),
                 panel.getX() + panel.getWidth() * .92f,
                 panel.getY() + panel.getHeight() * .28f,
                 juce::Colours::transparentBlack,
-                panel.getX() + panel.getWidth() * .73f,
-                panel.getY() + panel.getHeight() * .76f,
+                panel.getX() + panel.getWidth() * .76f,
+                panel.getY() + panel.getHeight() * .68f,
                 true);
             g.setGradientFill(violet_light);
             g.fillRect(panel);
         }
 
-        g.setColour(zlgui::glass::rim().withMultipliedAlpha(.62f));
+        g.setColour(zlgui::glass::rim().withMultipliedAlpha(.58f));
         g.drawRoundedRectangle(panel, radius, .72f);
 
         if (freq_max_ <= 10.0) {
@@ -118,7 +115,7 @@ namespace zlpanel {
                                 0.f, thickness * .50f, bound.getHeight());
             }
         }
-        g.setColour(zlgui::glass::gridMinor().withMultipliedAlpha(1.18f));
+        g.setColour(zlgui::glass::gridMinor().withMultipliedAlpha(1.10f));
         g.fillRectList(minor_rects);
 
         juce::RectangleList<float> rect_list;
@@ -182,6 +179,6 @@ namespace zlpanel {
     }
 
     void BackgroundPanel::lookAndFeelChanged() {
-        grid_colour_ = zlgui::glass::gridMajor().withMultipliedAlpha(1.10f);
+        grid_colour_ = zlgui::glass::gridMajor().withMultipliedAlpha(1.04f);
     }
 }
