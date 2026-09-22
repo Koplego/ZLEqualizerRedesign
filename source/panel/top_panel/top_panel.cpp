@@ -87,6 +87,10 @@ namespace zlpanel {
     }
 
     void TopPanel::paint(juce::Graphics& g) {
+        // Node light is part of the material, not an overlay on the typography. Paint the
+        // broad spatial colour field first; every title, icon and pill remains crisp above it.
+        zlgui::glass::paintAmbientSources(g, ambient_sources_, getLocalBounds().toFloat(), .020f);
+
         auto bounds = getLocalBounds().toFloat();
         const auto font = base_.getFontSize();
         const auto padding = static_cast<float>(getPaddingSize(font));
