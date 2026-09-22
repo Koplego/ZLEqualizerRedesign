@@ -40,21 +40,22 @@ namespace zlgui::dragger {
         const auto colour = dragger_laf_.getColour();
         const auto font = base_.getFontSize();
 
-        // The node is the source, but not a flare. Keep the immediate corona restrained;
-        // most of the perceived illumination should live in the curve, fill and nearby
-        // glass surfaces, like ambient light leaking through stained glass.
-        const auto radius = font * (active ? 1.52f : hover ? 1.44f : 1.34f);
-        const auto centreAlpha = active ? .068f : hover ? .047f : .027f;
+        // The actual ToggleButton clips any shadow painted beyond its bounds, so the
+        // visible corona has to live on the parent Dragger. Keep it broad and soft: the
+        // node should read as a small sun, not as a neon ring or a hard spotlight.
+        const auto radius = font * (active ? 1.78f : hover ? 1.66f : 1.52f);
+        const auto centreAlpha = active ? .135f : hover ? .095f : .060f;
         juce::ColourGradient bloom(
-            colour.interpolatedWith(juce::Colours::white, active ? .16f : .10f)
+            colour.interpolatedWith(juce::Colours::white, active ? .12f : .075f)
                   .withAlpha(centreAlpha * visibility),
             button_pos_.x, button_pos_.y,
             colour.withAlpha(0.f),
             button_pos_.x + radius, button_pos_.y, true);
-        bloom.addColour(.56, colour.interpolatedWith(juce::Colours::white, .07f)
-                                  .withAlpha(centreAlpha * .48f * visibility));
-        bloom.addColour(.78, colour.withAlpha(centreAlpha * .18f * visibility));
-        bloom.addColour(.92, colour.withAlpha(centreAlpha * .035f * visibility));
+        bloom.addColour(.42, colour.interpolatedWith(juce::Colours::white, .055f)
+                                  .withAlpha(centreAlpha * .82f * visibility));
+        bloom.addColour(.62, colour.withAlpha(centreAlpha * .44f * visibility));
+        bloom.addColour(.80, colour.withAlpha(centreAlpha * .16f * visibility));
+        bloom.addColour(.94, colour.withAlpha(centreAlpha * .025f * visibility));
         g.setGradientFill(bloom);
         g.fillEllipse(button_pos_.x - radius, button_pos_.y - radius,
                       radius * 2.f, radius * 2.f);
@@ -67,7 +68,7 @@ namespace zlgui::dragger {
                 button_pos_ = center;
                 button_.setTransform(juce::AffineTransform::translation(button_pos_.x, button_pos_.y));
 
-                const auto r = juce::roundToInt(base_.getFontSize() * 1.85f);
+                const auto r = juce::roundToInt(base_.getFontSize() * 2.10f);
                 if (std::isfinite(old.x) && std::isfinite(old.y) && old.x > -1000.f && old.y > -1000.f)
                     repaint(juce::roundToInt(old.x) - r, juce::roundToInt(old.y) - r, r * 2, r * 2);
                 repaint(juce::roundToInt(center.x) - r, juce::roundToInt(center.y) - r, r * 2, r * 2);
@@ -98,11 +99,9 @@ namespace zlgui::dragger {
     }
 
     void Dragger::mouseDrag(const juce::MouseEvent& e) {
-        // calculate shift and update global position
         const auto new_global_pos = e.position + button_pos_;
         auto shift = new_global_pos - global_pos_;
         const auto old_shift = shift;
-        // apply sensitivity
         if (e.mods.isShiftDown()) {
             shift.setX(shift.getX() * base_.getSensitivity(SensitivityIdx::kMouseDraggerFine));
             shift.setY(shift.getY() * base_.getSensitivity(SensitivityIdx::kMouseDraggerFine));
@@ -111,65 +110,40 @@ namespace zlgui::dragger {
             shift.setY(shift.getY() * base_.getSensitivity(SensitivityIdx::kMouseDragger));
         }
         if (e.mods.isCommandDown()) {
-            if (e.mods.isLeftButtonDown()) {
-                shift.setX(0.f);
-            } else {
-                shift.setY(0.f);
-            }
+            if (e.mods.isLeftButtonDown()) shift.setX(0.f);
+            else shift.setY(0.f);
         }
-        if (!x_enabled_) {
-            shift.setX(0.f);
-        }
-        if (!y_enabled_) {
-            shift.setY(0.f);
-        }
-        // update current position
+        if (!x_enabled_) shift.setX(0.f);
+        if (!y_enabled_) shift.setY(0.f);
+
         const auto old_current_pos = current_pos_;
-        if (check_center_) {
-            current_pos_ = check_center_(current_pos_, current_pos_ + shift);
-        } else {
-            current_pos_ = current_pos_ + shift;
-        }
+        if (check_center_) current_pos_ = check_center_(current_pos_, current_pos_ + shift);
+        else current_pos_ = current_pos_ + shift;
         current_pos_ = button_area_.getConstrainedPoint(current_pos_);
-        // shift global position accordingly
+
         const auto actual_shift = current_pos_ - old_current_pos;
-        // consume pointer motion on a locked axis so it is not replayed when the axis is unlocked.
-        if (std::abs(shift.x) > 1e-10f) {
-            global_pos_.x += actual_shift.x / shift.x * old_shift.x;
-        } else {
-            global_pos_.x += old_shift.x;
-        }
-        if (std::abs(shift.y) > 1e-10f) {
-            global_pos_.y += actual_shift.y / shift.y * old_shift.y;
-        } else {
-            global_pos_.y += old_shift.y;
-        }
-        // update x/y portion
+        if (std::abs(shift.x) > 1e-10f) global_pos_.x += actual_shift.x / shift.x * old_shift.x;
+        else global_pos_.x += old_shift.x;
+        if (std::abs(shift.y) > 1e-10f) global_pos_.y += actual_shift.y / shift.y * old_shift.y;
+        else global_pos_.y += old_shift.y;
+
         x_portion_ = (current_pos_.getX() - button_area_.getX()) / button_area_.getWidth();
         y_portion_ = 1.f - (current_pos_.getY() - button_area_.getY()) / button_area_.getHeight();
-        // call listeners
         const BailOutChecker checker(this);
         listeners_.callChecked(checker, [&](Listener& l) { l.draggerValueChanged(this); });
     }
 
     void Dragger::setButtonArea(const juce::Rectangle<float> bound) {
         button_area_ = bound;
-
         const auto radius = static_cast<int>(std::round(base_.getFontSize() * scale_ * .5f));
         button_.setBounds(juce::Rectangle<int>(-radius, -radius, radius * 2, radius * 2));
-
         auto laf_bound = button_.getBounds().toFloat().withPosition(0.f, 0.f);
         dragger_laf_.updatePaths(laf_bound);
         repaint();
     }
 
-    void Dragger::addListener(Listener* listener) {
-        listeners_.add(listener);
-    }
-
-    void Dragger::removeListener(Listener* listener) {
-        listeners_.remove(listener);
-    }
+    void Dragger::addListener(Listener* listener) { listeners_.add(listener); }
+    void Dragger::removeListener(Listener* listener) { listeners_.remove(listener); }
 
     void Dragger::setXPortion(const float x) {
         x_portion_ = x;
@@ -181,11 +155,6 @@ namespace zlgui::dragger {
         current_pos_.y = button_area_.getY() + (1.f - y) * button_area_.getHeight();
     }
 
-    float Dragger::getXPortion() const {
-        return x_portion_;
-    }
-
-    float Dragger::getYPortion() const {
-        return y_portion_;
-    }
+    float Dragger::getXPortion() const { return x_portion_; }
+    float Dragger::getYPortion() const { return y_portion_; }
 }
