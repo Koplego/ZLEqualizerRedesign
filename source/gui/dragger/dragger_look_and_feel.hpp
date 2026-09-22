@@ -36,39 +36,51 @@ namespace zlgui::dragger {
             const auto visibility = juce::jlimit(0.f, 1.f, alpha_);
 
             if (dragger_shape_ == kRound) {
-                // The mockup is much flatter than a glass marble: a saturated colour disc,
-                // one pale luminous rim, and a soft bloom immediately outside that rim.
-                // Keep the centre calm so the perimeter is unmistakably the light source.
+                // Treat the node as the lamp, not as another piece of glass. The body stays
+                // saturated and calm; the thick optical perimeter is the luminous source.
                 const juce::DropShadow edgeBloom{
-                    colour_.interpolatedWith(juce::Colours::white, .24f)
+                    colour_.interpolatedWith(juce::Colours::white, .18f)
                            .withAlpha((active ? .30f : hover ? .21f : .13f) * visibility),
-                    juce::jmax(2, juce::roundToInt(base_.getFontSize() * (active ? .48f : .34f))),
+                    juce::jmax(2, juce::roundToInt(base_.getFontSize() * (active ? .54f : .40f))),
                     {0, 0}};
                 edgeBloom.drawForPath(g, outline_path_);
 
-                // Almost-flat body. A tiny lift toward the edge avoids a dead solid disc,
-                // but there is deliberately no white centre and no specular hotspot.
                 const auto outerBounds = outline_path_.getBounds();
                 const auto centre = outerBounds.getCentre();
                 const auto radius = juce::jmax(1.f, outerBounds.getWidth() * .50f);
+
+                // Almost-flat coloured emitter. There is only a gentle lift toward the
+                // perimeter so the node does not read as a glossy sphere.
                 juce::ColourGradient body(
-                    colour_.interpolatedWith(juce::Colours::black, active ? .015f : .035f)
-                           .withAlpha((active ? .99f : .93f) * visibility),
+                    colour_.interpolatedWith(juce::Colours::black, active ? .045f : .070f)
+                           .withAlpha((active ? .98f : .92f) * visibility),
                     centre.x, centre.y,
-                    colour_.interpolatedWith(juce::Colours::white, active ? .09f : .055f)
-                           .withAlpha((active ? .99f : .92f) * visibility),
+                    colour_.interpolatedWith(juce::Colours::white, active ? .10f : .065f)
+                           .withAlpha((active ? .98f : .91f) * visibility),
                     centre.x + radius, centre.y, true);
-                body.addColour(.78, colour_.withAlpha((active ? .99f : .93f) * visibility));
+                body.addColour(.72, colour_.withAlpha((active ? .99f : .93f) * visibility));
+                body.addColour(.92, colour_.interpolatedWith(juce::Colours::white, active ? .10f : .06f)
+                                           .withAlpha((active ? .99f : .92f) * visibility));
                 g.setGradientFill(body);
                 g.fillPath(outline_path_);
 
-                // One clean bright edge. This is the hard optical feature visible in the
-                // concept art; all softer light should bloom outward from here.
-                g.setColour(colour_.interpolatedWith(juce::Colours::white, active ? .86f : .78f)
-                            .withAlpha((active ? .99f : hover ? .92f : .82f) * visibility));
+                // A quiet coloured cushion sits behind the bright edge. It softens the
+                // transition into the surrounding bloom without creating visible rings.
+                g.setColour(colour_.withAlpha((active ? .15f : hover ? .11f : .065f) * visibility));
                 g.strokePath(outline_path_, juce::PathStrokeType(
-                    juce::jmax(.90f, base_.getFontSize() * .070f),
+                    juce::jmax(2.2f, base_.getFontSize() * .20f),
                     juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+                // The edge itself is intentionally substantial. In the reference it is a
+                // small sun-like perimeter that has enough area to feel luminous rather
+                // than a one-pixel outline.
+                const auto rimThickness = juce::jmax(active ? 1.9f : 1.55f,
+                    base_.getFontSize() * (active ? .145f : hover ? .128f : .112f));
+                g.setColour(colour_.interpolatedWith(juce::Colours::white,
+                                                     active ? .80f : hover ? .74f : .67f)
+                            .withAlpha((active ? .99f : hover ? .91f : .82f) * visibility));
+                g.strokePath(outline_path_, juce::PathStrokeType(
+                    rimThickness, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
             } else {
                 // Preserve the existing readable treatment for non-round utility draggers.
                 g.setColour(colour_.withAlpha((active ? .88f : .68f) * visibility));
