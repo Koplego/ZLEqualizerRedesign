@@ -45,14 +45,15 @@ namespace zlpanel {
 
     private:
         static constexpr size_t kNumPoints = 400;
-        // Reference-match fills are intentionally restrained.  The colour should read as
-        // light transmitted through the graph glass, not as a flat translucent paint layer.
-        static constexpr float kFillingAlpha = .060f;
-        static constexpr float kDynamicFillingAlpha = .078f;
-        static constexpr float kNotSelectedAlphaMultiplier = .55f;
+        // The reference keeps every active band visibly present as coloured glass, even when
+        // no band is selected. Selection adds local light rather than being the only source
+        // of colour in the graph.
+        static constexpr float kFillingAlpha = .108f;
+        static constexpr float kDynamicFillingAlpha = .126f;
+        static constexpr float kNotSelectedAlphaMultiplier = .70f;
         static constexpr float kBypassAlphaMultiplier = .75f;
         static constexpr float kDiffStereoAlphaMultiplier = .33333f;
-        static constexpr float kNoBandSelectedAlphaMultiplier = .58f;
+        static constexpr float kNoBandSelectedAlphaMultiplier = .88f;
         static constexpr float kThickMultiplier = 1.03f;
 
         PluginProcessor& p_ref_;
