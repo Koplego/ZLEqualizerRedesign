@@ -30,6 +30,7 @@ namespace zlpanel {
             10000.f, 20000.f, 50000.f, 100000.f
         };
 
+        PluginProcessor& p_ref_;
         zlgui::UIBase& base_;
         double freq_max_{0.};
 
