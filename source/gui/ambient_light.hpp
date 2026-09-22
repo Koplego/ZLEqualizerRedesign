@@ -46,37 +46,57 @@ namespace zlgui::glass {
                                        const float alpha) {
         if (alpha <= .0001f || source.radius <= 1.f || clip_bounds.isEmpty()) return;
 
-        // Wide/shallow glass should behave more like YouTube ambient lighting than a row of
-        // spotlights. The source intensity is unchanged; only the reach is extended so the
-        // colour survives the vertical trip from graph to header/footer and spreads gently
-        // across neighbouring controls before fading away.
+        // The runtime reference showed the right amount of light in the graph but too little
+        // colour reaching the header/footer. Keep the peak energy essentially unchanged and
+        // split it into a broad ambient tail plus a softer local field. This gives the same
+        // YouTube-style sense of room illumination without turning the bars into neon.
         const auto vertical_distance = std::abs(source.point.y - clip_bounds.getCentreY());
-        const auto vertical_reach = source.radius * 1.62f;
+        const auto vertical_reach = source.radius * 2.15f;
         const auto t = juce::jlimit(0.f, 1.f, vertical_distance / vertical_reach);
-        const auto vertical_gain = std::pow(juce::jmax(0.f, 1.f - t), .46f);
+        const auto vertical_gain = std::pow(juce::jmax(0.f, 1.f - t), .34f);
         if (vertical_gain <= .001f) return;
 
-        const auto half_width = juce::jmax(clip_bounds.getHeight() * 4.2f,
-                                          source.radius * .68f);
+        const auto core_half_width = juce::jmax(clip_bounds.getHeight() * 5.0f,
+                                               source.radius * .72f);
+        const auto tail_half_width = juce::jmax(clip_bounds.getHeight() * 8.0f,
+                                               source.radius * 1.12f);
         const auto effective_alpha = alpha * vertical_gain;
 
         juce::Graphics::ScopedSaveState state(g);
         g.reduceClipRegion(clip_bounds.toNearestInt());
 
-        juce::ColourGradient spread(
-            source.colour.withAlpha(0.f), source.point.x - half_width, 0.f,
-            source.colour.withAlpha(0.f), source.point.x + half_width, 0.f, false);
-        spread.addColour(.035, source.colour.withAlpha(effective_alpha * .018f));
-        spread.addColour(.12, source.colour.withAlpha(effective_alpha * .075f));
-        spread.addColour(.23, source.colour.withAlpha(effective_alpha * .24f));
-        spread.addColour(.36, source.colour.withAlpha(effective_alpha * .63f));
-        spread.addColour(.50, source.colour.interpolatedWith(juce::Colours::white, .010f)
-                                      .withAlpha(effective_alpha));
-        spread.addColour(.64, source.colour.withAlpha(effective_alpha * .63f));
-        spread.addColour(.77, source.colour.withAlpha(effective_alpha * .24f));
-        spread.addColour(.88, source.colour.withAlpha(effective_alpha * .075f));
-        spread.addColour(.965, source.colour.withAlpha(effective_alpha * .018f));
-        g.setGradientFill(spread);
+        // Broad saturated tail: low energy, very long reach. This is what lets the coloured
+        // nodes tint distant glass without increasing the apparent brightness of the source.
+        juce::ColourGradient tail(
+            source.colour.withAlpha(0.f), source.point.x - tail_half_width, 0.f,
+            source.colour.withAlpha(0.f), source.point.x + tail_half_width, 0.f, false);
+        tail.addColour(.04, source.colour.withAlpha(effective_alpha * .010f));
+        tail.addColour(.16, source.colour.withAlpha(effective_alpha * .055f));
+        tail.addColour(.30, source.colour.withAlpha(effective_alpha * .16f));
+        tail.addColour(.50, source.colour.withAlpha(effective_alpha * .30f));
+        tail.addColour(.70, source.colour.withAlpha(effective_alpha * .16f));
+        tail.addColour(.84, source.colour.withAlpha(effective_alpha * .055f));
+        tail.addColour(.96, source.colour.withAlpha(effective_alpha * .010f));
+        g.setGradientFill(tail);
+        g.fillRect(clip_bounds);
+
+        // Local receiver field: narrower than the tail, but deliberately softer than before.
+        // Tail + core still sum to roughly the old peak level while distributing much more
+        // colour across the entire glass surface.
+        juce::ColourGradient core(
+            source.colour.withAlpha(0.f), source.point.x - core_half_width, 0.f,
+            source.colour.withAlpha(0.f), source.point.x + core_half_width, 0.f, false);
+        core.addColour(.05, source.colour.withAlpha(effective_alpha * .012f));
+        core.addColour(.18, source.colour.withAlpha(effective_alpha * .080f));
+        core.addColour(.32, source.colour.withAlpha(effective_alpha * .30f));
+        core.addColour(.43, source.colour.withAlpha(effective_alpha * .57f));
+        core.addColour(.50, source.colour.interpolatedWith(juce::Colours::white, .008f)
+                                    .withAlpha(effective_alpha * .70f));
+        core.addColour(.57, source.colour.withAlpha(effective_alpha * .57f));
+        core.addColour(.68, source.colour.withAlpha(effective_alpha * .30f));
+        core.addColour(.82, source.colour.withAlpha(effective_alpha * .080f));
+        core.addColour(.95, source.colour.withAlpha(effective_alpha * .012f));
+        g.setGradientFill(core);
         g.fillRect(clip_bounds);
     }
 
