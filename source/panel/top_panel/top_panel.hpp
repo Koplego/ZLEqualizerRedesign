@@ -12,7 +12,10 @@
 #include "logo_panel.hpp"
 #include "output_label.hpp"
 #include "analyzer_label.hpp"
+#include "../../gui/ambient_light.hpp"
 #include <functional>
+#include <utility>
+#include <vector>
 
 namespace zlpanel {
     class TopPanel final : public juce::Component {
@@ -36,12 +39,18 @@ namespace zlpanel {
             repaint();
         }
 
+        void setAmbientSources(std::vector<zlgui::glass::AmbientLightSource> sources) {
+            ambient_sources_ = std::move(sources);
+            repaint();
+        }
+
     private:
         PluginProcessor& p_ref_;
         zlgui::UIBase &base_;
         zlgui::attachment::ComponentUpdater updater_;
         std::function<void()> settings_callback_;
         std::function<juce::String()> preset_name_provider_;
+        std::vector<zlgui::glass::AmbientLightSource> ambient_sources_{};
         zlgui::button::ClickTextButton settings_button_;
         LogoPanel logo_panel_;
         OutputLabel output_label_;
