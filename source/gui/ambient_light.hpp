@@ -45,14 +45,14 @@ namespace zlgui::glass {
                                          const float alpha_scale) {
         if (sources.empty() || clip_bounds.isEmpty()) return;
 
-        // A header/footer should read as one piece of glass receiving several lamps, not as
-        // several translucent gradients stacked on top of each other. Stacking caused four
-        // band colours to average into the same blue-grey. Instead, sample the receiver along
-        // its width, blend the nearby lamps first, then tint the glass once. This preserves a
-        // warm left side, cool centre and violet right side while still letting each source
-        // spread far beyond its own x-position.
-        constexpr int kSamples = 17;
-        constexpr float kReceiverTransmission = 3.0f;
+        // Runtime screenshots showed that the previous receiver math changed numerically but
+        // remained below the perceptual threshold: the header/footer still read as one blue
+        // slab. Use two spatial scales instead. A stronger local lobe preserves the actual
+        // lamp colour near its x-position, while a low-energy tail keeps the YouTube-style
+        // ambient spread across the rest of the glass. The lamps themselves are not brighter;
+        // the receiving material is simply more responsive to the same light.
+        constexpr int kSamples = 33;
+        constexpr float kReceiverTransmission = 5.4f;
 
         auto sampleColour = [&](const float portion) {
             const auto x = clip_bounds.getX() + clip_bounds.getWidth() * portion;
@@ -66,17 +66,20 @@ namespace zlgui::glass {
 
                 const auto perceptual_strength = std::pow(juce::jmax(0.f, source.strength), .36f);
                 const auto vertical_distance = std::abs(source.point.y - clip_bounds.getCentreY());
-                const auto vertical_reach = source.radius * 2.35f;
+                const auto vertical_reach = source.radius * 2.55f;
                 const auto vertical_t = juce::jlimit(0.f, 1.f, vertical_distance / vertical_reach);
-                const auto vertical_gain = std::pow(juce::jmax(0.f, 1.f - vertical_t), .31f);
+                const auto vertical_gain = std::pow(juce::jmax(0.f, 1.f - vertical_t), .28f);
                 if (vertical_gain <= .001f) continue;
 
-                // Wide Gaussian-style shoulder: long ambient tail, but enough localisation
-                // that neighbouring colours remain spatially legible instead of turning grey.
-                const auto horizontal_reach = juce::jmax(clip_bounds.getHeight() * 6.0f,
-                                                         source.radius * .78f);
-                const auto dx = (x - source.point.x) / horizontal_reach;
-                const auto horizontal_gain = std::exp(-1.42f * dx * dx);
+                const auto core_reach = juce::jmax(clip_bounds.getHeight() * 4.8f,
+                                                   source.radius * .46f);
+                const auto tail_reach = juce::jmax(clip_bounds.getHeight() * 9.0f,
+                                                   source.radius * 1.22f);
+                const auto core_dx = (x - source.point.x) / core_reach;
+                const auto tail_dx = (x - source.point.x) / tail_reach;
+                const auto core = std::exp(-1.55f * core_dx * core_dx);
+                const auto tail = std::exp(-1.15f * tail_dx * tail_dx);
+                const auto horizontal_gain = .78f * core + .22f * tail;
                 const auto weight = perceptual_strength * vertical_gain * horizontal_gain;
                 if (weight <= .00001f) continue;
 
@@ -93,13 +96,13 @@ namespace zlgui::glass {
             if (total <= .0001f) return juce::Colours::transparentBlack;
 
             auto mixed = juce::Colour::fromFloatRGBA(red / total, green / total, blue / total, 1.f);
-            // Retain a little of the nearest lamp's hue so overlapping sources still feel like
-            // coloured light rather than a desaturated average.
-            mixed = mixed.interpolatedWith(dominant, .18f);
+            // Keep local hues legible when several long tails overlap. This is intentionally
+            // colour-preserving rather than whitening the glow, so it stays stained-glass-like.
+            mixed = mixed.interpolatedWith(dominant, .30f);
 
-            const auto occupancy = 1.f - std::exp(-total * .92f);
-            const auto alpha = juce::jlimit(0.f, .085f,
-                alpha_scale * kReceiverTransmission * (.42f + .58f * occupancy));
+            const auto occupancy = 1.f - std::exp(-total * 1.10f);
+            const auto alpha = juce::jlimit(0.f, .13f,
+                alpha_scale * kReceiverTransmission * (.34f + .66f * occupancy));
             return mixed.withAlpha(alpha);
         };
 
