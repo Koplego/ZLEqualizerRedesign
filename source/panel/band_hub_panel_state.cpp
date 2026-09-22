@@ -20,10 +20,14 @@ namespace zlpanel {
         if (band >= zlp::kBandNum) {
             clearAttachments();
             attached_band_ = zlp::kBandNum;
+            expanded_ = false;
+            reveal_ = reveal_target_ = 0.f;
+            stopTimer();
             setVisible(false);
             return;
         }
 
+        const auto firstSelection = attached_band_ >= zlp::kBandNum;
         const auto changed = band != attached_band_;
         attached_band_ = band;
         const auto s = std::to_string(band);
@@ -70,10 +74,14 @@ namespace zlpanel {
         updater_.updateComponents();
         syncDynamicState();
         setVisible(!suppressed_);
-        if (changed) {
-            page_ = Page::dynamics;
-            setExpanded(true);
+
+        if (changed) page_ = Page::dynamics;
+        if (firstSelection) {
+            expanded_ = false;
+            reveal_ = reveal_target_ = 0.f;
+            stopTimer();
         }
+
         updateVisibility();
         repaint();
     }
@@ -100,8 +108,8 @@ namespace zlpanel {
     }
 
     void BandHubPanel::updateVisibility() {
-        const auto childrenVisible = !suppressed_ && attached_band_ < zlp::kBandNum && reveal_ > .25f;
-        const auto controlsAlpha = juce::jlimit(0.f, 1.f, (reveal_ - .20f) / .80f);
+        const auto childrenVisible = !suppressed_ && attached_band_ < zlp::kBandNum && reveal_ > .18f;
+        const auto controlsAlpha = juce::jlimit(0.f, 1.f, (reveal_ - .14f) / .70f);
 
         const std::array<juce::Component*, 6> headerComponents{
             &collapse_button_, &dynamic_button_, &dynamics_page_button_,
@@ -111,7 +119,7 @@ namespace zlpanel {
             c->setAlpha(controlsAlpha);
         }
 
-        const auto dyn = childrenVisible && dynamic_on_;
+        const auto dyn = childrenVisible && dynamic_on_ && reveal_ > .30f;
         const auto showDynamics = dyn && page_ == Page::dynamics;
         const std::array<juce::Component*, 4> dynamicsComponents{
             &threshold_slider_, &range_slider_, &attack_slider_, &release_slider_};
@@ -161,7 +169,7 @@ namespace zlpanel {
     }
 
     void BandHubPanel::timerCallback() {
-        reveal_ += (reveal_target_ - reveal_) * .24f;
+        reveal_ += (reveal_target_ - reveal_) * .28f;
         if (std::abs(reveal_target_ - reveal_) < .008f) {
             reveal_ = reveal_target_;
             stopTimer();
