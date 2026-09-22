@@ -9,23 +9,19 @@
 
 #include "main_panel.hpp"
 #include "../gui/glass_tokens.hpp"
-#include <array>
+#include "../gui/ambient_light.hpp"
 #include <cmath>
+#include <vector>
 
 namespace zlpanel {
     namespace {
-        struct AmbientNode {
-            juce::Point<float> point{};
-            juce::Colour colour{juce::Colours::transparentBlack};
-            float strength{0.f};
-            bool valid{false};
-        };
-
-        std::array<AmbientNode, zlp::kBandNum> collectAmbientNodes(PluginProcessor& p,
-                                                                   zlgui::UIBase& base,
-                                                                   juce::Rectangle<float> graph,
-                                                                   const double sample_rate) {
-            std::array<AmbientNode, zlp::kBandNum> result{};
+        std::vector<zlgui::glass::AmbientLightSource> collectAmbientNodes(
+            PluginProcessor& p,
+            zlgui::UIBase& base,
+            juce::Rectangle<float> graph,
+            const double sample_rate) {
+            std::vector<zlgui::glass::AmbientLightSource> result;
+            result.reserve(zlp::kBandNum);
             if (graph.isEmpty() || sample_rate <= 1000.0) return result;
 
             graph.removeFromBottom(static_cast<float>(getBottomAreaHeight(base.getFontSize())));
@@ -65,39 +61,28 @@ namespace zlpanel {
                 auto strength = band == selected_band ? 1.f : .30f;
                 if (status == zlp::FilterStatus::kBypass) strength *= .42f;
 
-                result[band] = {
+                result.push_back({
                     {graph.getX() + graph.getWidth() * x_portion,
                      graph.getY() + graph.getHeight() * y_portion},
-                    base.getColourMap1(band), strength, true
-                };
+                    base.getColourMap1(band), strength, 0.f
+                });
             }
             return result;
         }
 
-        void paintAmbientField(juce::Graphics& g,
-                               const juce::Point<float> source,
-                               const juce::Colour colour,
-                               const float radius,
-                               const float alpha,
-                               const juce::Rectangle<float> clip_bounds) {
-            if (alpha <= .0001f || radius <= 1.f || clip_bounds.isEmpty()) return;
-            juce::Graphics::ScopedSaveState state(g);
-            g.reduceClipRegion(clip_bounds.toNearestInt());
-
-            // Wide, slow ambient falloff. The peak is intentionally modest; the new
-            // reference gets its richness from reach and overlap, not from brighter lamps.
-            juce::ColourGradient ambient(
-                colour.interpolatedWith(juce::Colours::white, .025f).withAlpha(alpha),
-                source.x, source.y,
-                colour.withAlpha(0.f),
-                source.x + radius, source.y, true);
-            ambient.addColour(.22, colour.withAlpha(alpha * .92f));
-            ambient.addColour(.48, colour.withAlpha(alpha * .60f));
-            ambient.addColour(.72, colour.withAlpha(alpha * .30f));
-            ambient.addColour(.90, colour.withAlpha(alpha * .09f));
-            ambient.addColour(.985, colour.withAlpha(alpha * .012f));
-            g.setGradientFill(ambient);
-            g.fillEllipse(source.x - radius, source.y - radius, radius * 2.f, radius * 2.f);
+        std::vector<zlgui::glass::AmbientLightSource> localiseAmbientSources(
+            const std::vector<zlgui::glass::AmbientLightSource>& sources,
+            const juce::Rectangle<int> receiver,
+            const float radius) {
+            std::vector<zlgui::glass::AmbientLightSource> local;
+            local.reserve(sources.size());
+            for (auto source : sources) {
+                source.point.x -= static_cast<float>(receiver.getX());
+                source.point.y -= static_cast<float>(receiver.getY());
+                source.radius = radius;
+                local.push_back(source);
+            }
+            return local;
         }
     }
 
@@ -176,13 +161,12 @@ namespace zlpanel {
             const auto sample_rate = c_sample_rate_ > 1000.0 ? c_sample_rate_ : p_ref_.getSampleRate();
             const auto nodes = collectAmbientNodes(p_ref_, base_, curve_panel_.getBounds().toFloat(), sample_rate);
             for (const auto& node : nodes) {
-                if (!node.valid) continue;
                 const auto broad_radius = juce::jmax(base_.getFontSize() * 30.f, shell.getWidth() * .30f);
                 const auto near_radius = juce::jmax(base_.getFontSize() * 13.f, shell.getWidth() * .15f);
-                paintAmbientField(g, node.point, node.colour, broad_radius,
-                                  .022f * node.strength, shell);
-                paintAmbientField(g, node.point, node.colour, near_radius,
-                                  .024f * node.strength, shell);
+                zlgui::glass::paintAmbientField(g, node.point, node.colour, broad_radius,
+                                                .022f * node.strength, shell);
+                zlgui::glass::paintAmbientField(g, node.point, node.colour, near_radius,
+                                                .024f * node.strength, shell);
             }
         }
 
@@ -203,31 +187,29 @@ namespace zlpanel {
     }
 
     void MainPanel::paintOverChildren(juce::Graphics& g) {
+        // Only the graph/meter needs a very faint final ambient response. Top, footer and
+        // Band Hub now receive the same spatial sources inside their own glass paint pass,
+        // which keeps text/icons neutral and makes the colour feel embedded in the material.
+        const auto sample_rate = c_sample_rate_ > 1000.0 ? c_sample_rate_ : p_ref_.getSampleRate();
+        const auto nodes = collectAmbientNodes(p_ref_, base_, curve_panel_.getBounds().toFloat(), sample_rate);
+        const auto graph_radius = juce::jmax(base_.getFontSize() * 31.f, getWidth() * .34f);
+        for (const auto& node : nodes) {
+            zlgui::glass::paintAmbientField(g, node.point, node.colour, graph_radius,
+                                            .008f * node.strength,
+                                            curve_panel_.getBounds().toFloat());
+        }
+    }
+
+    void MainPanel::updateAmbientReceivers() {
+        if (curve_panel_.getBounds().isEmpty()) return;
+
         const auto sample_rate = c_sample_rate_ > 1000.0 ? c_sample_rate_ : p_ref_.getSampleRate();
         const auto nodes = collectAmbientNodes(p_ref_, base_, curve_panel_.getBounds().toFloat(), sample_rate);
         const auto surface_radius = juce::jmax(base_.getFontSize() * 40.f, getWidth() * .44f);
-        const auto graph_radius = juce::jmax(base_.getFontSize() * 31.f, getWidth() * .34f);
 
-        for (const auto& node : nodes) {
-            if (!node.valid) continue;
-
-            // A tiny over-glass pass makes the graph/meter housing participate in the same
-            // light field without washing out the analyzer, labels or response curves.
-            paintAmbientField(g, node.point, node.colour, graph_radius,
-                              .009f * node.strength,
-                              curve_panel_.getBounds().toFloat());
-
-            const auto alpha = .020f * node.strength;
-            paintAmbientField(g, node.point, node.colour, surface_radius, alpha,
-                              top_panel_.getBounds().toFloat());
-            paintAmbientField(g, node.point, node.colour, surface_radius, alpha,
-                              footer_panel_.getBounds().toFloat());
-            if (band_hub_panel_.isVisible()) {
-                paintAmbientField(g, node.point, node.colour, surface_radius * .90f,
-                                  .029f * node.strength,
-                                  band_hub_panel_.getBounds().toFloat());
-            }
-        }
+        top_panel_.setAmbientSources(localiseAmbientSources(nodes, top_panel_.getBounds(), surface_radius));
+        footer_panel_.setAmbientSources(localiseAmbientSources(nodes, footer_panel_.getBounds(), surface_radius));
+        band_hub_panel_.setAmbientSources(localiseAmbientSources(nodes, band_hub_panel_.getBounds(), surface_radius * .90f));
     }
 
     void MainPanel::resized() {
@@ -288,6 +270,7 @@ namespace zlpanel {
         const auto preset_height = juce::jmax(0, juce::jmin(preset_browser_.getIdealHeight(), main_bound.getHeight() - 4 * padding));
         preset_browser_.setBounds(main_bound.withSizeKeepingCentre(preset_width, preset_height));
 
+        updateAmbientReceivers();
         updateOverlayState();
     }
 
@@ -358,13 +341,11 @@ namespace zlpanel {
             curve_panel_.repaintCallBack();
             control_panel_.repaintCallBack();
 
-            // Parent-owned ambient fields move with every node, so repaint all receiving
-            // glass zones. The graph is already repainting at the analyzer rate; including
-            // it here keeps the very faint shell reflection spatially attached to the nodes.
-            auto ambient_dirty = curve_panel_.getBounds().getUnion(top_panel_.getBounds())
-                                                    .getUnion(footer_panel_.getBounds());
-            if (band_hub_panel_.isVisible()) ambient_dirty = ambient_dirty.getUnion(band_hub_panel_.getBounds());
-            repaint(ambient_dirty.expanded(3));
+            updateAmbientReceivers();
+
+            // The shell and graph remain parent-owned receivers. The child glass surfaces
+            // repaint themselves when their local ambient sources are updated above.
+            repaint(curve_panel_.getBounds().expanded(3));
 
             const auto c_refresh_rate = refresh_handler_.getActualRefreshRate();
             if (std::abs(c_refresh_rate - refresh_rate_) > 0.1) {
