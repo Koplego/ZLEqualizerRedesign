@@ -35,48 +35,46 @@ namespace zlgui::dragger {
             const auto hover = should_draw_button_as_highlighted && !active;
             const auto visibility = juce::jlimit(0.f, 1.f, alpha_);
 
-            // Reference nodes are compact pieces of illuminated glass.  There is one soft
-            // bloom, one precise cool-white rim and one coloured lens — no radar rings.
             if (dragger_shape_ == kRound) {
                 const juce::DropShadow halo{
-                    colour_.withAlpha((active ? .20f : hover ? .115f : .075f) * visibility),
-                    juce::jmax(2, juce::roundToInt(base_.getFontSize() * (active ? .62f : .30f))),
+                    colour_.withAlpha((active ? .145f : hover ? .080f : .040f) * visibility),
+                    juce::jmax(2, juce::roundToInt(base_.getFontSize() * (active ? .44f : .25f))),
                     {0, 0}};
                 halo.drawForPath(g, outline_path_);
             }
 
-            g.setColour(juce::Colour(5, 21, 35).withAlpha((active ? .34f : .22f) * visibility));
+            g.setColour(juce::Colour(4, 18, 31).withAlpha((active ? .38f : .28f) * visibility));
             g.fillPath(outline_path_);
 
-            g.setColour(colour_.interpolatedWith(juce::Colours::white, .12f)
-                        .withAlpha((active ? .20f : hover ? .14f : .095f) * visibility));
+            g.setColour(colour_.interpolatedWith(juce::Colours::white, .10f)
+                        .withAlpha((active ? .125f : hover ? .085f : .055f) * visibility));
             g.fillPath(outline_path_);
 
-            g.setColour(glass::textPrimary().withAlpha((active ? .88f : hover ? .68f : .54f) * visibility));
-            g.strokePath(outline_path_, juce::PathStrokeType(juce::jmax(.8f, base_.getFontSize() * .076f)));
+            g.setColour(glass::textPrimary().withAlpha((active ? .90f : hover ? .70f : .56f) * visibility));
+            g.strokePath(outline_path_, juce::PathStrokeType(juce::jmax(.8f, base_.getFontSize() * .070f)));
 
             const auto innerBounds = inner_path_.getBounds();
             juce::ColourGradient lens(
-                colour_.interpolatedWith(juce::Colours::white, active ? .34f : .25f)
-                    .withAlpha((active ? .98f : .91f) * visibility),
-                innerBounds.getX() + innerBounds.getWidth() * .28f,
-                innerBounds.getY() + innerBounds.getHeight() * .20f,
-                colour_.interpolatedWith(juce::Colours::black, .065f)
-                    .withAlpha((active ? .99f : .91f) * visibility),
+                colour_.interpolatedWith(juce::Colours::white, active ? .29f : .22f)
+                    .withAlpha((active ? .94f : .86f) * visibility),
+                innerBounds.getX() + innerBounds.getWidth() * .26f,
+                innerBounds.getY() + innerBounds.getHeight() * .18f,
+                colour_.interpolatedWith(juce::Colours::black, .10f)
+                    .withAlpha((active ? .95f : .87f) * visibility),
                 innerBounds.getRight(), innerBounds.getBottom(), true);
-            lens.addColour(.50, colour_.interpolatedWith(juce::Colours::white, .08f)
-                                      .withAlpha((active ? .99f : .93f) * visibility));
+            lens.addColour(.52, colour_.interpolatedWith(juce::Colours::white, .06f)
+                                      .withAlpha((active ? .95f : .89f) * visibility));
             g.setGradientFill(lens);
             g.fillPath(inner_path_);
 
-            g.setColour(juce::Colours::white.withAlpha((active ? .92f : hover ? .72f : .62f) * visibility));
-            g.strokePath(inner_path_, juce::PathStrokeType(juce::jmax(.82f, base_.getFontSize() * .070f)));
+            g.setColour(juce::Colours::white.withAlpha((active ? .96f : hover ? .76f : .64f) * visibility));
+            g.strokePath(inner_path_, juce::PathStrokeType(juce::jmax(.82f, base_.getFontSize() * .066f)));
 
             if (active && dragger_shape_ == kRound) {
-                auto glint = innerBounds.withSizeKeepingCentre(innerBounds.getWidth() * .38f,
-                                                               innerBounds.getHeight() * .22f);
-                glint.translate(-innerBounds.getWidth() * .13f, -innerBounds.getHeight() * .19f);
-                g.setColour(juce::Colours::white.withAlpha(.23f * visibility));
+                auto glint = innerBounds.withSizeKeepingCentre(innerBounds.getWidth() * .34f,
+                                                               innerBounds.getHeight() * .18f);
+                glint.translate(-innerBounds.getWidth() * .12f, -innerBounds.getHeight() * .20f);
+                g.setColour(juce::Colours::white.withAlpha(.16f * visibility));
                 g.fillEllipse(glint);
             }
 
@@ -133,7 +131,7 @@ namespace zlgui::dragger {
         void updateRoundPaths(juce::Rectangle<float>& bound) {
             const auto radius = bound.getWidth();
             outline_path_.addEllipse(bound);
-            bound = bound.withSizeKeepingCentre(radius * .82f, radius * .82f);
+            bound = bound.withSizeKeepingCentre(radius * .76f, radius * .76f);
             inner_path_.addEllipse(bound);
         }
 
@@ -159,7 +157,7 @@ namespace zlgui::dragger {
         }
 
         void updateRightArrowPaths(juce::Rectangle<float>& bound) {
-            auto updateOnePath = [](juce::Path& path, const juce::Rectangle<float>& temp) {
+            auto updateOnePath = [](juce::Path& path, const juce::Rectangle<float> temp) {
                 const auto center = temp.getCentre();
                 path.startNewSubPath(center.getX() + temp.getWidth() * .5f, center.getY());
                 path.lineTo(center.getX(), center.getY() + temp.getHeight() * std::sqrt(3.f) * .25f);
@@ -172,7 +170,7 @@ namespace zlgui::dragger {
         }
 
         void updateLeftArrowPaths(juce::Rectangle<float>& bound) {
-            auto updateOnePath = [](juce::Path& path, const juce::Rectangle<float>& temp) {
+            auto updateOnePath = [](juce::Path& path, const juce::Rectangle<float> temp) {
                 const auto center = temp.getCentre();
                 path.startNewSubPath(center.getX() - temp.getWidth() * .5f, center.getY());
                 path.lineTo(center.getX(), center.getY() + temp.getHeight() * std::sqrt(3.f) * .25f);
