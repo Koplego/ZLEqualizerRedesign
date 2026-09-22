@@ -2,6 +2,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
+#include <cmath>
 #include <vector>
 
 namespace zlgui::glass {
@@ -23,18 +24,20 @@ namespace zlgui::glass {
         juce::Graphics::ScopedSaveState state(g);
         g.reduceClipRegion(clip_bounds.toNearestInt());
 
-        // The reference is driven by reach rather than peak brightness. Keep the source
-        // restrained and let saturated colour linger far into the surrounding glass.
+        // Keep the core restrained but let saturated colour travel a long way through the
+        // material. The screenshot pass showed that the previous tail disappeared before
+        // it reached the header/footer, leaving the UI blue-grey instead of optically linked.
         juce::ColourGradient ambient(
-            colour.interpolatedWith(juce::Colours::white, .025f).withAlpha(alpha),
+            colour.interpolatedWith(juce::Colours::white, .018f).withAlpha(alpha),
             source.x, source.y,
             colour.withAlpha(0.f),
             source.x + radius, source.y, true);
-        ambient.addColour(.22, colour.withAlpha(alpha * .92f));
-        ambient.addColour(.48, colour.withAlpha(alpha * .60f));
-        ambient.addColour(.72, colour.withAlpha(alpha * .30f));
-        ambient.addColour(.90, colour.withAlpha(alpha * .09f));
-        ambient.addColour(.985, colour.withAlpha(alpha * .012f));
+        ambient.addColour(.18, colour.withAlpha(alpha * .97f));
+        ambient.addColour(.40, colour.withAlpha(alpha * .78f));
+        ambient.addColour(.64, colour.withAlpha(alpha * .51f));
+        ambient.addColour(.82, colour.withAlpha(alpha * .27f));
+        ambient.addColour(.94, colour.withAlpha(alpha * .105f));
+        ambient.addColour(.988, colour.withAlpha(alpha * .018f));
         g.setGradientFill(ambient);
         g.fillEllipse(source.x - radius, source.y - radius, radius * 2.f, radius * 2.f);
     }
@@ -43,10 +46,16 @@ namespace zlgui::glass {
                                     const std::vector<AmbientLightSource>& sources,
                                     const juce::Rectangle<float> clip_bounds,
                                     const float alpha_scale) {
+        // Receiver panels are painted after the parent shell, so their material needs a
+        // little more transmission than the shell itself. sqrt() also lets unselected bands
+        // remain visible as colour contributors without making the selected band brighter.
+        constexpr float kReceiverTransmission = 2.60f;
         for (const auto& source : sources) {
             if (source.strength <= .0001f) continue;
+            const auto perceptual_strength = std::sqrt(juce::jmax(0.f, source.strength));
             paintAmbientField(g, source.point, source.colour, source.radius,
-                              alpha_scale * source.strength, clip_bounds);
+                              alpha_scale * kReceiverTransmission * perceptual_strength,
+                              clip_bounds);
         }
     }
 }
