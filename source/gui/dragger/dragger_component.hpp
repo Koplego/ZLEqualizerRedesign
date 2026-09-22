@@ -23,6 +23,8 @@ namespace zlgui::dragger {
 
         ~Dragger() override;
 
+        void paint(juce::Graphics& g) override;
+
         bool updateButton();
 
         bool updateButton(const juce::Point<float>& center);
