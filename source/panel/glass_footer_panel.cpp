@@ -165,6 +165,11 @@ namespace zlpanel {
         zlgui::glass::fillGlassSurface(g, strip, juce::jmax(9.f, strip.getHeight() * .43f),
                                       .060f, .110f, .145f);
 
+        // The footer is a receiver, not a light source. Node colour is injected into the
+        // translucent material before separators and labels are drawn so typography stays
+        // clean while the glass itself takes on the wide spatial ambience from the graph.
+        zlgui::glass::paintAmbientSources(g, ambient_sources_, strip, .020f);
+
         g.setColour(zlgui::glass::rim().withMultipliedAlpha(.36f));
         if (!analyzer_group_bound_.isEmpty())
             g.drawVerticalLine(analyzer_group_bound_.getRight() + getPaddingSize(base_.getFontSize()) / 2,
