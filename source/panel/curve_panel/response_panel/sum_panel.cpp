@@ -35,9 +35,31 @@ namespace zlpanel {
             return gradient;
         }
 
+        juce::ColourGradient makeNodeLineLight(const float centre_x,
+                                               const float radius,
+                                               const juce::Colour colour,
+                                               const float alpha,
+                                               const float white_mix) {
+            const auto transparent = colour.withAlpha(0.f);
+            juce::ColourGradient gradient(transparent, centre_x - radius, 0.f,
+                                          transparent, centre_x + radius, 0.f, false);
+            gradient.addColour(.24, colour.withAlpha(alpha * .035f));
+            gradient.addColour(.38, colour.interpolatedWith(juce::Colours::white, white_mix * .42f)
+                                           .withAlpha(alpha * .30f));
+            gradient.addColour(.50, colour.interpolatedWith(juce::Colours::white, white_mix)
+                                           .withAlpha(alpha));
+            gradient.addColour(.62, colour.interpolatedWith(juce::Colours::white, white_mix * .42f)
+                                           .withAlpha(alpha * .30f));
+            gradient.addColour(.76, colour.withAlpha(alpha * .035f));
+            return gradient;
+        }
+
         void strokeBlendedResponse(juce::Graphics& g, const juce::Path& path,
                                    const SumPanel::GradientData& data,
-                                   const float thickness, const float alpha) {
+                                   const float thickness, const float alpha,
+                                   const float node_light_x = -1.f,
+                                   const float node_light_radius = 0.f,
+                                   const juce::Colour node_light_colour = juce::Colours::transparentBlack) {
             if (path.isEmpty()) return;
 
             if (!data.valid || data.xs.back() <= data.xs.front() + 1.f) {
@@ -49,35 +71,73 @@ namespace zlpanel {
                 g.strokePath(path, juce::PathStrokeType(thickness,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
-                return;
+            } else {
+                // The sum line stays crisp and inherits colour from the contributing bands.
+                g.setGradientFill(makeResponseGradient(data, .022f * alpha));
+                g.strokePath(path, juce::PathStrokeType(thickness * 2.75f,
+                                                        juce::PathStrokeType::curved,
+                                                        juce::PathStrokeType::rounded));
+                g.setGradientFill(makeResponseGradient(data, .070f * alpha));
+                g.strokePath(path, juce::PathStrokeType(thickness * 1.45f,
+                                                        juce::PathStrokeType::curved,
+                                                        juce::PathStrokeType::rounded));
+
+                g.setGradientFill(makeResponseGradient(data, .97f * alpha));
+                g.strokePath(path, juce::PathStrokeType(thickness,
+                                                        juce::PathStrokeType::curved,
+                                                        juce::PathStrokeType::rounded));
             }
 
-            // The sum line is the sharpest graph element in the concept. Its colour
-            // should read directly from the response, not from a large neon halo.
-            g.setGradientFill(makeResponseGradient(data, .022f * alpha));
-            g.strokePath(path, juce::PathStrokeType(thickness * 2.75f,
-                                                    juce::PathStrokeType::curved,
-                                                    juce::PathStrokeType::rounded));
-            g.setGradientFill(makeResponseGradient(data, .070f * alpha));
-            g.strokePath(path, juce::PathStrokeType(thickness * 1.45f,
-                                                    juce::PathStrokeType::curved,
-                                                    juce::PathStrokeType::rounded));
+            // In the mockup the selected node's luminous rim spills directly into the EQ
+            // response. This highlight is painted on the actual summed response (the line
+            // users perceive as the EQ), not only on the individual band's hidden path.
+            if (node_light_x >= 0.f && node_light_radius > 1.f && node_light_colour.getAlpha() > 0) {
+                g.setGradientFill(makeNodeLineLight(node_light_x, node_light_radius,
+                                                    node_light_colour, .17f * alpha, .54f));
+                g.strokePath(path, juce::PathStrokeType(thickness * 2.25f,
+                                                        juce::PathStrokeType::curved,
+                                                        juce::PathStrokeType::rounded));
 
-            g.setGradientFill(makeResponseGradient(data, .97f * alpha));
-            g.strokePath(path, juce::PathStrokeType(thickness,
-                                                    juce::PathStrokeType::curved,
-                                                    juce::PathStrokeType::rounded));
+                g.setGradientFill(makeNodeLineLight(node_light_x, node_light_radius * .72f,
+                                                    node_light_colour, .72f * alpha, .78f));
+                g.strokePath(path, juce::PathStrokeType(thickness * 1.06f,
+                                                        juce::PathStrokeType::curved,
+                                                        juce::PathStrokeType::rounded));
+            }
         }
     }
 
     void SumPanel::paintSameStereo(juce::Graphics& g) {
+        float node_light_x = -1.f;
+        float node_light_radius = 0.f;
+        auto node_light_colour = juce::Colours::transparentBlack;
+
+        if (const auto selected_band = base_.getSelectedBand(); selected_band < zlp::kBandNum) {
+            const auto* freq_ptr = p_ref_.parameters_.getRawParameterValue(
+                zlp::PFreq::kID + std::to_string(selected_band));
+            const auto sample_rate = p_ref_.getSampleRate();
+            if (freq_ptr != nullptr && sample_rate > 1000.0 && getWidth() > 0) {
+                const auto freq = juce::jmax(10.f, freq_ptr->load(std::memory_order::relaxed));
+                const auto fft_max = static_cast<float>(freq_helper::getFFTMax(sample_rate));
+                const auto denominator = std::log(fft_max * .1f);
+                if (denominator > 1.0e-5f) {
+                    const auto portion = static_cast<float>(kFFTSizeOverWidth) * std::log(freq * .1f) / denominator;
+                    node_light_x = juce::jlimit(0.f, static_cast<float>(getWidth()),
+                                               static_cast<float>(getWidth()) * portion);
+                    node_light_radius = juce::jmax(base_.getFontSize() * 4.65f, 52.f);
+                    node_light_colour = base_.getColourMap1(selected_band);
+                }
+            }
+        }
+
         for (size_t lr = 0; lr < 5; ++lr) {
             const auto i = static_cast<size_t>(4) - lr;
             paths_[i].pull();
             gradients_[i].pull();
             const auto& path{paths_[i].getReader()};
             if (!path.isEmpty() && is_same_stereo_[i]) {
-                strokeBlendedResponse(g, path, gradients_[i].getReader(), curve_thickness_, 1.f);
+                strokeBlendedResponse(g, path, gradients_[i].getReader(), curve_thickness_, 1.f,
+                                      node_light_x, node_light_radius, node_light_colour);
             }
         }
     }
