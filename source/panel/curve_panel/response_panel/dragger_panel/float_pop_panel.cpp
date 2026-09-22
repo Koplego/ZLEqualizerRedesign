@@ -214,11 +214,29 @@ namespace zlpanel {
             auto slopePill = slope_name_bound_.toFloat().reduced(.35f);
             zlgui::glass::fillGlassSurface(g, slopePill, slopePill.getHeight() * .5f, .035f, .065f, .075f);
             const auto idx = slope_box_.getBox().getSelectedItemIndex();
-            const auto label = idx >= 0 && idx < static_cast<int>(zlp::POrder::kChoices.size())
+            auto label = idx >= 0 && idx < static_cast<int>(zlp::POrder::kChoices.size())
                 ? zlp::POrder::kChoices[static_cast<size_t>(idx)] : juce::String{};
-            g.setColour(zlgui::glass::textSecondary().withAlpha(.83f));
-            g.setFont(juce::FontOptions(base_.getFontSize() * .53f));
-            g.drawFittedText(label, slope_name_bound_, juce::Justification::centred, 1);
+            // The popup keeps the complete "dB/oct" wording. The chip only needs the
+            // compact slope value, otherwise it competes with the adjacent quick actions.
+            label = label.replace(" dB/oct", " dB");
+
+            auto textArea = slope_name_bound_.reduced(3, 0);
+            textArea.removeFromRight(7);
+            g.setColour(zlgui::glass::textSecondary().withAlpha(.86f));
+            g.setFont(juce::FontOptions(base_.getFontSize() * .51f));
+            g.drawFittedText(label, textArea, juce::Justification::centred, 1);
+
+            // Tiny disclosure chevron makes the compact chip read as a menu without
+            // relying on the almost-transparent ComboBox arrow.
+            const auto cx = static_cast<float>(slope_name_bound_.getRight() - 6);
+            const auto cy = static_cast<float>(slope_name_bound_.getCentreY());
+            juce::Path chevron;
+            chevron.startNewSubPath(cx - 2.2f, cy - 1.f);
+            chevron.lineTo(cx, cy + 1.2f);
+            chevron.lineTo(cx + 2.2f, cy - 1.f);
+            g.setColour(zlgui::glass::textSecondary().withAlpha(.58f));
+            g.strokePath(chevron, juce::PathStrokeType(.9f, juce::PathStrokeType::curved,
+                                                       juce::PathStrokeType::rounded));
         }
 
         for (const auto& r : value_bounds_) {
@@ -246,22 +264,31 @@ namespace zlpanel {
         const auto padding = juce::jmax(4, juce::roundToInt(font * .30f));
         const auto rowH = juce::jmax(20, juce::roundToInt(font * 1.42f));
         const auto gap = juce::jmax(2, juce::roundToInt(font * .20f));
+        const auto actionGap = juce::jmax(1, juce::roundToInt(font * .10f));
+        const auto slopeGap = juce::jmax(4, juce::roundToInt(font * .26f));
 
         auto b = getLocalBounds().reduced(padding);
         auto header = b.removeFromTop(rowH);
 
+        // Keep the filter identity compact so the slope chip and quick actions always
+        // get dedicated, non-overlapping space even at the minimum inspector width.
         ftype_box_.setBounds(header.removeFromLeft(rowH));
-        filter_name_bound_ = header.removeFromLeft(juce::roundToInt(font * 3.45f));
+        filter_name_bound_ = header.removeFromLeft(juce::roundToInt(font * 3.05f));
 
         bypass_button_.setBounds(header.removeFromRight(rowH));
+        header.removeFromRight(actionGap);
         solo_button_.setBounds(header.removeFromRight(rowH));
+        header.removeFromRight(actionGap);
         dynamic_button_.setBounds(header.removeFromRight(rowH));
-        header.removeFromRight(gap);
+        header.removeFromRight(slopeGap);
 
-        const auto slopeW = juce::jmin(juce::roundToInt(font * 3.35f), header.getWidth());
+        // The slope control is intentionally narrower than before. It owns its entire
+        // chip and never shares pixels with Dynamic/Solo/Bypass.
+        const auto desiredSlopeW = juce::roundToInt(font * 2.65f);
+        const auto slopeW = juce::jmax(0, juce::jmin(desiredSlopeW, header.getWidth()));
         slope_name_bound_ = header.removeFromRight(slopeW);
         slope_box_.setBounds(slope_name_bound_);
-        slope_box_.setVisible(slope_supported_);
+        slope_box_.setVisible(slope_supported_ && slopeW > 0);
 
         b.removeFromTop(gap);
         auto values = b.removeFromTop(rowH);
