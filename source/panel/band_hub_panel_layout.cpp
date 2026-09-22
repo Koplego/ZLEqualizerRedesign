@@ -5,73 +5,100 @@
 
 namespace zlpanel {
     void BandHubPanel::resized() {
-        auto surface = expandedSurface().toNearestInt().reduced(getPaddingSize(base_.getFontSize()) + 3);
-        const auto p = getPaddingSize(base_.getFontSize());
-        const auto b = getButtonSize(base_.getFontSize());
+        const auto font = base_.getFontSize();
+        const auto pad = juce::jmax(4, juce::roundToInt(font * .34f));
+        const auto gap = juce::jmax(3, juce::roundToInt(font * .24f));
+        const auto rowH = juce::jmax(20, juce::roundToInt(font * 1.42f));
 
-        auto header = surface.removeFromTop(b);
-        title_bound_ = header.removeFromLeft(juce::jmax(b * 3, juce::roundToInt(base_.getFontSize() * 6.1f)));
-        collapse_button_.setBounds(header.removeFromRight(b));
-        header.removeFromRight(p / 3);
-        const auto dynW = juce::jmax(b * 3, juce::roundToInt(base_.getFontSize() * 6.3f));
+        auto surface = expandedSurface().toNearestInt().reduced(pad);
+        auto header = surface.removeFromTop(rowH);
+
+        title_bound_ = header.removeFromLeft(juce::roundToInt(font * 5.35f));
+        header.removeFromLeft(gap);
+
+        collapse_button_.setBounds(header.removeFromRight(rowH));
+        header.removeFromRight(gap);
+
+        const auto dynW = juce::roundToInt(font * 4.7f);
         dynamic_button_.setBounds(header.removeFromRight(dynW));
-        header.removeFromRight(p / 3);
-        const auto channelW = juce::jmax(b * 2, juce::roundToInt(base_.getFontSize() * 5.1f));
+        header.removeFromRight(gap);
+
+        const auto channelW = juce::roundToInt(font * 4.05f);
         channel_box_.setBounds(header.removeFromRight(channelW));
+        header.removeFromRight(gap);
 
-        surface.removeFromTop(juce::jmax(2, p / 3));
-        auto nav = surface.removeFromTop(juce::jmax(b * 3 / 4, juce::roundToInt(base_.getFontSize() * 1.20f)));
-        const auto gap = juce::jmax(3, p / 3);
-        const auto tabW = (nav.getWidth() - 2 * gap) / 3;
-        dynamics_page_button_.setBounds(nav.removeFromLeft(tabW)); nav.removeFromLeft(gap);
-        detector_page_button_.setBounds(nav.removeFromLeft(tabW)); nav.removeFromLeft(gap);
-        sidechain_page_button_.setBounds(nav);
+        const auto tabGap = juce::jmax(2, gap - 1);
+        const auto tabW = juce::jmax(1, (header.getWidth() - 2 * tabGap) / 3);
+        dynamics_page_button_.setBounds(header.removeFromLeft(tabW));
+        header.removeFromLeft(tabGap);
+        detector_page_button_.setBounds(header.removeFromLeft(tabW));
+        header.removeFromLeft(tabGap);
+        sidechain_page_button_.setBounds(header);
 
-        surface.removeFromTop(juce::jmax(3, p / 2));
-        page_title_bound_ = surface.removeFromTop(juce::jmax(13, juce::roundToInt(base_.getFontSize() * 1.05f)));
-        surface.removeFromTop(juce::jmax(2, p / 4));
-        const auto labelH = juce::jmax(9, juce::roundToInt(base_.getFontSize() * .62f));
-        auto labels = surface.removeFromTop(labelH);
-        auto values = surface.removeFromTop(b);
-        const auto cellGap = juce::jmax(4, p / 2);
-        const auto cellW = (values.getWidth() - 3 * cellGap) / 4;
+        surface.removeFromTop(gap);
+        page_title_bound_ = {};
+
+        const auto labelH = juce::jmax(8, juce::roundToInt(font * .54f));
+        const auto controlH = juce::jmax(18, juce::roundToInt(font * 1.28f));
+        const auto contentH = labelH + controlH;
+        auto content = surface.withHeight(juce::jmin(surface.getHeight(), contentH));
+        if (surface.getHeight() > contentH)
+            content.setY(surface.getY() + (surface.getHeight() - contentH) / 2);
+
+        // Dynamics gets the full width: four dense value cells.
+        auto dynRegion = content;
+        const auto dynCellW = juce::jmax(1, (dynRegion.getWidth() - 3 * gap) / 4);
+        auto dynLabels = dynRegion.removeFromTop(labelH);
+        auto dynValues = dynRegion.removeFromTop(controlH);
         for (size_t i = 0; i < 4; ++i) {
-            primary_label_bounds_[i] = labels.removeFromLeft(cellW);
-            detail_label_bounds_[i] = primary_label_bounds_[i];
-            if (i < 3) labels.removeFromLeft(cellGap);
+            primary_label_bounds_[i] = dynLabels.removeFromLeft(dynCellW);
+            if (i < 3) dynLabels.removeFromLeft(gap);
+        }
+        threshold_slider_.setBounds(dynValues.removeFromLeft(dynCellW)); dynValues.removeFromLeft(gap);
+        range_slider_.setBounds(dynValues.removeFromLeft(dynCellW)); dynValues.removeFromLeft(gap);
+        attack_slider_.setBounds(dynValues.removeFromLeft(dynCellW)); dynValues.removeFromLeft(gap);
+        release_slider_.setBounds(dynValues);
+
+        // Detector and sidechain share one compact value strip. Their extra toggles
+        // live in a narrow action cluster on the right instead of consuming a third row.
+        const auto flagW = juce::jmax(42, juce::roundToInt(font * 3.05f));
+        const auto actionW = 3 * flagW + 2 * gap;
+        auto detailRegion = content;
+        auto actions = detailRegion.removeFromRight(juce::jmin(actionW, detailRegion.getWidth() / 2));
+        detailRegion.removeFromRight(gap);
+
+        const auto detailCellW = juce::jmax(1, (detailRegion.getWidth() - 3 * gap) / 4);
+        auto detailLabels = detailRegion.removeFromTop(labelH);
+        auto detailValues = detailRegion.removeFromTop(controlH);
+        for (size_t i = 0; i < 4; ++i) {
+            detail_label_bounds_[i] = detailLabels.removeFromLeft(detailCellW);
+            if (i < 3) detailLabels.removeFromLeft(gap);
         }
 
-        threshold_slider_.setBounds(values.removeFromLeft(cellW)); values.removeFromLeft(cellGap);
-        range_slider_.setBounds(values.removeFromLeft(cellW)); values.removeFromLeft(cellGap);
-        attack_slider_.setBounds(values.removeFromLeft(cellW)); values.removeFromLeft(cellGap);
-        release_slider_.setBounds(values);
+        auto detectorValues = detailValues;
+        knee_slider_.setBounds(detectorValues.removeFromLeft(detailCellW)); detectorValues.removeFromLeft(gap);
+        rms_length_slider_.setBounds(detectorValues.removeFromLeft(detailCellW)); detectorValues.removeFromLeft(gap);
+        rms_mix_slider_.setBounds(detectorValues.removeFromLeft(detailCellW)); detectorValues.removeFromLeft(gap);
+        smooth_slider_.setBounds(detectorValues);
 
-        auto detectorValues = threshold_slider_.getBounds().getUnion(range_slider_.getBounds())
-            .getUnion(attack_slider_.getBounds()).getUnion(release_slider_.getBounds());
-        auto dv = detectorValues;
-        knee_slider_.setBounds(dv.removeFromLeft(cellW)); dv.removeFromLeft(cellGap);
-        rms_length_slider_.setBounds(dv.removeFromLeft(cellW)); dv.removeFromLeft(cellGap);
-        rms_mix_slider_.setBounds(dv.removeFromLeft(cellW)); dv.removeFromLeft(cellGap);
-        smooth_slider_.setBounds(dv);
+        auto sideValues = detailValues;
+        side_type_box_.setBounds(sideValues.removeFromLeft(detailCellW)); sideValues.removeFromLeft(gap);
+        side_order_box_.setBounds(sideValues.removeFromLeft(detailCellW)); sideValues.removeFromLeft(gap);
+        side_freq_slider_.setBounds(sideValues.removeFromLeft(detailCellW)); sideValues.removeFromLeft(gap);
+        side_q_slider_.setBounds(sideValues);
 
-        auto sv = detectorValues;
-        side_type_box_.setBounds(sv.removeFromLeft(cellW)); sv.removeFromLeft(cellGap);
-        side_order_box_.setBounds(sv.removeFromLeft(cellW)); sv.removeFromLeft(cellGap);
-        side_freq_slider_.setBounds(sv.removeFromLeft(cellW)); sv.removeFromLeft(cellGap);
-        side_q_slider_.setBounds(sv);
+        actions.removeFromTop(labelH);
+        actions.setHeight(controlH);
+        learn_button_.setBounds(actions.removeFromLeft(flagW)); actions.removeFromLeft(gap);
+        relative_button_.setBounds(actions.removeFromLeft(flagW)); actions.removeFromLeft(gap);
+        dyn_bypass_button_.setBounds(actions);
 
-        surface.removeFromTop(juce::jmax(4, p / 2));
-        auto flags = surface.removeFromTop(juce::jmax(b * 3 / 4, juce::roundToInt(base_.getFontSize() * 1.18f)));
-        const auto flagGap = juce::jmax(4, p / 2);
-        const auto flagW3 = (flags.getWidth() - 2 * flagGap) / 3;
-        learn_button_.setBounds(flags.removeFromLeft(flagW3)); flags.removeFromLeft(flagGap);
-        relative_button_.setBounds(flags.removeFromLeft(flagW3)); flags.removeFromLeft(flagGap);
-        dyn_bypass_button_.setBounds(flags);
-
-        auto sideFlags = learn_button_.getBounds().getUnion(relative_button_.getBounds()).getUnion(dyn_bypass_button_.getBounds());
-        const auto sideW = (sideFlags.getWidth() - flagGap) / 2;
-        side_link_button_.setBounds(sideFlags.removeFromLeft(sideW)); sideFlags.removeFromLeft(flagGap);
-        side_swap_button_.setBounds(sideFlags);
+        auto sideActions = learn_button_.getBounds().getUnion(relative_button_.getBounds()).getUnion(dyn_bypass_button_.getBounds());
+        const auto sideGap = gap;
+        const auto sideW = juce::jmax(1, (sideActions.getWidth() - sideGap) / 2);
+        side_link_button_.setBounds(sideActions.removeFromLeft(sideW));
+        sideActions.removeFromLeft(sideGap);
+        side_swap_button_.setBounds(sideActions);
 
         updateVisibility();
     }
@@ -86,11 +113,11 @@ namespace zlpanel {
     }
 
     int BandHubPanel::getIdealWidth() const {
-        return juce::roundToInt(base_.getFontSize() * 42.f);
+        return juce::roundToInt(base_.getFontSize() * 34.f);
     }
 
     int BandHubPanel::getIdealHeight() const {
-        return juce::roundToInt(base_.getFontSize() * 12.2f);
+        return juce::roundToInt(base_.getFontSize() * 6.0f);
     }
 
     void BandHubPanel::setExpanded(const bool expanded) {
