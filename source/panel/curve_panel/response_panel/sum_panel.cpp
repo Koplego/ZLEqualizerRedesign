@@ -43,18 +43,16 @@ namespace zlpanel {
             const auto transparent = colour.withAlpha(0.f);
             juce::ColourGradient gradient(transparent, centre_x - radius, 0.f,
                                           transparent, centre_x + radius, 0.f, false);
-            gradient.addColour(.20, colour.withAlpha(alpha * .020f));
-            gradient.addColour(.34, colour.interpolatedWith(juce::Colours::white, white_mix * .30f)
-                                           .withAlpha(alpha * .18f));
-            gradient.addColour(.44, colour.interpolatedWith(juce::Colours::white, white_mix * .68f)
-                                           .withAlpha(alpha * .58f));
+            gradient.addColour(.18, colour.withAlpha(alpha * .02f));
+            gradient.addColour(.33, colour.withAlpha(alpha * .14f));
+            gradient.addColour(.44, colour.interpolatedWith(juce::Colours::white, white_mix * .46f)
+                                           .withAlpha(alpha * .48f));
             gradient.addColour(.50, colour.interpolatedWith(juce::Colours::white, white_mix)
                                            .withAlpha(alpha));
-            gradient.addColour(.56, colour.interpolatedWith(juce::Colours::white, white_mix * .68f)
-                                           .withAlpha(alpha * .58f));
-            gradient.addColour(.66, colour.interpolatedWith(juce::Colours::white, white_mix * .30f)
-                                           .withAlpha(alpha * .18f));
-            gradient.addColour(.80, colour.withAlpha(alpha * .020f));
+            gradient.addColour(.56, colour.interpolatedWith(juce::Colours::white, white_mix * .46f)
+                                           .withAlpha(alpha * .48f));
+            gradient.addColour(.67, colour.withAlpha(alpha * .14f));
+            gradient.addColour(.82, colour.withAlpha(alpha * .02f));
             return gradient;
         }
 
@@ -90,18 +88,18 @@ namespace zlpanel {
                                                         juce::PathStrokeType::rounded));
             }
 
-            // The mockup does not thicken the response into a neon streak. Instead the
-            // same thin line simply catches more light as it passes the selected node.
+            // Stained-glass response: colour spreads wider than white. The outer pass is
+            // a soft coloured reflection; the thin core catches only a small pale lift.
             if (node_light_x >= 0.f && node_light_radius > 1.f && node_light_colour.getAlpha() > 0) {
                 g.setGradientFill(makeNodeLineLight(node_light_x, node_light_radius,
-                                                    node_light_colour, .085f * alpha, .46f));
-                g.strokePath(path, juce::PathStrokeType(thickness * 1.62f,
+                                                    node_light_colour, .22f * alpha, .24f));
+                g.strokePath(path, juce::PathStrokeType(thickness * 2.45f,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
 
-                g.setGradientFill(makeNodeLineLight(node_light_x, node_light_radius * .72f,
-                                                    node_light_colour, .61f * alpha, .70f));
-                g.strokePath(path, juce::PathStrokeType(thickness * 1.01f,
+                g.setGradientFill(makeNodeLineLight(node_light_x, node_light_radius * .63f,
+                                                    node_light_colour, .68f * alpha, .48f));
+                g.strokePath(path, juce::PathStrokeType(thickness * 1.07f,
                                                         juce::PathStrokeType::curved,
                                                         juce::PathStrokeType::rounded));
             }
@@ -118,14 +116,14 @@ namespace zlpanel {
                 zlp::PFreq::kID + std::to_string(selected_band));
             const auto sample_rate = p_ref_.getSampleRate();
             if (freq_ptr != nullptr && sample_rate > 1000.0 && getWidth() > 0) {
-                const auto freq = juce::jmax(10.f, freq_ptr->load(std::memory_order::relaxed));
+                const auto freq = juce::jmax(10.f, freq_ptr->load(std::memory_order_relaxed));
                 const auto fft_max = static_cast<float>(freq_helper::getFFTMax(sample_rate));
                 const auto denominator = std::log(fft_max * .1f);
                 if (denominator > 1.0e-5f) {
                     const auto portion = static_cast<float>(kFFTSizeOverWidth) * std::log(freq * .1f) / denominator;
                     node_light_x = juce::jlimit(0.f, static_cast<float>(getWidth()),
                                                static_cast<float>(getWidth()) * portion);
-                    node_light_radius = juce::jmax(base_.getFontSize() * 3.45f, 40.f);
+                    node_light_radius = juce::jmax(base_.getFontSize() * 5.25f, 60.f);
                     node_light_colour = base_.getColourMap1(selected_band);
                 }
             }
