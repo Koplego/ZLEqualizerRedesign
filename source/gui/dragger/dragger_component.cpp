@@ -40,47 +40,22 @@ namespace zlgui::dragger {
         const auto colour = dragger_laf_.getColour();
         const auto font = base_.getFontSize();
 
-        // These gradients deliberately live on the full graph-sized Dragger component,
-        // not inside the tiny button. That lets a node illuminate analyser traces, curves
-        // and grid detail around it instead of looking like a self-contained shiny bead.
-        auto drawLightPool = [&](const float radius, const float alpha, const float whiteMix) {
-            if (radius <= 1.f || alpha <= .001f) return;
-            const auto centreColour = colour.interpolatedWith(juce::Colours::white, whiteMix)
-                                            .withAlpha(alpha * visibility);
-            juce::ColourGradient glow(centreColour,
-                                      button_pos_.x, button_pos_.y,
-                                      colour.withAlpha(0.f),
-                                      button_pos_.x + radius, button_pos_.y,
-                                      true);
-            glow.addColour(.32, colour.interpolatedWith(juce::Colours::white, whiteMix * .38f)
-                                       .withAlpha(alpha * .66f * visibility));
-            glow.addColour(.68, colour.withAlpha(alpha * .20f * visibility));
-            g.setGradientFill(glow);
-            g.fillEllipse(button_pos_.x - radius, button_pos_.y - radius,
-                          radius * 2.f, radius * 2.f);
-        };
-
-        // A broad, low-energy wash changes the local graph atmosphere; the tighter pool
-        // gives the curve and analyser immediately around the node a clear coloured lift.
-        drawLightPool(font * (active ? 4.2f : hover ? 3.25f : 2.65f),
-                      active ? .105f : hover ? .070f : .038f,
-                      active ? .24f : .15f);
-        drawLightPool(font * (active ? 1.95f : hover ? 1.58f : 1.34f),
-                      active ? .205f : hover ? .135f : .082f,
-                      active ? .46f : .32f);
-
-        if (active) {
-            // Very small neutral lift at the source makes nearby whites/grid intersections
-            // feel illuminated without washing the whole graph in the band's hue.
-            const auto radius = font * .92f;
-            juce::ColourGradient hot(juce::Colours::white.withAlpha(.075f * visibility),
-                                     button_pos_.x, button_pos_.y,
-                                     juce::Colours::white.withAlpha(0.f),
-                                     button_pos_.x + radius, button_pos_.y, true);
-            g.setGradientFill(hot);
-            g.fillEllipse(button_pos_.x - radius, button_pos_.y - radius,
-                          radius * 2.f, radius * 2.f);
-        }
+        // Keep only a close aura around the source itself. The meaningful illumination is
+        // now painted onto the band's EQ line and fill in SinglePanel, so the graph does
+        // not get covered by a broad coloured fog.
+        const auto radius = font * (active ? 1.34f : hover ? 1.10f : .92f);
+        const auto alpha = active ? .145f : hover ? .095f : .055f;
+        const auto hot = colour.interpolatedWith(juce::Colours::white, active ? .40f : .28f)
+                               .withAlpha(alpha * visibility);
+        juce::ColourGradient aura(hot,
+                                  button_pos_.x, button_pos_.y,
+                                  colour.withAlpha(0.f),
+                                  button_pos_.x + radius, button_pos_.y,
+                                  true);
+        aura.addColour(.42, colour.withAlpha(alpha * .42f * visibility));
+        g.setGradientFill(aura);
+        g.fillEllipse(button_pos_.x - radius, button_pos_.y - radius,
+                      radius * 2.f, radius * 2.f);
     }
 
     bool Dragger::updateButton(const juce::Point<float>& center) {
@@ -90,9 +65,7 @@ namespace zlgui::dragger {
                 button_pos_ = center;
                 button_.setTransform(juce::AffineTransform::translation(button_pos_.x, button_pos_.y));
 
-                // Repaint both the old and new environmental-light footprints. The child
-                // button repaints itself, but the emitted light belongs to this parent.
-                const auto r = juce::roundToInt(base_.getFontSize() * 4.6f);
+                const auto r = juce::roundToInt(base_.getFontSize() * 1.7f);
                 if (std::isfinite(old.x) && std::isfinite(old.y) && old.x > -1000.f && old.y > -1000.f)
                     repaint(juce::roundToInt(old.x) - r, juce::roundToInt(old.y) - r, r * 2, r * 2);
                 repaint(juce::roundToInt(center.x) - r, juce::roundToInt(center.y) - r, r * 2, r * 2);
