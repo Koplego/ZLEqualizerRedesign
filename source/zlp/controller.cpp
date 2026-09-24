@@ -122,6 +122,15 @@ namespace zlp {
         }
     }
 
+    bool Controller::needsSideInputForBlock() {
+        prepareBuffer();
+        if (c_editor_on_ || is_ms_on_) return true;
+        for (const auto band : not_off_total_) {
+            if (c_dynamic_on_[band]) return true;
+        }
+        return false;
+    }
+
     void Controller::prepareUIStatus() {
         c_editor_on_ = editor_on_.load(std::memory_order::relaxed);
         c_match_bypass_on_ = match_bypass_on_.load(std::memory_order::relaxed);

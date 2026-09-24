@@ -119,6 +119,9 @@ namespace zlpanel {
         tooltip_laf_(base_) {
         juce::ignoreUnused(base_);
         setOpaque(false);
+        for (size_t band = 0; band < zlp::kBandNum; ++band)
+            band_status_[band] = p_ref_.parameters_.getRawParameterValue(
+                zlp::PFilterStatus::kID + std::to_string(band));
 
         top_panel_.setPresetNameProvider([this]() { return preset_browser_.getDisplayPresetName(); });
 
@@ -156,11 +159,17 @@ namespace zlpanel {
     void MainPanel::paint(juce::Graphics& g) {
         const auto bounds = getLocalBounds();
         if (bounds.isEmpty()) return;
-        if (!backdrop_image_.isValid() || backdrop_image_.getBounds() != bounds)
+        if (!backdrop_image_.isValid() || backdrop_image_.getBounds() != bounds) {
             backdrop_image_ = juce::Image(juce::Image::ARGB, bounds.getWidth(), bounds.getHeight(), true);
-        backdrop_image_.clear(bounds);
-        juce::Graphics underlay(backdrop_image_);
-        paintGlassBackdrop(underlay);
+            glass_dirty_ = true;
+        }
+        if (glass_dirty_) {
+            backdrop_image_.clear(bounds);
+            juce::Graphics underlay(backdrop_image_);
+            paintGlassBackdrop(underlay);
+            glass_dirty_ = false;
+            refraction_dirty_ = true;
+        }
         g.drawImageAt(backdrop_image_, 0, 0);
     }
 
@@ -194,14 +203,10 @@ namespace zlpanel {
             // Reading the component geometry avoids a second, subtly different EQ mapping.
             const auto font = base_.getFontSize();
             for (size_t band = 0; band < zlp::kBandNum; ++band) {
-                const auto* status = p_ref_.parameters_.getRawParameterValue(
-                    zlp::PFilterStatus::kID + std::to_string(band));
-                if (status == nullptr || static_cast<zlp::FilterStatus>(std::lround(status->load()))
-                    != zlp::FilterStatus::kOn) continue;
-                auto& lens = curve_panel_.getNodeLens(band);
-                if (!lens.isShowing()) continue;
-                const auto centre = getLocalPoint(&lens, lens.getLocalBounds().toFloat().getCentre());
-                const auto colour = base_.getColourMap1(band).withMultipliedSaturation(1.15f);
+                const auto& light = node_lights_[band];
+                if (!light.active) continue;
+                const auto centre = light.bounds.toFloat().getCentre();
+                const auto colour = light.colour.withMultipliedSaturation(1.15f);
                 // Short-wavelength light spreads farther through this glass. This depends
                 // on the source colour, never its band index or a fixed spectrum position.
                 const auto spread = font * 24.f * (.8f + .6f * colour.getFloatBlue());
@@ -264,8 +269,25 @@ namespace zlpanel {
         const auto graph = getLocalArea(&curve_panel_, curve_panel_.getGraphGlassBounds());
         if (!graph_material_image_.isValid()
             || graph_material_image_.getWidth() != graph.getWidth()
-            || graph_material_image_.getHeight() != graph.getHeight())
+            || graph_material_image_.getHeight() != graph.getHeight()) {
             graph_material_image_ = curve_panel_.getGraphMaterialImage();
+            refraction_dirty_ = true;
+        }
+
+        if (!refraction_image_.isValid() || refraction_image_.getBounds() != getLocalBounds()) {
+            refraction_image_ = juce::Image(juce::Image::ARGB, getWidth(), getHeight(), true);
+            refraction_dirty_ = true;
+        }
+        if (refraction_dirty_) {
+            refraction_image_.clear(refraction_image_.getBounds());
+            juce::Graphics refracted(refraction_image_);
+            paintRefractions(refracted, graph, font);
+            refraction_dirty_ = false;
+        }
+        g.drawImageAt(refraction_image_, 0, 0);
+    }
+
+    void MainPanel::paintRefractions(juce::Graphics& g, juce::Rectangle<int> graph, float font) {
 
         // A copy of the actual node-lit backdrop plus the graph's real grid is the
         // optical input. Rim pixels are sampled from displaced positions in it.
@@ -297,13 +319,11 @@ namespace zlpanel {
 
         // Node lenses use the same live optical input as the larger panes. The narrow
         // displaced annulus bends the graph and coloured transmission around each rim.
-        for (size_t band = 0; band < zlp::kBandNum; ++band) {
-            auto& lens = curve_panel_.getNodeLens(band);
-            if (lens.isShowing())
-                drawRefractedNode(g, scene,
-                    getLocalArea(&lens, lens.getLocalBounds()).withSizeKeepingCentre(
-                        juce::roundToInt(lens.getWidth() * .81f),
-                        juce::roundToInt(lens.getHeight() * .81f)));
+        for (const auto& light : node_lights_) {
+            if (light.active)
+                drawRefractedNode(g, scene, light.bounds.withSizeKeepingCentre(
+                    juce::roundToInt(light.bounds.getWidth() * .81f),
+                    juce::roundToInt(light.bounds.getHeight() * .81f)));
         }
     }
 
@@ -332,6 +352,9 @@ namespace zlpanel {
         curve_panel_.setBounds(bound);
         overlay_scrim_.setBounds(curve_panel_.getBounds());
         graph_material_image_ = {};
+        glass_dirty_ = true;
+        refraction_dirty_ = true;
+        node_lights_initialized_ = false;
 
         const auto padding = getPaddingSize(font_size);
         const auto match_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel)) > .5;
@@ -434,28 +457,44 @@ namespace zlpanel {
         if (ui_setting_panel_.isVisible()) ui_setting_panel_.flushPendingScroll();
         if (preset_browser_.isVisible()) preset_browser_.flushPendingScroll();
 
-        // Node positions are light-source positions now, so the parent glass must refresh
-        // whenever the response refreshes instead of keeping a stale coloured reflection.
-        repaint();
         curve_panel_.repaintCallBack();
-        std::vector<BandHubPanel::NodeLight> hub_lights;
-        std::vector<MatchControlPanel::NodeLight> match_lights;
+        bool lights_changed = !node_lights_initialized_;
         for (size_t band = 0; band < zlp::kBandNum; ++band) {
-            const auto* status = p_ref_.parameters_.getRawParameterValue(
-                zlp::PFilterStatus::kID + std::to_string(band));
-            if (status == nullptr || static_cast<zlp::FilterStatus>(std::lround(status->load()))
-                != zlp::FilterStatus::kOn) continue;
+            const auto* status = band_status_[band];
             auto& lens = curve_panel_.getNodeLens(band);
-            if (!lens.isShowing()) continue;
-            hub_lights.push_back({band_hub_panel_.getLocalPoint(&lens,
-                lens.getLocalBounds().toFloat().getCentre()),
-                base_.getColourMap1(band), base_.getFontSize() * 22.f});
-            match_lights.push_back({control_panel_.getLocalPoint(&lens,
-                lens.getLocalBounds().toFloat().getCentre()),
-                base_.getColourMap1(band), base_.getFontSize() * 22.f});
+            const bool active = status != nullptr
+                && static_cast<zlp::FilterStatus>(std::lround(status->load(std::memory_order::relaxed)))
+                    == zlp::FilterStatus::kOn && lens.isShowing();
+            const auto bounds = active ? getLocalArea(&lens, lens.getLocalBounds()) : juce::Rectangle<int>{};
+            const auto colour = active ? base_.getColourMap1(band) : juce::Colour{};
+            auto& light = node_lights_[band];
+            if (light.active != active || light.bounds != bounds || light.colour != colour) {
+                light = {bounds, colour, active};
+                lights_changed = true;
+            }
         }
-        band_hub_panel_.setAmbientSources(std::move(hub_lights));
-        control_panel_.setMatchNodeLights(std::move(match_lights));
+        node_lights_initialized_ = true;
+        if (lights_changed) {
+            glass_dirty_ = true;
+            refraction_dirty_ = true;
+            repaint();
+            if (band_hub_panel_.isVisible() || control_panel_.isVisible()) {
+                std::vector<BandHubPanel::NodeLight> hub_lights;
+                std::vector<MatchControlPanel::NodeLight> match_lights;
+                hub_lights.reserve(zlp::kBandNum);
+                match_lights.reserve(zlp::kBandNum);
+                for (const auto& light : node_lights_) {
+                    if (!light.active) continue;
+                    const auto centre = light.bounds.toFloat().getCentre();
+                    hub_lights.push_back({centre - band_hub_panel_.getPosition().toFloat(),
+                        light.colour, base_.getFontSize() * 22.f});
+                    match_lights.push_back({centre - control_panel_.getPosition().toFloat(),
+                        light.colour, base_.getFontSize() * 22.f});
+                }
+                band_hub_panel_.setAmbientSources(std::move(hub_lights));
+                control_panel_.setMatchNodeLights(std::move(match_lights));
+            }
+        }
         control_panel_.repaintCallBack();
         const auto c_refresh_rate = refresh_handler_.getActualRefreshRate();
         if (std::abs(c_refresh_rate - refresh_rate_) > 0.1) {

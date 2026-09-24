@@ -9,6 +9,8 @@
 
 #pragma once
 
+#include <array>
+
 #include "control_panel/control_panel.hpp"
 #include "band_hub_panel.hpp"
 #include "control_panel/extra_dynamic_panel.hpp"
@@ -65,7 +67,19 @@ namespace zlpanel {
         zlgui::UIBase& base_;
         juce::Image backdrop_image_;
         juce::Image graph_material_image_;
+        juce::Image refraction_image_;
+        struct NodeLightState {
+            juce::Rectangle<int> bounds{};
+            juce::Colour colour{};
+            bool active{false};
+        };
+        std::array<NodeLightState, zlp::kBandNum> node_lights_{};
+        std::array<std::atomic<float>*, zlp::kBandNum> band_status_{};
+        bool node_lights_initialized_{false};
+        bool glass_dirty_{true};
+        bool refraction_dirty_{true};
         void paintGlassBackdrop(juce::Graphics& g);
+        void paintRefractions(juce::Graphics& g, juce::Rectangle<int> graph, float font);
         multilingual::TooltipHelper tooltip_helper_;
 
         RefreshHandler refresh_handler_;
