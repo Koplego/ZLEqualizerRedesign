@@ -45,7 +45,6 @@ namespace zlpanel {
         zlgui::slider::CompactLinearSlider<false, false, false> freq_slider_;
         zlgui::slider::CompactLinearSlider<false, false, false> gain_slider_;
         zlgui::slider::CompactLinearSlider<false, false, false> q_slider_;
-        zlgui::button::ClickTextButton inspector_button_;
 
         std::unique_ptr<zlgui::attachment::ComboBoxAttachment<true>> ftype_attachment_;
         std::unique_ptr<zlgui::attachment::ComboBoxAttachment<true>> slope_attachment_;

@@ -1,153 +1,122 @@
 // Copyright (C) 2026 - zsliu98
-// This file is part of ZLEqualizer
-//
-// Glass EQ contextual Band Hub.  The graph bubble owns only fast static-EQ
-// edits; deeper per-band controls live here in a stable, bottom-anchored surface.
-
+// Glass EQ contextual band workspace
 #pragma once
+
+#include <array>
+#include <utility>
+#include <vector>
 
 #include "../PluginProcessor.hpp"
 #include "../gui/gui.hpp"
 #include "helper/helper.hpp"
-
-#include <array>
-#include <memory>
+#include "multilingual/tooltip_helper.hpp"
 
 namespace zlpanel {
     class BandHubPanel final : public juce::Component,
-                               private juce::Timer,
-                               private juce::ValueTree::Listener {
+                               private juce::Timer {
     public:
-        explicit BandHubPanel(PluginProcessor& p, zlgui::UIBase& base);
-        ~BandHubPanel() override;
+        struct NodeLight {
+            juce::Point<float> point{};
+            juce::Colour colour{};
+            float radius{0.f};
+        };
+        explicit BandHubPanel(PluginProcessor& p, zlgui::UIBase& base,
+                              const multilingual::TooltipHelper& tooltip_helper);
+        ~BandHubPanel() override = default;
 
         void paint(juce::Graphics& g) override;
         void resized() override;
+        bool hitTest(int x, int y) override;
+        void mouseUp(const juce::MouseEvent& event) override;
 
+        int getIdealWidth() const;
+        int getIdealHeight() const;
         void updateBand();
         void repaintCallbackSlow();
+        void setSuppressed(bool suppressed);
 
-        void setExpanded(bool should_expand);
-        bool isExpanded() const noexcept { return expanded_; }
+        void setAmbientSources(std::vector<NodeLight> sources) {
+            ambient_sources_ = std::move(sources);
+            repaint();
+        }
 
     private:
-        enum class Page { dynamics, detector, sidechain, actions };
-
-        static constexpr std::array kCopyIDs{
-            zlp::PFilterStatus::kID,
-            zlp::PFilterType::kID,
-            zlp::POrder::kID, zlp::PLRMode::kID,
-            zlp::PFreq::kID,
-            zlp::PGain::kID, zlp::PTargetGain::kID,
-            zlp::PQ::kID,
-            zlp::PDynamicON::kID, zlp::PDynamicLearn::kID,
-            zlp::PDynamicBypass::kID, zlp::PDynamicRelative::kID,
-            zlp::PSideSwap::kID, zlp::PSideLink::kID,
-            zlp::PThreshold::kID, zlp::PKneeW::kID,
-            zlp::PAttack::kID, zlp::PRelease::kID,
-            zlp::PDynamicRMSLength::kID, zlp::PDynamicRMSMix::kID,
-            zlp::PDynamicSmooth::kID,
-            zlp::PSideFilterType::kID, zlp::PSideOrder::kID,
-            zlp::PSideFreq::kID, zlp::PSideQ::kID
-        };
+        enum class Page { dynamics, detector, sidechain };
 
         PluginProcessor& p_ref_;
         zlgui::UIBase& base_;
         zlgui::attachment::ComponentUpdater updater_{};
+        std::vector<NodeLight> ambient_sources_{};
 
-        size_t band_{zlp::kBandNum};
         Page page_{Page::dynamics};
+        size_t attached_band_{zlp::kBandNum};
+        bool dynamic_on_{false};
         bool expanded_{false};
+        bool suppressed_{false};
         float reveal_{0.f};
         float reveal_target_{0.f};
 
-        std::atomic<float>* dynamic_on_ptr_{nullptr};
-        std::atomic<float>* filter_type_ptr_{nullptr};
-
-        // Stable hub header.
-        zlgui::combobox::CompactCombobox channel_box_;
-        std::unique_ptr<zlgui::attachment::ComboBoxAttachment<true>> channel_attach_;
-
-        zlgui::button::ClickTextButton dynamic_toggle_;
-        std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> dynamic_attach_;
-
-        zlgui::button::ClickTextButton expand_button_;
+        zlgui::button::ClickTextButton collapse_button_;
+        zlgui::button::ClickTextButton dynamic_button_;
         zlgui::button::ClickTextButton dynamics_page_button_;
         zlgui::button::ClickTextButton detector_page_button_;
         zlgui::button::ClickTextButton sidechain_page_button_;
-        zlgui::button::ClickTextButton actions_page_button_;
+        zlgui::combobox::CompactCombobox channel_box_;
 
-        // Dynamic primary controls — these intentionally mirror the approved mockup.
         zlgui::slider::CompactLinearSlider<false, false, false> threshold_slider_;
         zlgui::slider::CompactLinearSlider<false, false, false> range_slider_;
         zlgui::slider::CompactLinearSlider<false, false, false> attack_slider_;
         zlgui::slider::CompactLinearSlider<false, false, false> release_slider_;
-        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> threshold_attach_;
-        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> range_attach_;
-        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> attack_attach_;
-        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> release_attach_;
 
-        // Detector / advanced dynamics.
         zlgui::slider::CompactLinearSlider<false, false, false> knee_slider_;
         zlgui::slider::CompactLinearSlider<false, false, false> rms_length_slider_;
         zlgui::slider::CompactLinearSlider<false, false, false> rms_mix_slider_;
         zlgui::slider::CompactLinearSlider<false, false, false> smooth_slider_;
-        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> knee_attach_;
-        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> rms_length_attach_;
-        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> rms_mix_attach_;
-        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> smooth_attach_;
-
         zlgui::button::ClickTextButton learn_button_;
         zlgui::button::ClickTextButton relative_button_;
-        zlgui::button::ClickTextButton dynamic_bypass_button_;
-        std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> learn_attach_;
-        std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> relative_attach_;
-        std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> dynamic_bypass_attach_;
+        zlgui::button::ClickTextButton dyn_bypass_button_;
 
-        // Dynamic sidechain.
         zlgui::combobox::CompactCombobox side_type_box_;
         zlgui::combobox::CompactCombobox side_order_box_;
         zlgui::slider::CompactLinearSlider<false, false, false> side_freq_slider_;
         zlgui::slider::CompactLinearSlider<false, false, false> side_q_slider_;
-        std::unique_ptr<zlgui::attachment::ComboBoxAttachment<true>> side_type_attach_;
-        std::unique_ptr<zlgui::attachment::ComboBoxAttachment<true>> side_order_attach_;
-        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> side_freq_attach_;
-        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> side_q_attach_;
-
         zlgui::button::ClickTextButton side_link_button_;
         zlgui::button::ClickTextButton side_swap_button_;
-        zlgui::button::ClickTextButton external_button_;
-        std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> side_link_attach_;
-        std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> side_swap_attach_;
-        zlgui::attachment::ButtonAttachment<true> external_attach_;
 
-        // Actions.  Context-click remains a fast shortcut; this page is the discoverable home.
-        zlgui::button::ClickTextButton solo_button_;
-        zlgui::button::ClickTextButton invert_button_;
-        zlgui::button::ClickTextButton split_lr_button_;
-        zlgui::button::ClickTextButton split_ms_button_;
-        zlgui::button::ClickTextButton copy_button_;
-        zlgui::button::ClickTextButton paste_button_;
-        zlgui::button::ClickTextButton delete_button_;
+        std::unique_ptr<zlgui::attachment::ComboBoxAttachment<true>> channel_attachment_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> threshold_attachment_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> range_attachment_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> attack_attachment_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> release_attachment_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> knee_attachment_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> rms_length_attachment_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> rms_mix_attachment_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> smooth_attachment_;
+        std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> learn_attachment_;
+        std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> relative_attachment_;
+        std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> dyn_bypass_attachment_;
+        std::unique_ptr<zlgui::attachment::ComboBoxAttachment<true>> side_type_attachment_;
+        std::unique_ptr<zlgui::attachment::ComboBoxAttachment<true>> side_order_attachment_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> side_freq_attachment_;
+        std::unique_ptr<zlgui::attachment::SliderAttachment<true>> side_q_attachment_;
+        std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> side_link_attachment_;
+        std::unique_ptr<zlgui::attachment::ButtonAttachment<true>> side_swap_attachment_;
 
-        juce::Rectangle<float> hub_surface_{};
-        juce::Rectangle<int> identity_bound_{};
+        std::atomic<float>* dynamic_on_ptr_{nullptr};
+        std::array<juce::Rectangle<int>, 4> primary_label_bounds_{};
+        std::array<juce::Rectangle<int>, 4> detail_label_bounds_{};
+        juce::Rectangle<int> title_bound_{};
         juce::Rectangle<int> page_title_bound_{};
-        std::array<juce::Rectangle<int>, 4> value_label_bounds_{};
 
-        void timerCallback() override;
-        void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override;
-
+        void setExpanded(bool expanded);
         void setPage(Page page);
-        void updatePageVisibility();
-        void stylePill(zlgui::button::ClickTextButton& button, bool quiet = false);
-        void clearBandAttachments();
-        void layoutForReveal();
-
-        void invertGain();
-        void splitBand(zlp::FilterStereo stereo1, zlp::FilterStereo stereo2);
-        void copyBand();
-        void pasteBand();
-        void deleteBand();
+        void syncDynamicState();
+        void updateVisibility();
+        void clearAttachments();
+        void stylePill(zlgui::button::ClickTextButton& button, float font_scale = .68f);
+        juce::Rectangle<float> currentSurface() const;
+        juce::Rectangle<float> expandedSurface() const;
+        juce::Rectangle<float> collapsedSurface() const;
+        void timerCallback() override;
     };
 }

@@ -10,6 +10,7 @@
 #pragma once
 
 #include "control_panel/control_panel.hpp"
+#include "band_hub_panel.hpp"
 #include "control_panel/extra_dynamic_panel.hpp"
 #include "curve_panel/curve_panel.hpp"
 #include "glass_footer_panel.hpp"
@@ -72,6 +73,7 @@ namespace zlpanel {
         double refresh_rate_{-1.0};
 
         CurvePanel curve_panel_;
+        BandHubPanel band_hub_panel_;
         GlobalScrim overlay_scrim_;
         ControlPanel control_panel_;
         ExtraDynamicPanel extra_dynamic_panel_;

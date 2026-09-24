@@ -176,10 +176,6 @@ include(SharedCodeDefaults)
 # If you want to appease the CMake gods and avoid globs, manually add files like so:
 # set(SourceFiles Source/PluginEditor.h Source/PluginProcessor.h Source/PluginProcessor.cpp)
 file(GLOB_RECURSE SourceFiles CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/source/*.hpp")
-# band_hub_panel.cpp is an unintegrated WIP source file on this design branch. It is not
-# referenced by MainPanel yet and currently contains incomplete prototype code, so keep it
-# out of production/CI builds until the Band Hub is wired into the active UI.
-list(FILTER SourceFiles EXCLUDE REGEX ".*/source/panel/band_hub_panel\\.cpp$")
 target_sources(SharedCode INTERFACE ${SourceFiles})
 
 # Adds a BinaryData target for embedding assets into the binary
