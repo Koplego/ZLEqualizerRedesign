@@ -40,31 +40,40 @@ namespace zlpanel {
         analyzer_toggle_button_.setBackgroundPainter([this](juce::Graphics& g, juce::Button& b,
                                                              const bool highlighted, const bool down) {
             const auto active = b.getToggleState();
+            const auto signalBlue = juce::Colour(73, 157, 255);
             auto toggle = b.getLocalBounds().toFloat().reduced(1.f)
                               .withSizeKeepingCentre(base_.getFontSize() * 2.05f,
                                                      base_.getFontSize() * 1.04f);
-            if (highlighted || down) {
-                const auto halo = toggle.expanded(2.f);
-                g.setColour(juce::Colour(229, 240, 248).withAlpha(down ? .11f : .06f));
-                g.fillRoundedRectangle(halo, halo.getHeight() * .5f);
-            }
-            g.setColour(juce::Colour(5, 16, 25).withAlpha(.35f));
-            g.fillRoundedRectangle(toggle, toggle.getHeight() * .5f);
+            juce::Path track;
+            track.addRoundedRectangle(toggle, toggle.getHeight() * .5f);
             if (active) {
-                g.setColour(juce::Colour(226, 239, 248).withAlpha(.18f));
-                g.fillRoundedRectangle(toggle, toggle.getHeight() * .5f);
+                juce::DropShadow(signalBlue.withAlpha(.52f),
+                    juce::jmax(5, juce::roundToInt(base_.getFontSize() * .65f)), {0, 0})
+                    .drawForPath(g, track);
             }
-            g.setColour(juce::Colour(238, 247, 253).withAlpha(active ? .48f : .24f));
-            g.drawRoundedRectangle(toggle, toggle.getHeight() * .5f, .72f);
+            zlgui::glass::fillGlassSurface(g, toggle, toggle.getHeight() * .5f,
+                .08f, .12f, active ? .31f : .16f);
+            if (active) {
+                juce::ColourGradient lit(signalBlue.withAlpha(.60f), toggle.getX(), toggle.getCentreY(),
+                                         signalBlue.withAlpha(.33f), toggle.getRight(), toggle.getCentreY(), false);
+                g.setGradientFill(lit);
+                g.fillRoundedRectangle(toggle.reduced(1.f), toggle.getHeight() * .5f - 1.f);
+            } else if (highlighted || down) {
+                g.setColour(juce::Colours::white.withAlpha(.09f));
+                g.fillRoundedRectangle(toggle.reduced(1.f), toggle.getHeight() * .5f - 1.f);
+            }
 
             const auto knob = toggle.getHeight() * .76f;
             const auto knob_x = active ? toggle.getRight() - knob - toggle.getHeight() * .12f
                                        : toggle.getX() + toggle.getHeight() * .12f;
-            juce::ColourGradient lens(juce::Colour(255, 255, 255).withAlpha(.98f), knob_x, toggle.getY(),
-                                      juce::Colour(181, 205, 221).withAlpha(.91f), knob_x + knob,
+            juce::ColourGradient lens(juce::Colour(255, 255, 255).withAlpha(.91f), knob_x, toggle.getY(),
+                                      juce::Colour(204, 223, 239).withAlpha(.70f), knob_x + knob,
                                       toggle.getBottom(), false);
             g.setGradientFill(lens);
             g.fillEllipse(knob_x, toggle.getCentreY() - knob * .5f, knob, knob);
+            g.setColour(juce::Colours::white.withAlpha(.72f));
+            g.drawEllipse(knob_x + .5f, toggle.getCentreY() - knob * .5f + .5f,
+                          knob - 1.f, knob - 1.f, .75f);
         });
         analyzer_toggle_button_.getButton().onClick = [this]() { toggleAnalyzerEnabled(); };
 
@@ -96,19 +105,29 @@ namespace zlpanel {
     }
 
     void GlassFooterPanel::stylePill(zlgui::button::ClickTextButton& button) {
-        button.setBackgroundPainter([](juce::Graphics& g, juce::Button& b,
+        button.setBackgroundPainter([this](juce::Graphics& g, juce::Button& b,
                                       const bool highlighted, const bool down) {
             auto r = b.getLocalBounds().toFloat().reduced(.75f);
-            const auto selected = b.getToggleState() || down;
-            if (selected || highlighted) {
-                g.setColour(juce::Colour(236, 247, 253).withAlpha(selected ? .090f : .045f));
-                g.fillRoundedRectangle(r, r.getHeight() * .5f);
-                g.setColour(juce::Colour(244, 251, 255).withAlpha(selected ? .22f : .11f));
-                g.drawRoundedRectangle(r, r.getHeight() * .5f, .76f);
+            const auto analyzer = b.getButtonText() == "Analyzer";
+            const auto lit = analyzer && isAnalyzerEnabled();
+            const auto selected = (analyzer ? lit : b.getToggleState()) || down;
+            if (lit) {
+                juce::Path silhouette;
+                silhouette.addRoundedRectangle(r, r.getHeight() * .5f);
+                juce::DropShadow(juce::Colour(73, 157, 255).withAlpha(.24f),
+                    juce::jmax(5, juce::roundToInt(base_.getFontSize() * .55f)), {0, 0})
+                    .drawForPath(g, silhouette);
             }
+            zlgui::glass::fillGlassSurface(g, r, r.getHeight() * .5f,
+                selected ? .095f : .030f, selected ? .12f : .045f,
+                selected ? .23f : highlighted ? .16f : .10f);
             if (selected) {
-                g.setColour(juce::Colour(235, 245, 251).withAlpha(.060f));
-                g.fillRoundedRectangle(r.reduced(r.getHeight() * .10f), r.getHeight() * .42f);
+                const auto tint = lit ? juce::Colour(73, 157, 255) : juce::Colours::white;
+                juce::ColourGradient core(tint.withAlpha(lit ? .25f : .065f),
+                    r.getCentreX(), r.getY(), tint.withAlpha(0.f),
+                    r.getCentreX(), r.getBottom(), false);
+                g.setGradientFill(core);
+                g.fillRoundedRectangle(r.reduced(2.f), r.getHeight() * .5f - 2.f);
             }
         });
     }
@@ -237,7 +256,7 @@ namespace zlpanel {
         if (mask != 0u) analyzer_restore_mask_ = mask;
         analyzer_toggle_button_.getButton().setToggleState(mask != 0u, juce::dontSendNotification);
         analyzer_menu_button_.getButton().setToggleState(
-            static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel)) > .5,
+            mask != 0u,
             juce::dontSendNotification);
         repaint();
     }

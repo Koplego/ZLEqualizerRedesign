@@ -34,38 +34,58 @@ namespace zlgui::dragger {
                 hot_halo.drawForPath(g, outline_path_);
             }
 
-            g.setColour(colour_.interpolatedWith(juce::Colours::white, .08f)
-                        .withAlpha((active ? .42f : hover ? .34f : .28f) * visibility));
-            g.fillPath(outline_path_);
-
-            // Strong milky outer rim from the reference.
-            g.setColour(juce::Colours::white.withAlpha((active ? .98f : hover ? .88f : .80f) * visibility));
-            g.strokePath(outline_path_, juce::PathStrokeType(juce::jmax(1.15f, base_.getFontSize() * .115f)));
-
             const auto innerBounds = inner_path_.getBounds();
+            // The node is a coloured emitter inside clear glass, not a solid coloured ball.
+            // Keep the core translucent so the graph and the node's own light pass through it.
             juce::ColourGradient lens(
-                colour_.interpolatedWith(juce::Colours::white, active ? .48f : .43f)
-                    .withAlpha((active ? .99f : .95f) * visibility),
+                juce::Colours::white.withAlpha((active ? .42f : .34f) * visibility),
                 innerBounds.getX() + innerBounds.getWidth() * .24f,
-                innerBounds.getY() + innerBounds.getHeight() * .13f,
-                colour_.interpolatedWith(juce::Colours::black, .02f)
-                    .withAlpha((active ? .98f : .94f) * visibility),
+                innerBounds.getY() + innerBounds.getHeight() * .16f,
+                colour_.withAlpha((active ? .31f : .27f) * visibility),
                 innerBounds.getRight(), innerBounds.getBottom(), true);
-            lens.addColour(.46, colour_.interpolatedWith(juce::Colours::white, .14f)
-                                      .withAlpha((active ? .99f : .96f) * visibility));
+            lens.addColour(.52, colour_.interpolatedWith(juce::Colours::white, .35f)
+                                      .withAlpha(.18f * visibility));
             g.setGradientFill(lens);
             g.fillPath(inner_path_);
 
-            g.setColour(juce::Colours::white.withAlpha((active ? .34f : hover ? .30f : .26f) * visibility));
-            g.strokePath(inner_path_, juce::PathStrokeType(juce::jmax(.95f, base_.getFontSize() * .074f)));
-
             if (dragger_shape_ == kRound) {
-                auto glint = innerBounds.withSizeKeepingCentre(innerBounds.getWidth() * .40f,
-                                                               innerBounds.getHeight() * .18f);
-                glint.translate(-innerBounds.getWidth() * .13f, -innerBounds.getHeight() * .22f);
-                g.setColour(juce::Colours::white.withAlpha((active ? .42f : .27f) * visibility));
-                g.fillEllipse(glint);
+                juce::Path crown;
+                const auto cx = innerBounds.getCentreX();
+                const auto cy = innerBounds.getCentreY();
+                const auto rx = innerBounds.getWidth() * .5f;
+                const auto ry = innerBounds.getHeight() * .5f;
+                crown.startNewSubPath(cx - rx * .72f, cy - ry * .48f);
+                crown.quadraticTo(cx - rx * .08f, cy - ry * 1.04f,
+                                   cx + rx * .58f, cy - ry * .68f);
+                juce::ColourGradient crownLight(juce::Colours::transparentWhite,
+                    cx - rx * .8f, cy - ry,
+                    juce::Colours::transparentWhite, cx + rx * .7f, cy - ry, false);
+                crownLight.addColour(.36f, juce::Colours::white.withAlpha(.49f * visibility));
+                crownLight.addColour(.68f, juce::Colours::white.withAlpha(.27f * visibility));
+                g.setGradientFill(crownLight);
+                g.strokePath(crown, juce::PathStrokeType(juce::jmax(.8f, base_.getFontSize() * .09f),
+                    juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
             }
+
+            const auto outerBounds = outline_path_.getBounds();
+            juce::ColourGradient outerRim(
+                juce::Colours::white.withAlpha((active ? .95f : hover ? .86f : .78f) * visibility),
+                outerBounds.getX(), outerBounds.getY(),
+                colour_.interpolatedWith(juce::Colours::white, .48f)
+                    .withAlpha(.36f * visibility),
+                outerBounds.getRight(), outerBounds.getBottom(), false);
+            outerRim.addColour(.49, juce::Colours::white.withAlpha(.74f * visibility));
+            g.setGradientFill(outerRim);
+            g.strokePath(outline_path_, juce::PathStrokeType(juce::jmax(1.25f, base_.getFontSize() * .12f)));
+
+            juce::ColourGradient innerRim(
+                juce::Colours::white.withAlpha(.47f * visibility),
+                innerBounds.getX(), innerBounds.getY(),
+                juce::Colours::black.withAlpha(.16f * visibility),
+                innerBounds.getRight(), innerBounds.getBottom(), false);
+            innerRim.addColour(.42, juce::Colours::transparentWhite);
+            g.setGradientFill(innerRim);
+            g.strokePath(inner_path_, juce::PathStrokeType(juce::jmax(.8f, base_.getFontSize() * .07f)));
 
             if (label_.length() > 0) {
                 g.setColour(base_.getTextColour().withAlpha(.88f * visibility));

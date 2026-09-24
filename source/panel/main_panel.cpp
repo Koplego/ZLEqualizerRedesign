@@ -68,6 +68,39 @@ namespace {
         renderStrip(false, true);
         renderStrip(false, false);
     }
+
+    void drawRefractedNode(juce::Graphics& g, const juce::Image& scene,
+                           juce::Rectangle<int> lens) {
+        lens = lens.getIntersection(scene.getBounds());
+        if (lens.getWidth() < 12 || lens.getHeight() < 12) return;
+        juce::Image::BitmapData source(scene, juce::Image::BitmapData::readOnly);
+        juce::Image refraction(juce::Image::ARGB, lens.getWidth(), lens.getHeight(), true);
+        juce::Image::BitmapData output(refraction, juce::Image::BitmapData::writeOnly);
+        const auto centre = lens.toFloat().getCentre();
+        const auto radius = juce::jmin(lens.getWidth(), lens.getHeight()) * .47f;
+        for (int y = 0; y < lens.getHeight(); ++y) {
+            for (int x = 0; x < lens.getWidth(); ++x) {
+                const auto px = static_cast<float>(lens.getX() + x);
+                const auto py = static_cast<float>(lens.getY() + y);
+                const auto dx = (px - centre.x) / radius;
+                const auto dy = (py - centre.y) / radius;
+                const auto distance = std::hypot(dx, dy);
+                if (distance <= .60f || distance >= 1.f) continue;
+                const auto edge = (distance - .60f) / .40f;
+                const auto shift = 2.f + radius * .35f * edge * edge;
+                const auto sx = juce::jlimit(0, source.width - 1,
+                    juce::roundToInt(px + dx / distance * shift));
+                const auto sy = juce::jlimit(0, source.height - 1,
+                    juce::roundToInt(py + dy / distance * shift));
+                auto light = source.getPixelColour(sx, sy);
+                const auto upperLight = juce::jlimit(0.f, 1.f, (-dx - dy) * .5f);
+                light = light.interpolatedWith(juce::Colours::white,
+                    upperLight * .15f * edge);
+                output.setPixelColour(x, y, light.withAlpha(.28f * edge));
+            }
+        }
+        g.drawImageAt(refraction, lens.getX(), lens.getY());
+    }
 }
 
 namespace zlpanel {
@@ -258,6 +291,15 @@ namespace zlpanel {
         drawRefractedRim(g, scene, preset, preset.getHeight() * .5f, font, .76f);
         drawRefractedRim(g, scene, speed, speed.getHeight() * .5f, font, .66f);
         drawRefractedRim(g, scene, phase, phase.getHeight() * .5f, font, .66f);
+
+        // Node lenses use the same live optical input as the larger panes. The narrow
+        // displaced annulus bends the graph and coloured transmission around each rim.
+        for (size_t band = 0; band < zlp::kBandNum; ++band) {
+            auto& lens = curve_panel_.getNodeLens(band);
+            if (lens.isShowing())
+                drawRefractedNode(g, scene,
+                    getLocalArea(&lens, lens.getLocalBounds()).reduced(1));
+        }
     }
 
     void MainPanel::resized() {
