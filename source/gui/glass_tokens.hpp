@@ -68,6 +68,19 @@ namespace zlgui::glass {
         g.setColour(juce::Colour(248, 252, 255).withAlpha(rimAlpha));
         g.drawRoundedRectangle(bounds, radius, .82f);
 
+        // Two displaced contours make the thickness of the glass visible even when
+        // every EQ light is off. They are neutral specular reflections, not hue.
+        auto inner = bounds.reduced(1.8f);
+        juce::ColourGradient bevel(juce::Colour(255, 255, 255).withAlpha(rimAlpha * .55f),
+                                   inner.getCentreX(), inner.getY(),
+                                   juce::Colour(255, 255, 255).withAlpha(rimAlpha * .16f),
+                                   inner.getCentreX(), inner.getBottom(), false);
+        bevel.addColour(.40, juce::Colours::transparentWhite);
+        g.setGradientFill(bevel);
+        g.drawRoundedRectangle(inner, juce::jmax(1.f, radius - 1.8f), .82f);
+        g.setColour(juce::Colour(4, 6, 8).withAlpha(rimAlpha * .42f));
+        g.drawRoundedRectangle(bounds.reduced(3.1f), juce::jmax(1.f, radius - 3.1f), .64f);
+
         auto highlight = bounds.reduced(1.1f);
         g.setColour(juce::Colour(255, 255, 255).withAlpha(rimAlpha * .48f));
         g.drawLine(highlight.getX() + radius * .66f, highlight.getY() + .5f,

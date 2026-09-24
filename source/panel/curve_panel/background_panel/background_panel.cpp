@@ -60,6 +60,10 @@ namespace zlpanel {
         g.setColour(juce::Colour(255, 255, 255).withAlpha(.055f));
         g.drawLine(panel.getX() + radius * .72f, panel.getY() + .6f,
                    panel.getRight() - radius * .72f, panel.getY() + .6f, .65f);
+        g.setColour(juce::Colour(255, 255, 255).withAlpha(.085f));
+        g.drawRoundedRectangle(panel.reduced(2.f), juce::jmax(1.f, radius - 2.f), .65f);
+        g.setColour(juce::Colour(3, 5, 7).withAlpha(.14f));
+        g.drawRoundedRectangle(panel.reduced(3.4f), juce::jmax(1.f, radius - 3.4f), .75f);
 
         if (freq_max_ <= 10.0) return;
         drawFreqs(g);

@@ -35,6 +35,7 @@ namespace zlpanel {
             preset_name_provider_ = std::move(provider);
             repaint();
         }
+        juce::Rectangle<int> getPresetGlassBounds() const { return preset_pill_bound_; }
 
     private:
         PluginProcessor& p_ref_;

@@ -4,6 +4,8 @@ The unlit material is smoked neutral glass. Active EQ lenses are the chromatic s
 
 Transmission decays in both axes. Glass boundaries receive narrow rim highlights and elongated grazing reflections, with energy attenuated by source-to-edge distance. Source color controls the stylized scattering radius; frequency does not select a fixed background color. Header/footer controls and the meter housing transmit this shared field. The floating inspector's rim uses the selected node's position in the inspector's local coordinates.
 
+The glass now has neutral layered bevels: a bright outer contour, a displaced inner highlight, and a dark inner contour. Live sources project thin colored light into those edges. Short curved caustics bend inward from the shell, graph, footer, meter, preset, and footer controls. Projection uses each source's two-dimensional distance from the surface, so a distant node does not color an entire small control. The bevels remain colorless with all bands off; every colored caustic moves with or disappears with its source.
+
 Bypassed/off bands emit no colored shell illumination. Bypassed lenses and individual response curves are neutral; their broad fills and local colored halos are suppressed. Meter bar colors retain their signal-level meaning. Spectrum geometry and EQ/audio processing are unchanged.
 
 ## Manual validation — macOS arm64, REAPER 7.80, 24 September 2026
@@ -18,3 +20,7 @@ Five compiled VST3 visual passes were installed and reopened in REAPER against t
 - Final VST3 build succeeded. The installed executable's SHA-256 matched the built executable, and its ad-hoc signature verified.
 
 The reference's body proportions and panel layout are retained, with its compact selected-band badge restored. This is a stylized distance-based optical model, not a ray-traced material. The live analyzer naturally differs with input audio and playback time. Intel macOS and Windows builds were not tested in this pass.
+
+## Refraction follow-up — macOS arm64, REAPER 7.80, 24 September 2026
+
+Three additional compiled VST3 passes were installed and inspected live. The first made graph and shell edge caustics visible. The second exposed over-bright multicolor rims on small controls; the third narrowed those rims and attenuated source light by full two-dimensional distance. Moving the blue bell from 1.39 kHz / +5.75 dB to 205 Hz / -5.86 dB moved its graph and footer edge reflections. Bypassing the blue bell removed blue light from the preset, graph, shell, and footer while the neutral bevels remained; re-enabling restored them. The final pass was tested with real audio driving the analyzer and stereo meter.
