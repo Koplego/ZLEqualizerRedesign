@@ -141,6 +141,10 @@ namespace zlpanel {
         right_control_panel_.updateFreqMax(freq_max);
     }
 
+    void ControlPanel::setMatchNodeLights(std::vector<MatchControlPanel::NodeLight> lights) {
+        match_control_panel_.setNodeLights(std::move(lights));
+    }
+
     void ControlPanel::changeLeftRightBound(const bool dynamic_on) {
         mouse_event_eater_.setBounds(dynamic_on ? mouse_full_bound_ : mouse_center_bound_);
         left_control_panel_.setBounds(dynamic_on ? left_bound_ : center_bound_);

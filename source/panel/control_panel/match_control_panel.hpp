@@ -14,13 +14,18 @@
 #include "../helper/helper.hpp"
 #include "../multilingual/tooltip_helper.hpp"
 
-#include "../background/panel_background.hpp"
 #include "../curve_panel/curve_panel.hpp"
 
 namespace zlpanel {
     class MatchControlPanel final : public juce::Component,
                                     private juce::ValueTree::Listener {
     public:
+        struct NodeLight {
+            juce::Point<float> point{};
+            juce::Colour colour{};
+            float radius{0.f};
+        };
+
         explicit MatchControlPanel(PluginProcessor& p, zlgui::UIBase& base,
                                    MatchFFTPanel& match_fft_panel,
                                    const multilingual::TooltipHelper& tooltip_helper);
@@ -34,13 +39,15 @@ namespace zlpanel {
         void paint(juce::Graphics& g) override;
         void resized() override;
         void paintOverChildren(juce::Graphics& g) override;
+        void setNodeLights(std::vector<NodeLight> lights);
 
     private:
         PluginProcessor& p_ref_;
         zlgui::UIBase& base_;
         MatchFFTPanel& match_fft_panel_;
 
-        PanelBackground control_background_;
+        std::vector<NodeLight> node_lights_{};
+        zlgui::button::ClickTextButton close_button_;
 
         const std::unique_ptr<juce::Drawable> save_drawable_;
         zlgui::button::ClickButton save_button_;
@@ -71,13 +78,8 @@ namespace zlpanel {
         juce::Rectangle<int> title_bound_{};
         juce::Rectangle<int> subtitle_bound_{};
         juce::Rectangle<int> target_label_bound_{};
-        juce::Rectangle<int> difference_title_bound_{};
-        juce::Rectangle<int> fit_title_bound_{};
         juce::Rectangle<int> limit_label_bound_{};
         juce::Rectangle<int> bands_label_bound_{};
-        juce::Rectangle<int> target_surface_bound_{};
-        juce::Rectangle<int> difference_surface_bound_{};
-        juce::Rectangle<int> fit_surface_bound_{};
 
         std::unique_ptr<juce::FileChooser> chooser_;
         const juce::File kPresetDirectory =

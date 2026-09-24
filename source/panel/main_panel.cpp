@@ -342,14 +342,7 @@ namespace zlpanel {
         hub.setCentre(graph.getCentreX(), graph.getBottom() - padding - hub_h / 2);
         band_hub_panel_.setBounds(hub);
         if (match_open) {
-            const auto max_w = juce::jmax(0, graph.getWidth() - 4 * padding);
-            const auto max_h = juce::jmax(0, graph.getHeight() - 4 * padding);
-            const auto sheet_w = juce::jmin(control_panel_.getActiveIdealWidth(), max_w);
-            const auto sheet_h = juce::jmin(control_panel_.getActiveIdealHeight(), max_h);
-            auto sheet = juce::Rectangle<int>(0, 0, sheet_w, sheet_h);
-            auto x = graph.getRight() - padding - sheet_w;
-            sheet.setPosition(x, graph.getY() + padding);
-            control_panel_.setBounds(sheet);
+            control_panel_.setBounds(hub);
         } else if (!control_panel_.isVisible()) control_panel_.setBounds({});
 
         const auto setting_width = juce::jmax(0, juce::jmin(ui_setting_panel_.getIdealWidth(), main_bound.getWidth() - 4 * padding));
@@ -446,6 +439,7 @@ namespace zlpanel {
         repaint();
         curve_panel_.repaintCallBack();
         std::vector<BandHubPanel::NodeLight> hub_lights;
+        std::vector<MatchControlPanel::NodeLight> match_lights;
         for (size_t band = 0; band < zlp::kBandNum; ++band) {
             const auto* status = p_ref_.parameters_.getRawParameterValue(
                 zlp::PFilterStatus::kID + std::to_string(band));
@@ -456,8 +450,12 @@ namespace zlpanel {
             hub_lights.push_back({band_hub_panel_.getLocalPoint(&lens,
                 lens.getLocalBounds().toFloat().getCentre()),
                 base_.getColourMap1(band), base_.getFontSize() * 22.f});
+            match_lights.push_back({control_panel_.getLocalPoint(&lens,
+                lens.getLocalBounds().toFloat().getCentre()),
+                base_.getColourMap1(band), base_.getFontSize() * 22.f});
         }
         band_hub_panel_.setAmbientSources(std::move(hub_lights));
+        control_panel_.setMatchNodeLights(std::move(match_lights));
         control_panel_.repaintCallBack();
         const auto c_refresh_rate = refresh_handler_.getActualRefreshRate();
         if (std::abs(c_refresh_rate - refresh_rate_) > 0.1) {
