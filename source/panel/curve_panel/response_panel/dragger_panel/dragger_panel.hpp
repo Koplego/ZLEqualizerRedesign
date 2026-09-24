@@ -49,10 +49,8 @@ namespace zlpanel {
     private:
         static constexpr float kBypassAlphaMultiplier = .75f;
         static constexpr float kDiffStereoAlphaMultiplier = .5f;
-        // Reference nodes occupy roughly 30% more screen space than the regressed build.
-        // 2.85 combined with the 0.995 visual lens scale reproduces that footprint while
-        // preserving the same interaction model and centre positions.
-        static constexpr float kDraggerSizeMultiplier = 2.85f;
+        // Leave enough room for dense 24-band arrangements while retaining a generous hit target.
+        static constexpr float kDraggerSizeMultiplier = 2.65f;
         static constexpr float kDraggerPaddingMultiplier = 1.f;
 
         PluginProcessor& p_ref_;

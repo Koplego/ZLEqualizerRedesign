@@ -298,7 +298,9 @@ namespace zlpanel {
             auto& lens = curve_panel_.getNodeLens(band);
             if (lens.isShowing())
                 drawRefractedNode(g, scene,
-                    getLocalArea(&lens, lens.getLocalBounds()).reduced(1));
+                    getLocalArea(&lens, lens.getLocalBounds()).withSizeKeepingCentre(
+                        juce::roundToInt(lens.getWidth() * .81f),
+                        juce::roundToInt(lens.getHeight() * .81f)));
         }
     }
 
@@ -330,15 +332,24 @@ namespace zlpanel {
 
         const auto padding = getPaddingSize(font_size);
         const auto match_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel)) > .5;
-        if (match_open) {
-            const auto max_w = juce::jmax(0, curve_panel_.getWidth() - 4 * padding);
-            const auto max_h = juce::jmax(0, curve_panel_.getHeight() - 4 * padding);
+        const auto inspector_open = static_cast<double>(base_.getPanelProperty(
+            zlgui::PanelSettingIdx::kInspectorPanel)) > .5 && base_.getSelectedBand() < zlp::kBandNum;
+        if (match_open || inspector_open) {
+            const auto graph = getLocalArea(&curve_panel_, curve_panel_.getGraphGlassBounds());
+            const auto max_w = juce::jmax(0, graph.getWidth() - 4 * padding);
+            const auto max_h = juce::jmax(0, graph.getHeight() - 4 * padding);
             const auto sheet_w = juce::jmin(control_panel_.getActiveIdealWidth(), max_w);
             const auto sheet_h = juce::jmin(control_panel_.getActiveIdealHeight(), max_h);
             auto sheet = juce::Rectangle<int>(0, 0, sheet_w, sheet_h);
-            sheet.setCentre(curve_panel_.getBounds().getCentreX(), curve_panel_.getY() + padding + sheet_h / 2);
+            auto x = graph.getRight() - padding - sheet_w;
+            if (inspector_open && !match_open) {
+                const auto& lens = curve_panel_.getNodeLens(base_.getSelectedBand());
+                const auto node_x = getLocalArea(&lens, lens.getLocalBounds()).getCentreX();
+                if (node_x > graph.getCentreX()) x = graph.getX() + padding;
+            }
+            sheet.setPosition(x, graph.getY() + padding);
             control_panel_.setBounds(sheet);
-        } else control_panel_.setBounds({});
+        } else if (!control_panel_.isVisible()) control_panel_.setBounds({});
 
         const auto setting_width = juce::jmax(0, juce::jmin(ui_setting_panel_.getIdealWidth(), main_bound.getWidth() - 4 * padding));
         const auto setting_height = juce::jmax(0, juce::jmin(ui_setting_panel_.getIdealHeight(), main_bound.getHeight() - 4 * padding));
@@ -361,6 +372,7 @@ namespace zlpanel {
         if (keep != zlgui::PanelSettingIdx::kPresetBrowser) base_.setPanelProperty(zlgui::PanelSettingIdx::kPresetBrowser, 0.0);
         if (keep != zlgui::PanelSettingIdx::kUISettingPanel) base_.setPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel, 0.0);
         if (keep != zlgui::PanelSettingIdx::kMatchPanel) base_.setPanelProperty(zlgui::PanelSettingIdx::kMatchPanel, 0.0);
+        if (keep != zlgui::PanelSettingIdx::kInspectorPanel) base_.setPanelProperty(zlgui::PanelSettingIdx::kInspectorPanel, 0.0);
         base_.setPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel, 0.0);
         base_.setPanelProperty(zlgui::PanelSettingIdx::kOutputPanel, 0.0);
     }
@@ -369,6 +381,7 @@ namespace zlpanel {
         base_.setPanelProperty(zlgui::PanelSettingIdx::kPresetBrowser, 0.0);
         base_.setPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel, 0.0);
         base_.setPanelProperty(zlgui::PanelSettingIdx::kMatchPanel, 0.0);
+        base_.setPanelProperty(zlgui::PanelSettingIdx::kInspectorPanel, 0.0);
         if (utility != zlgui::PanelSettingIdx::kAnalyzerPanel) base_.setPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel, 0.0);
         if (utility != zlgui::PanelSettingIdx::kOutputPanel) base_.setPanelProperty(zlgui::PanelSettingIdx::kOutputPanel, 0.0);
     }
@@ -377,12 +390,32 @@ namespace zlpanel {
         const auto match_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel)) > .5;
         const auto settings_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel)) > .5;
         const auto preset_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kPresetBrowser)) > .5;
+        const auto inspector_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kInspectorPanel)) > .5
+            && base_.getSelectedBand() < zlp::kBandNum;
         const auto scrim_visible = settings_open || preset_open;
 
-        overlay_scrim_.setVisible(scrim_visible);
-        control_panel_.setVisible(match_open);
-        ui_setting_panel_.setVisible(settings_open);
-        preset_browser_.setVisible(preset_open);
+        const auto animate = [](juce::Component& component, bool open, int duration) {
+            auto& animator = juce::Desktop::getInstance().getAnimator();
+            if (open && !component.isVisible()) {
+                animator.cancelAnimation(&component, false);
+                const auto destination = component.getBounds();
+                auto start = destination.withSizeKeepingCentre(
+                    juce::roundToInt(destination.getWidth() * .88f),
+                    juce::roundToInt(destination.getHeight() * .88f));
+                start.translate(0, juce::jmax(4, destination.getHeight() / 14));
+                component.setBounds(start);
+                component.setAlpha(0.f);
+                component.setVisible(true);
+                animator.animateComponent(&component, destination, 1.f, duration,
+                                          false, .12, 0.0);
+            } else if (!open && component.isVisible()) {
+                animator.fadeOut(&component, juce::jmax(100, duration - 50));
+            }
+        };
+        animate(overlay_scrim_, scrim_visible, 160);
+        animate(control_panel_, match_open || inspector_open, 220);
+        animate(ui_setting_panel_, settings_open, 240);
+        animate(preset_browser_, preset_open, 240);
         if (scrim_visible) overlay_scrim_.toFront(false);
         if (control_panel_.isVisible()) control_panel_.toFront(false);
         if (settings_open) ui_setting_panel_.toFront(false);
@@ -399,6 +432,8 @@ namespace zlpanel {
         }
         if (c_band_ != base_.getSelectedBand()) {
             c_band_ = base_.getSelectedBand();
+            if (c_band_ >= zlp::kBandNum)
+                base_.setPanelProperty(zlgui::PanelSettingIdx::kInspectorPanel, 0.0);
             extra_dynamic_panel_.updateBand();
             control_panel_.updateBand();
             curve_panel_.updateBand();
@@ -422,23 +457,27 @@ namespace zlpanel {
         if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kUISettingPanel, property)) {
             const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel)) > .5;
             if (open) closeGlobalOverlaysExcept(zlgui::PanelSettingIdx::kUISettingPanel);
-            updateOverlayState(); resized();
+            resized();
         } else if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kPresetBrowser, property)) {
             const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kPresetBrowser)) > .5;
             if (open) closeGlobalOverlaysExcept(zlgui::PanelSettingIdx::kPresetBrowser);
-            updateOverlayState(); resized();
+            resized();
         } else if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kMatchPanel, property)) {
             const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel)) > .5;
             if (open) closeGlobalOverlaysExcept(zlgui::PanelSettingIdx::kMatchPanel);
-            updateOverlayState(); resized();
+            resized();
+        } else if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kInspectorPanel, property)) {
+            const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kInspectorPanel)) > .5;
+            if (open) closeGlobalOverlaysExcept(zlgui::PanelSettingIdx::kInspectorPanel);
+            resized();
         } else if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kAnalyzerPanel, property)) {
             const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel)) > .5;
             if (open) closeGlobalSheetsForUtility(zlgui::PanelSettingIdx::kAnalyzerPanel);
-            updateOverlayState(); resized();
+            resized();
         } else if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kOutputPanel, property)) {
             const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kOutputPanel)) > .5;
             if (open) closeGlobalSheetsForUtility(zlgui::PanelSettingIdx::kOutputPanel);
-            updateOverlayState(); resized();
+            resized();
         }
     }
 

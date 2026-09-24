@@ -222,25 +222,32 @@ namespace zlpanel {
     }
 
     int MatchControlPanel::getIdealHeight() const {
-        return juce::roundToInt(base_.getFontSize() * 16.2f);
+        return juce::roundToInt(base_.getFontSize() * 15.2f);
     }
 
     int MatchControlPanel::getIdealWidth() const {
-        return juce::roundToInt(base_.getFontSize() * 35.0f);
+        return juce::roundToInt(base_.getFontSize() * 30.0f);
+    }
+
+    void MatchControlPanel::paint(juce::Graphics& g) {
+        const auto padding = getPaddingSize(base_.getFontSize());
+        const auto body = getLocalBounds().reduced(juce::jmax(2, padding / 2)).toFloat();
+        g.setColour(juce::Colour(24, 26, 29).withAlpha(.76f));
+        g.fillRoundedRectangle(body, zlgui::glass::surfaceRadius(base_.getFontSize()));
     }
 
     void MatchControlPanel::resized() {
         const auto font = base_.getFontSize();
-        const auto padding = juce::jmax(6, juce::roundToInt(font * .72f));
-        const auto button = juce::jmax(26, juce::roundToInt(font * 2.05f));
-        const auto row = juce::jmax(28, juce::roundToInt(font * 2.15f));
-        const auto label_h = juce::jmax(12, juce::roundToInt(font * .92f));
+        const auto padding = juce::jmax(6, juce::roundToInt(font * .50f));
+        const auto button = juce::jmax(26, juce::roundToInt(font * 1.75f));
+        const auto row = juce::jmax(28, juce::roundToInt(font * 1.80f));
+        const auto label_h = juce::jmax(12, juce::roundToInt(font * .72f));
 
         control_background_.setBounds(getLocalBounds());
         auto content = getLocalBounds().reduced(padding + padding / 2, padding + padding / 2);
 
-        auto header = content.removeFromTop(juce::roundToInt(font * 2.6f));
-        title_bound_ = header.removeFromTop(juce::roundToInt(font * 1.32f));
+        auto header = content.removeFromTop(juce::roundToInt(font * 2.0f));
+        title_bound_ = header.removeFromTop(juce::roundToInt(font * 1.10f));
         subtitle_bound_ = header;
         content.removeFromTop(padding / 3);
 

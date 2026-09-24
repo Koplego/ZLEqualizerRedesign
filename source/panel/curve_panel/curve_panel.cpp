@@ -155,8 +155,8 @@ namespace zlpanel {
 
         const auto analyzer_width = analyzer_panel_.getIdealWidth();
         const auto analyzer_height = analyzer_panel_.getIdealHeight();
-        analyzer_panel_.setBounds(getButtonSize(font_size) + 2 * padding,
-                                  juce::jmax(0, bound.getHeight() - analyzer_height - padding),
+        analyzer_panel_.setBounds(juce::jmax(0, getButtonSize(font_size) - padding),
+                                  juce::jmax(0, bound.getHeight() - analyzer_height - 2),
                                   analyzer_width, analyzer_height);
 
         scale_panel_.setBounds(bound.withLeft(bound.getWidth() - scale_panel_.getIdealWidth()));

@@ -121,9 +121,8 @@ namespace zlgui::dragger {
 
         void updateRoundPaths(juce::Rectangle<float>& bound) {
             const auto radius = bound.getWidth();
-            // At the same editor width the target's visible nodes are about 15-20% larger
-            // than the regressed build. Keep the hit target unchanged and let the lens occupy it.
-            bound = bound.withSizeKeepingCentre(radius * .995f, radius * .995f);
+            // The optical lens sits inside the button's larger interactive hit area.
+            bound = bound.withSizeKeepingCentre(radius * .85f, radius * .85f);
             outline_path_.addEllipse(bound);
             bound = bound.withSizeKeepingCentre(radius * .93f, radius * .93f);
             inner_path_.addEllipse(bound);

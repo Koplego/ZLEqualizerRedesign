@@ -67,6 +67,7 @@ namespace zlgui {
         kSuggestedNumBand,
         kMaximumNumBand,
         kPresetBrowser,
+        kInspectorPanel,
         kPanelSettingNum
     };
 
@@ -81,7 +82,8 @@ namespace zlgui {
         juce::Identifier("match_panel"),
         juce::Identifier("suggested_num_band"),
         juce::Identifier("maximum_num_band"),
-        juce::Identifier("preset_browser")
+        juce::Identifier("preset_browser"),
+        juce::Identifier("inspector_panel")
     };
 
     inline juce::Identifier kSoloIdentifier("solo_whole_idx");

@@ -152,9 +152,9 @@ namespace zlpanel {
 
     void ControlPanel::valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property) {
         if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kMatchPanel, property)) {
-            base_.setSelectedBand(zlp::kBandNum);
             const auto f = static_cast<int>(std::round(
                 static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel))));
+            if (f > 0) base_.setSelectedBand(zlp::kBandNum);
             match_control_panel_.setVisible(f > 0);
             resized();
         }

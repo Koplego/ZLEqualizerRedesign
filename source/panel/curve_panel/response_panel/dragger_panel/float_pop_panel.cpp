@@ -23,7 +23,8 @@ namespace zlpanel {
         ftype_box_(juce::StringArray{"Bell", "Low Shelf", "High Cut", "High Shelf", "Low Cut", "Notch",
                                      "Band Pass", "Tilt", "Flat Tilt", "All Pass", "Gain"}, base, ""),
         slope_box_(zlp::POrder::kChoices, base, ""),
-        freq_slider_("", base), gain_slider_("", base), q_slider_("", base) {
+        freq_slider_("", base), gain_slider_("", base), q_slider_("", base),
+        inspector_button_(base, "Inspector") {
         setOpaque(false);
         setInterceptsMouseClicks(true, true);
 
@@ -84,6 +85,21 @@ namespace zlpanel {
             addAndMakeVisible(slider);
         };
         setup(freq_slider_); setup(gain_slider_); setup(q_slider_);
+
+        inspector_button_.getLAF().setFontScale(.57f);
+        inspector_button_.getLAF().setJustification(juce::Justification::centred);
+        inspector_button_.setBackgroundPainter([](juce::Graphics& g, juce::Button& b,
+                                                   bool highlighted, bool down) {
+            auto surface = b.getLocalBounds().toFloat().reduced(.8f);
+            zlgui::glass::fillGlassSurface(g, surface, surface.getHeight() * .5f,
+                highlighted || down ? .085f : .045f, .075f, highlighted || down ? .21f : .12f);
+        });
+        inspector_button_.getButton().onClick = [this]() {
+            const auto open = static_cast<double>(base_.getPanelProperty(
+                zlgui::PanelSettingIdx::kInspectorPanel)) > .5;
+            base_.setPanelProperty(zlgui::PanelSettingIdx::kInspectorPanel, open ? 0. : 1.);
+        };
+        addAndMakeVisible(inspector_button_);
 
         freq_slider_.setPrecision(4);
         freq_slider_.permitted_characters_ = "0123456789.kK";
@@ -300,6 +316,8 @@ namespace zlpanel {
         freq_slider_.setBounds(value_bounds_[0]);
         gain_slider_.setBounds(value_bounds_[1]);
         q_slider_.setBounds(value_bounds_[2]);
+        b.removeFromTop(juce::jmax(2, gap / 2));
+        inspector_button_.setBounds(b.removeFromTop(juce::jmax(15, juce::roundToInt(font * 1.10f))));
     }
 
     void FloatPopPanel::mouseUp(const juce::MouseEvent& event) {
@@ -323,6 +341,7 @@ namespace zlpanel {
             current_filter_type_ = current_slope_ = -1;
             updateFilterCapabilities();
             transform_initialized_ = false;
+            setAlpha(0.f);
             setVisible(true);
             repaintCallBackSlow();
         } else {
@@ -332,7 +351,7 @@ namespace zlpanel {
             dynamic_button_.getButton().setToggleState(false, juce::dontSendNotification);
             solo_button_.getButton().setToggleState(false, juce::dontSendNotification);
             stopTimer();
-            setVisible(false);
+            juce::Desktop::getInstance().getAnimator().fadeOut(this, 130);
         }
     }
 
@@ -389,7 +408,7 @@ namespace zlpanel {
     }
 
     int FloatPopPanel::getIdealHeight() const {
-        return juce::jmax(58, juce::roundToInt(base_.getFontSize() * 4.05f));
+        return juce::jmax(76, juce::roundToInt(base_.getFontSize() * 5.25f));
     }
 
     void FloatPopPanel::updatePosition(const juce::Point<float> position, const juce::Point<float> target_position) {
@@ -434,9 +453,11 @@ namespace zlpanel {
 
         if (!transform_initialized_) {
             current_x_ = target_x_;
-            current_y_ = target_y_;
+            current_y_ = target_y_ + juce::jmax(5.f, base_.getFontSize() * .55f);
             transform_initialized_ = true;
             applyCurrentTransform();
+            juce::Desktop::getInstance().getAnimator().fadeIn(this, 180);
+            startTimerHz(60);
             return;
         }
         if (std::abs(current_x_ - target_x_) > .25f || std::abs(current_y_ - target_y_) > .25f)

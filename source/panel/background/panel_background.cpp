@@ -30,16 +30,16 @@ namespace zlpanel {
 
         // Secondary workflows should read as one quiet floating sheet, not as the old ZL
         // panels with a glass coat. Keep the body translucent and let spacing do the work.
-        g.setColour(juce::Colour(8, 23, 37).withAlpha(.34f));
+        g.setColour(juce::Colour(27, 29, 32).withAlpha(.30f));
         g.fillRoundedRectangle(bound, corner);
-        zlgui::glass::fillGlassSurface(g, bound, corner, .10f, .16f, .22f);
+        zlgui::glass::fillGlassSurface(g, bound, corner, .14f, .18f, .27f);
 
         if (paints_surfaces_) {
             for (const auto& surface_bound : surface_bounds_) {
                 auto surface = surface_bound.toFloat();
-                g.setColour(juce::Colour(4, 18, 31).withAlpha(.095f));
+                g.setColour(juce::Colour(20, 23, 26).withAlpha(.085f));
                 g.fillRoundedRectangle(surface, static_cast<float>(padding) * .66f);
-                g.setColour(zlgui::glass::rim().withMultipliedAlpha(.34f));
+                g.setColour(zlgui::glass::rim().withMultipliedAlpha(.55f));
                 g.drawRoundedRectangle(surface, static_cast<float>(padding) * .66f, .6f);
             }
         }
