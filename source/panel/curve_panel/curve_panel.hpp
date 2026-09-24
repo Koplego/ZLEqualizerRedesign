@@ -68,6 +68,7 @@ namespace zlpanel {
         juce::Component& getNodeLens(size_t band) { return response_panel_.getNodeLens(band); }
         juce::Rectangle<int> getGraphGlassBounds() const { return background_panel_.getBounds(); }
         juce::Rectangle<int> getMeterGlassBounds() const { return output_meter_.getBounds(); }
+        juce::Image getGraphMaterialImage() { return background_panel_.createComponentSnapshot(background_panel_.getLocalBounds()); }
 
         auto& getFFTPanel() {
             return fft_panel_;

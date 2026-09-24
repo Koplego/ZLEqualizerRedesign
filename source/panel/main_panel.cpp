@@ -5,6 +5,71 @@
 #include "../gui/glass_tokens.hpp"
 #include "../zlp/sample_rate_helper.hpp"
 
+namespace {
+    // A lens bends the scene underneath it. Only the thin perimeter is displaced;
+    // the centre remains clear so text, curves, and controls stay readable.
+    void drawRefractedRim(juce::Graphics& g, const juce::Image& scene,
+                          juce::Rectangle<int> pane, float radius, float font,
+                          float strength) {
+        pane = pane.getIntersection(scene.getBounds());
+        if (pane.getWidth() < 12 || pane.getHeight() < 12) return;
+        const auto depth = juce::jlimit(4, 28, juce::roundToInt(
+            juce::jmin(font * 1.65f, pane.getHeight() * .24f)));
+        juce::Image::BitmapData source(scene, juce::Image::BitmapData::readOnly);
+        juce::Path glass;
+        glass.addRoundedRectangle(pane.toFloat(), radius);
+        juce::Graphics::ScopedSaveState clip(g);
+        g.reduceClipRegion(glass);
+
+        const auto renderStrip = [&](bool horizontal, bool beginning) {
+            const auto width = horizontal ? pane.getWidth() : depth;
+            const auto height = horizontal ? depth : pane.getHeight();
+            const auto x0 = horizontal ? pane.getX() :
+                (beginning ? pane.getX() : pane.getRight() - depth);
+            const auto y0 = horizontal ?
+                (beginning ? pane.getY() : pane.getBottom() - depth) : pane.getY();
+            juce::Image strip(juce::Image::ARGB, width, height, true);
+            juce::Image::BitmapData output(strip, juce::Image::BitmapData::writeOnly);
+
+            for (int y = 0; y < height; ++y) {
+                for (int x = 0; x < width; ++x) {
+                    const auto fromEdge = horizontal ?
+                        (beginning ? y : height - 1 - y) :
+                        (beginning ? x : width - 1 - x);
+                    const auto fresnel = 1.f - static_cast<float>(fromEdge) /
+                                               static_cast<float>(depth);
+                    const auto bend = fresnel * fresnel;
+                    const auto px = x0 + x;
+                    const auto py = y0 + y;
+                    const auto normalShift = static_cast<int>(std::round(
+                        (2.f + static_cast<float>(depth) * 1.4f) * bend));
+                    const auto tangent = horizontal ?
+                        (static_cast<float>(px - pane.getCentreX()) / pane.getWidth()) :
+                        (static_cast<float>(py - pane.getCentreY()) / pane.getHeight());
+                    const auto lateralShift = static_cast<int>(std::round(
+                        tangent * static_cast<float>(depth) * .85f * bend));
+                    const auto sx = juce::jlimit(0, source.width - 1,
+                        px + (horizontal ? lateralShift : (beginning ? normalShift : -normalShift)));
+                    const auto sy = juce::jlimit(0, source.height - 1,
+                        py + (horizontal ? (beginning ? normalShift : -normalShift) : lateralShift));
+                    auto transmitted = source.getPixelColour(sx, sy);
+                    const auto shine = (beginning ? .22f : .10f) * bend;
+                    transmitted = transmitted.interpolatedWith(juce::Colours::white, shine);
+                    if (!beginning)
+                        transmitted = transmitted.interpolatedWith(juce::Colours::black, .11f * bend);
+                    output.setPixelColour(x, y, transmitted.withAlpha(
+                        juce::jlimit(0.f, .86f, strength * (.12f * fresnel + .74f * bend))));
+                }
+            }
+            g.drawImageAt(strip, x0, y0);
+        };
+        renderStrip(true, true);
+        renderStrip(true, false);
+        renderStrip(false, true);
+        renderStrip(false, false);
+    }
+}
+
 namespace zlpanel {
     MainPanel::MainPanel(PluginProcessor& p, zlgui::UIBase& base, const multilingual::TooltipLanguage language) :
         p_ref_(p), base_(base),
@@ -53,6 +118,17 @@ namespace zlpanel {
     }
 
     void MainPanel::paint(juce::Graphics& g) {
+        const auto bounds = getLocalBounds();
+        if (bounds.isEmpty()) return;
+        if (!backdrop_image_.isValid() || backdrop_image_.getBounds() != bounds)
+            backdrop_image_ = juce::Image(juce::Image::ARGB, bounds.getWidth(), bounds.getHeight(), true);
+        backdrop_image_.clear(bounds);
+        juce::Graphics underlay(backdrop_image_);
+        paintGlassBackdrop(underlay);
+        g.drawImageAt(backdrop_image_, 0, 0);
+    }
+
+    void MainPanel::paintGlassBackdrop(juce::Graphics& g) {
         const auto shell = getLocalBounds().toFloat().reduced(3.f);
         const auto radius = zlgui::glass::shellRadius(base_.getFontSize());
         juce::Path clip_path;
@@ -78,7 +154,7 @@ namespace zlpanel {
             g.setGradientFill(vertical);
             g.fillRect(shell);
 
-            // All chromatic transmission and edge reflections originate at visible lenses.
+            // All chromatic transmission originates at visible lenses.
             // Reading the component geometry avoids a second, subtly different EQ mapping.
             const auto font = base_.getFontSize();
             for (size_t band = 0; band < zlp::kBandNum; ++band) {
@@ -104,59 +180,32 @@ namespace zlpanel {
                 transmitted.addColour(.84, colour.withAlpha(.018f));
                 g.setGradientFill(transmitted);
                 g.fillRect(shell);
-
-                // A grazing reflection is elongated along the edge, with irradiance
-                // controlled by the source-to-edge distance. Moving a node vertically
-                // transfers energy between the upper and lower glass boundaries.
-                const auto edgePool = [&](float y, float strength) {
-                    const auto distance = std::abs(centre.y - y) / (font * 15.f);
-                    const auto energy = strength / (1.f + distance * distance);
-                    juce::Graphics::ScopedSaveState poolState(g);
-                    g.addTransform(juce::AffineTransform::scale(font * 9.f, font * 3.0f)
-                        .translated(centre.x, y));
-                    juce::ColourGradient pool(colour.withAlpha(energy), 0.f, 0.f,
-                        colour.withAlpha(0.f), 1.f, 0.f, true);
-                    pool.addColour(.28, colour.withAlpha(energy * .64f));
-                    pool.addColour(.60, colour.withAlpha(energy * .20f));
-                    pool.addColour(.85, colour.withAlpha(energy * .025f));
-                    g.setGradientFill(pool);
-                    g.fillEllipse(-1.f, -1.f, 2.f, 2.f);
-                };
-                edgePool(shell.getY(), .24f);
-                edgePool(shell.getBottom(), .34f);
-
-                // Light is concentrated where it meets a glass boundary. The projected
-                // reflection moves with the lens and loses energy with source distance.
-                const auto reflectEdge = [&](juce::Rectangle<float> pane, float edgeRadius) {
-                    juce::Path edge;
-                    edge.addRoundedRectangle(pane, edgeRadius);
-                    juce::Graphics::ScopedSaveState edgeState(g);
-                    juce::Path edgeBand;
-                    edgeBand.setUsingNonZeroWinding(false);
-                    edgeBand.addRoundedRectangle(pane, edgeRadius);
-                    edgeBand.addRoundedRectangle(pane.reduced(font * .55f),
-                        juce::jmax(1.f, edgeRadius - font * .55f));
-                    g.reduceClipRegion(edgeBand);
-                    const auto strokeReflection = [&](float width, float energy) {
-                        juce::ColourGradient caustic(colour.withAlpha(.46f * energy), centre.x, centre.y,
-                            colour.withAlpha(0.f), centre.x + spread * 1.12f, centre.y, true);
-                        caustic.addColour(.35, colour.withAlpha(.22f * energy));
-                        caustic.addColour(.70, colour.withAlpha(.055f * energy));
-                        g.setGradientFill(caustic);
-                        g.strokePath(edge, juce::PathStrokeType(width));
-                    };
-                    strokeReflection(font * .80f, .07f);
-                    strokeReflection(font * .42f, .13f);
-                    strokeReflection(font * .18f, .24f);
-                    strokeReflection(1.25f, .85f);
-                };
-                reflectEdge(shell.reduced(1.4f), radius);
-                reflectEdge(footer_panel_.getBounds().toFloat().reduced(1.f),
-                    footer_panel_.getHeight() * .43f);
             }
+
+            // Real depth is most legible as occlusion *behind* the raised pane.
+            // These shadows are part of the neutral material and never add hue.
+            const auto castShadow = [&](juce::Rectangle<int> bounds, float radius, float alpha) {
+                if (bounds.isEmpty()) return;
+                juce::Path silhouette;
+                silhouette.addRoundedRectangle(bounds.toFloat(), radius);
+                const juce::DropShadow shadow(juce::Colours::black.withAlpha(alpha),
+                    juce::jmax(5, juce::roundToInt(font * .85f)),
+                    {0, juce::jmax(1, juce::roundToInt(font * .16f))});
+                shadow.drawForPath(g, silhouette);
+            };
+            castShadow(getLocalArea(&curve_panel_, curve_panel_.getGraphGlassBounds()),
+                zlgui::glass::surfaceRadius(font) * 1.25f, .18f);
+            castShadow(footer_panel_.getBounds(), footer_panel_.getHeight() * .43f, .17f);
+            castShadow(getLocalArea(&top_panel_, top_panel_.getPresetGlassBounds()),
+                top_panel_.getPresetGlassBounds().getHeight() * .5f, .14f);
         }
 
-        g.setColour(juce::Colour(245, 251, 255).withAlpha(.26f));
+        juce::ColourGradient shellEdge(juce::Colour(255, 255, 255).withAlpha(.34f),
+            shell.getX(), shell.getY(),
+            juce::Colour(255, 255, 255).withAlpha(.055f),
+            shell.getRight(), shell.getBottom(), false);
+        shellEdge.addColour(.55, juce::Colour(245, 250, 253).withAlpha(.13f));
+        g.setGradientFill(shellEdge);
         g.drawRoundedRectangle(shell, radius, .95f);
         g.setColour(juce::Colour(222, 241, 252).withAlpha(.085f));
         g.drawRoundedRectangle(shell.reduced(2.f), juce::jmax(1.f, radius - 2.f), .68f);
@@ -172,113 +221,43 @@ namespace zlpanel {
     }
 
     void MainPanel::paintOverChildren(juce::Graphics& g) {
+        if (!backdrop_image_.isValid() || overlay_scrim_.isVisible()
+            || control_panel_.isVisible()) return;
+
         const auto font = base_.getFontSize();
-        const auto shell = getLocalBounds().toFloat().reduced(4.f);
-        const auto graph = getLocalArea(&curve_panel_, curve_panel_.getGraphGlassBounds())
-            .toFloat().reduced(1.f);
-        const auto footer = footer_panel_.getBounds().toFloat().reduced(1.5f);
-        const auto meter = getLocalArea(&curve_panel_, curve_panel_.getMeterGlassBounds())
-            .toFloat().reduced(1.f);
-        const auto preset = getLocalArea(&top_panel_, top_panel_.getPresetGlassBounds())
-            .toFloat().reduced(1.f);
-        const auto speed = getLocalArea(&footer_panel_, footer_panel_.getSpeedGlassBounds())
-            .toFloat().reduced(1.f);
-        const auto phase = getLocalArea(&footer_panel_, footer_panel_.getPhaseGlassBounds())
-            .toFloat().reduced(1.f);
+        const auto graph = getLocalArea(&curve_panel_, curve_panel_.getGraphGlassBounds());
+        if (!graph_material_image_.isValid()
+            || graph_material_image_.getWidth() != graph.getWidth()
+            || graph_material_image_.getHeight() != graph.getHeight())
+            graph_material_image_ = curve_panel_.getGraphMaterialImage();
 
-        // These highlights sit above the child panels, where a glass edge actually
-        // appears. Each is a projection of a live node; the panes own no fixed hue.
-        const auto refract = [&](juce::Rectangle<float> pane, float radius,
-                                 juce::Point<float> source, juce::Colour colour,
-                                 float strength) {
-            if (pane.isEmpty()) return;
-            juce::Path outline;
-            outline.addRoundedRectangle(pane, radius);
-            juce::Path band;
-            band.setUsingNonZeroWinding(false);
-            band.addRoundedRectangle(pane, radius);
-            const auto edgeWidth = juce::jmin(font * .48f, pane.getHeight() * .09f);
-            band.addRoundedRectangle(pane.reduced(edgeWidth),
-                                     juce::jmax(1.f, radius - edgeWidth));
-
-            const auto drawHorizontal = [&](float y, bool top) {
-                const auto x = juce::jlimit(pane.getX() + radius + font,
-                                            pane.getRight() - radius - font,
-                                            source.x + (y - source.y) * .11f);
-                const auto distance = std::hypot(source.x - x, source.y - y) / (font * 17.f);
-                const auto energy = strength / std::pow(1.f + distance * distance, 1.4f);
-                const auto reach = font * 8.4f;
-                {
-                    juce::Graphics::ScopedSaveState edgeState(g);
-                    g.reduceClipRegion(band);
-                    juce::ColourGradient glow(colour.withAlpha(.32f * energy), x, y,
-                                               colour.withAlpha(0.f), x + reach, y, true);
-                    glow.addColour(.32, colour.withAlpha(.16f * energy));
-                    glow.addColour(.68, colour.withAlpha(.035f * energy));
-                    g.setGradientFill(glow);
-                    g.fillRect(pane);
-                }
-
-                // The narrow, bent caustic is the high-frequency part of the
-                // refraction; its soft outer edge and hard inner filament separate
-                // the glass boundary from the diffuse light behind the pane.
-                const auto sign = top ? 1.f : -1.f;
-                juce::Path caustic;
-                caustic.startNewSubPath(x - font * 2.9f, y + sign * 1.2f);
-                caustic.quadraticTo(x - font * .85f, y + sign * font * .43f,
-                                    x + font * .22f, y + sign * font * .13f);
-                caustic.quadraticTo(x + font * 1.35f, y - sign * font * .12f,
-                                    x + font * 3.4f, y + sign * 1.0f);
-                juce::Graphics::ScopedSaveState causticState(g);
-                g.reduceClipRegion(outline);
-                juce::ColourGradient filament(colour.withAlpha(0.f), x - font * 3.f, y,
-                                               colour.withAlpha(0.f), x + font * 3.5f, y, false);
-                filament.addColour(.34, colour.withAlpha(.25f * energy));
-                filament.addColour(.55, colour.brighter(.35f).withAlpha(.62f * energy));
-                filament.addColour(.72, colour.withAlpha(.24f * energy));
-                g.setGradientFill(filament);
-                g.strokePath(caustic, juce::PathStrokeType(juce::jmax(.8f, font * .09f),
-                    juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-            };
-
-            drawHorizontal(pane.getY() + 1.3f, true);
-            drawHorizontal(pane.getBottom() - 1.3f, false);
-
-            const auto drawVertical = [&](float x) {
-                const auto y = juce::jlimit(pane.getY() + radius + font,
-                                            pane.getBottom() - radius - font,
-                                            source.y + (x - source.x) * .11f);
-                const auto distance = std::hypot(source.x - x, source.y - y) / (font * 17.f);
-                const auto energy = strength / std::pow(1.f + distance * distance, 1.4f);
-                juce::Graphics::ScopedSaveState edgeState(g);
-                g.reduceClipRegion(band);
-                juce::ColourGradient glow(colour.withAlpha(.27f * energy), x, y,
-                                           colour.withAlpha(0.f), x, y + font * 8.f, true);
-                glow.addColour(.42, colour.withAlpha(.10f * energy));
-                g.setGradientFill(glow);
-                g.fillRect(pane);
-            };
-            drawVertical(pane.getX() + 1.3f);
-            drawVertical(pane.getRight() - 1.3f);
-        };
-
-        for (size_t band = 0; band < zlp::kBandNum; ++band) {
-            const auto* status = p_ref_.parameters_.getRawParameterValue(
-                zlp::PFilterStatus::kID + std::to_string(band));
-            if (status == nullptr || static_cast<zlp::FilterStatus>(std::lround(status->load()))
-                != zlp::FilterStatus::kOn) continue;
-            auto& lens = curve_panel_.getNodeLens(band);
-            if (!lens.isShowing()) continue;
-            const auto source = getLocalPoint(&lens, lens.getLocalBounds().toFloat().getCentre());
-            const auto colour = base_.getColourMap1(band).withMultipliedSaturation(1.15f);
-            refract(shell, zlgui::glass::shellRadius(font), source, colour, .55f);
-            refract(graph, zlgui::glass::surfaceRadius(font) * 1.25f, source, colour, .78f);
-            refract(footer, footer.getHeight() * .43f, source, colour, .95f);
-            refract(meter, juce::jmax(7.f, font * .56f), source, colour, .60f);
-            refract(preset, preset.getHeight() * .5f, source, colour, .43f);
-            refract(speed, speed.getHeight() * .5f, source, colour, .36f);
-            refract(phase, phase.getHeight() * .5f, source, colour, .36f);
+        // A copy of the actual node-lit backdrop plus the graph's real grid is the
+        // optical input. Rim pixels are sampled from displaced positions in it.
+        auto scene = backdrop_image_.createCopy();
+        if (graph_material_image_.isValid()) {
+            juce::Graphics composite(scene);
+            composite.drawImageAt(graph_material_image_, graph.getX(), graph.getY());
         }
+
+        const auto shell = getLocalBounds().reduced(4);
+        const auto footer = footer_panel_.getBounds().reduced(2);
+        const auto meter = getLocalArea(&curve_panel_, curve_panel_.getMeterGlassBounds())
+            .reduced(1);
+        const auto preset = getLocalArea(&top_panel_, top_panel_.getPresetGlassBounds())
+            .reduced(1);
+        const auto speed = getLocalArea(&footer_panel_, footer_panel_.getSpeedGlassBounds())
+            .reduced(1);
+        const auto phase = getLocalArea(&footer_panel_, footer_panel_.getPhaseGlassBounds())
+            .reduced(1);
+
+        drawRefractedRim(g, scene, shell, zlgui::glass::shellRadius(font), font, .60f);
+        drawRefractedRim(g, scene, graph.reduced(1),
+            zlgui::glass::surfaceRadius(font) * 1.25f, font, .82f);
+        drawRefractedRim(g, scene, footer, footer.getHeight() * .43f, font, .76f);
+        drawRefractedRim(g, scene, meter, juce::jmax(7.f, font * .56f), font, .66f);
+        drawRefractedRim(g, scene, preset, preset.getHeight() * .5f, font, .76f);
+        drawRefractedRim(g, scene, speed, speed.getHeight() * .5f, font, .66f);
+        drawRefractedRim(g, scene, phase, phase.getHeight() * .5f, font, .66f);
     }
 
     void MainPanel::resized() {
@@ -305,6 +284,7 @@ namespace zlpanel {
         bound.removeFromBottom(juce::jmax(5, outer_padding / 2));
         curve_panel_.setBounds(bound);
         overlay_scrim_.setBounds(curve_panel_.getBounds());
+        graph_material_image_ = {};
 
         const auto padding = getPaddingSize(font_size);
         const auto match_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel)) > .5;

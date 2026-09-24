@@ -62,6 +62,9 @@ namespace zlpanel {
 
         PluginProcessor& p_ref_;
         zlgui::UIBase& base_;
+        juce::Image backdrop_image_;
+        juce::Image graph_material_image_;
+        void paintGlassBackdrop(juce::Graphics& g);
         multilingual::TooltipHelper tooltip_helper_;
 
         RefreshHandler refresh_handler_;

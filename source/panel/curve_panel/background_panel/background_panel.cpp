@@ -24,6 +24,8 @@ namespace zlpanel {
 
         juce::Path panel_clip;
         panel_clip.addRoundedRectangle(panel, radius);
+        g.setColour(juce::Colour(0, 0, 0).withAlpha(.075f));
+        g.drawRoundedRectangle(panel.reduced(3.f), juce::jmax(1.f, radius - 3.f), 2.7f);
         {
             juce::Graphics::ScopedSaveState clip(g);
             g.reduceClipRegion(panel_clip);
@@ -55,7 +57,12 @@ namespace zlpanel {
             g.fillRect(panel);
         }
 
-        g.setColour(juce::Colour(225, 241, 250).withAlpha(.13f));
+        juce::ColourGradient edge(juce::Colour(255, 255, 255).withAlpha(.21f),
+                                  panel.getX(), panel.getY(),
+                                  juce::Colour(230, 240, 248).withAlpha(.045f),
+                                  panel.getRight(), panel.getBottom(), false);
+        edge.addColour(.55, juce::Colour(238, 248, 253).withAlpha(.085f));
+        g.setGradientFill(edge);
         g.drawRoundedRectangle(panel, radius, .72f);
         g.setColour(juce::Colour(255, 255, 255).withAlpha(.055f));
         g.drawLine(panel.getX() + radius * .72f, panel.getY() + .6f,

@@ -130,7 +130,7 @@ namespace zlpanel {
 
         if (!preset_pill_bound_.isEmpty()) {
             auto pill = preset_pill_bound_.toFloat().reduced(.5f);
-            zlgui::glass::fillGlassSurface(g, pill, pill.getHeight() * .5f, .095f, .145f, .17f);
+            zlgui::glass::fillGlassSurface(g, pill, pill.getHeight() * .5f, .065f, .10f, .17f);
             g.setColour(zlgui::glass::textPrimary().withAlpha(.82f));
             g.setFont(juce::FontOptions(font * .76f));
             auto text_bound = preset_pill_bound_.reduced(20, 0);
