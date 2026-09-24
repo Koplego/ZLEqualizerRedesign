@@ -190,7 +190,16 @@ namespace zlpanel {
 
     void AnalyzerPanel::valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property) {
         if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kAnalyzerPanel, property)) {
-            setVisible(static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel)) > .5);
+            const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel)) > .5;
+            auto& animator = juce::Desktop::getInstance().getAnimator();
+            animator.cancelAnimation(this, false);
+            if (open) {
+                setAlpha(0.f);
+                setVisible(true);
+                animator.fadeIn(this, 180);
+            } else if (isVisible()) {
+                animator.fadeOut(this, 140);
+            }
         }
     }
 }

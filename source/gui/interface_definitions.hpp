@@ -280,8 +280,8 @@ namespace zlgui {
             // Liquid Glass band colours: bright enough to read over the analyzer while
             // remaining softer than the stock saturated palette.
             static const std::array<juce::Colour, 10> colours{
-                juce::Colour(116, 190, 255), juce::Colour(118, 224, 190),
-                juce::Colour(255, 201, 111), juce::Colour(190, 151, 255),
+                juce::Colour(80, 173, 255), juce::Colour(80, 245, 193),
+                juce::Colour(255, 198, 87), juce::Colour(191, 126, 255),
                 juce::Colour(255, 137, 165), juce::Colour(112, 218, 235),
                 juce::Colour(174, 226, 116), juce::Colour(255, 170, 113),
                 juce::Colour(137, 164, 255), juce::Colour(232, 145, 228)

@@ -14,6 +14,8 @@
 #include <span>
 #include <algorithm>
 #include <cmath>
+#include <mutex>
+#include <unordered_map>
 
 #include "../dsp/fft/zldsp_fft_include.hpp"
 #include "../dsp/vector/vector.hpp"
@@ -46,19 +48,7 @@ namespace zlp {
 
             fft_ = std::make_unique<zldsp::fft::RFFT<float>>(fft_order_);
 
-            window1_.resize(fft_size_);
-            window2_.resize(fft_size_);
-            window_bypass_.resize(fft_size_);
-            zldsp::fft::createPeriodicHanning<float>(window1_, 2.f / static_cast<float>(fft_size_));
-            const auto v_window2_scale = hn::Set(d, static_cast<float>(fft_size_) / 3.f);
-            const auto v_bypass_scale = hn::Set(d, static_cast<float>(fft_size_ * fft_size_) / 6.f);
-            for (size_t i = 0; i < fft_size_; i += lanes) {
-                const auto v_window1 = hn::Load(d, window1_.data() + i);
-                const auto v_window2 = hn::Mul(v_window1, v_window2_scale);
-                hn::Store(v_window2, d, window2_.data() + i);
-                const auto v_window_bypass = hn::Mul(hn::Mul(v_window1, v_window1), v_bypass_scale);
-                hn::Store(v_window_bypass, d, window_bypass_.data() + i);
-            }
+            windows_ = getSharedWindows(fft_size_);
 
             for (auto &fifo: input_fifo_) fifo.resize(fft_size_);
             for (auto &fifo: output_fifo_) fifo.resize(fft_size_);
@@ -171,7 +161,38 @@ namespace zlp {
         static constexpr size_t lanes = hn::MaxLanes(d);
 
         std::unique_ptr<zldsp::fft::RFFT<float>> &fft_;
-        zldsp::vector::aligned_vector<float> window1_, window2_, window_bypass_;
+        struct WindowSet {
+            zldsp::vector::aligned_vector<float> input, output, bypass;
+        };
+
+        // FFT windows depend only on FFT size. Hundreds of EQ instances can safely
+        // read the same immutable windows instead of each storing three copies.
+        static std::shared_ptr<const WindowSet> getSharedWindows(const size_t fft_size) {
+            static std::mutex cache_mutex;
+            static std::unordered_map<size_t, std::weak_ptr<const WindowSet>> cache;
+            std::lock_guard guard(cache_mutex);
+            if (const auto found = cache.find(fft_size); found != cache.end()) {
+                if (auto existing = found->second.lock()) return existing;
+            }
+            auto windows = std::make_shared<WindowSet>();
+            windows->input.resize(fft_size);
+            windows->output.resize(fft_size);
+            windows->bypass.resize(fft_size);
+            zldsp::fft::createPeriodicHanning<float>(windows->input,
+                2.f / static_cast<float>(fft_size));
+            const auto v_output_scale = hn::Set(d, static_cast<float>(fft_size) / 3.f);
+            const auto v_bypass_scale = hn::Set(d, static_cast<float>(fft_size * fft_size) / 6.f);
+            for (size_t i = 0; i < fft_size; i += lanes) {
+                const auto v_input = hn::Load(d, windows->input.data() + i);
+                hn::Store(hn::Mul(v_input, v_output_scale), d, windows->output.data() + i);
+                hn::Store(hn::Mul(hn::Mul(v_input, v_input), v_bypass_scale),
+                    d, windows->bypass.data() + i);
+            }
+            cache[fft_size] = windows;
+            return windows;
+        }
+
+        std::shared_ptr<const WindowSet> windows_;
 
         size_t fft_order_, fft_size_, num_bin_, hop_size_;
         size_t default_fft_order_, start_idx_;
@@ -199,7 +220,7 @@ namespace zlp {
             }
 
             if (!bypass) {
-                multiplyWithWindow(fft_in_[0].data(), fft_in_[1].data(), window1_.data());
+                multiplyWithWindow(fft_in_[0].data(), fft_in_[1].data(), windows_->input.data());
                 for (size_t chan = 0; chan < 2; ++chan) {
                     fft_->forward(fft_in_[chan].data(), {fft_out_real_[chan].data(), fft_out_imag_[chan].data()}); // NOLINT
                 }
@@ -209,9 +230,9 @@ namespace zlp {
                 for (size_t chan = 0; chan < 2; ++chan) {
                     fft_->backward({fft_out_real_[chan].data(), fft_out_imag_[chan].data()}, fft_in_[chan].data()); // NOLINT
                 }
-                multiplyWithWindow(fft_in_[0].data(), fft_in_[1].data(), window2_.data());
+                multiplyWithWindow(fft_in_[0].data(), fft_in_[1].data(), windows_->output.data());
             } else {
-                multiplyWithWindow(fft_in_[0].data(), fft_in_[1].data(), window_bypass_.data());
+                multiplyWithWindow(fft_in_[0].data(), fft_in_[1].data(), windows_->bypass.data());
             }
 
             for (size_t chan = 0; chan < 2; ++chan) {

@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include <cmath>
 #include <functional>
 #include <utility>
 
@@ -17,7 +18,8 @@
 #include "../../interface_definitions.hpp"
 
 namespace zlgui {
-    class ClickTextButtonLookAndFeel final : public juce::LookAndFeel_V4 {
+    class ClickTextButtonLookAndFeel final : public juce::LookAndFeel_V4,
+                                             private juce::Timer {
     public:
         using BackgroundPainter = std::function<void(juce::Graphics&, juce::Button&, bool, bool)>;
 
@@ -27,8 +29,23 @@ namespace zlgui {
         void drawButtonBackground(juce::Graphics& g, juce::Button& button,
                                   const juce::Colour&, const bool highlight,
                                   const bool down) override {
+            animated_button_ = &button;
+            hover_target_ = highlight ? 1.f : 0.f;
+            press_target_ = down ? 1.f : 0.f;
+            if (std::abs(hover_amount_ - hover_target_) > .01f
+                || std::abs(press_amount_ - press_target_) > .01f)
+                startTimerHz(60);
             if (background_painter_) {
                 background_painter_(g, button, highlight, down);
+            }
+            const auto energy = hover_amount_ * .045f + press_amount_ * .075f;
+            if (energy > .002f) {
+                const auto lens = button.getLocalBounds().toFloat().reduced(.75f);
+                const auto radius = lens.getHeight() * .48f;
+                g.setColour(juce::Colours::white.withAlpha(energy));
+                g.fillRoundedRectangle(lens, radius);
+                g.setColour(juce::Colours::white.withAlpha(energy * 1.3f));
+                g.drawRoundedRectangle(lens, radius, .7f);
             }
         }
 
@@ -63,7 +80,22 @@ namespace zlgui {
         }
 
     private:
+        void timerCallback() override {
+            hover_amount_ += (hover_target_ - hover_amount_) * .28f;
+            press_amount_ += (press_target_ - press_amount_) * .38f;
+            if (std::abs(hover_amount_ - hover_target_) < .01f
+                && std::abs(press_amount_ - press_target_) < .01f) {
+                hover_amount_ = hover_target_;
+                press_amount_ = press_target_;
+                stopTimer();
+            }
+            if (animated_button_ != nullptr) animated_button_->repaint();
+        }
+
         UIBase& base_;
+        juce::Button* animated_button_{nullptr};
+        float hover_amount_{0.f}, press_amount_{0.f};
+        float hover_target_{0.f}, press_target_{0.f};
 
         float font_scale_{1.f};
         juce::Justification justification_{juce::Justification::centredLeft};

@@ -15,6 +15,8 @@ namespace zlpanel {
         void resized() override;
         int getIdealHeight() const;
         void repaintCallbackSlow();
+        juce::Rectangle<int> getSpeedGlassBounds() const { return speed_box_.getBounds(); }
+        juce::Rectangle<int> getPhaseGlassBounds() const { return phase_box_.getBounds(); }
 
     private:
         PluginProcessor& p_ref_;

@@ -9,7 +9,10 @@
 
 #pragma once
 
+#include <array>
+
 #include "control_panel/control_panel.hpp"
+#include "band_hub_panel.hpp"
 #include "control_panel/extra_dynamic_panel.hpp"
 #include "curve_panel/curve_panel.hpp"
 #include "glass_footer_panel.hpp"
@@ -49,11 +52,11 @@ namespace zlpanel {
 
             void paint(juce::Graphics& g) override {
                 const auto b = getLocalBounds().toFloat();
-                g.setColour(juce::Colour(3, 12, 21).withAlpha(.78f));
+                g.setColour(juce::Colour(12, 13, 15).withAlpha(.43f));
                 g.fillRoundedRectangle(b, 12.f);
                 juce::ColourGradient vignette(juce::Colours::transparentBlack,
                                                b.getCentreX(), b.getCentreY(),
-                                               juce::Colour(1, 7, 13).withAlpha(.48f),
+                                               juce::Colour(9, 10, 12).withAlpha(.27f),
                                                b.getX(), b.getY(), true);
                 g.setGradientFill(vignette);
                 g.fillRoundedRectangle(b, 12.f);
@@ -62,6 +65,21 @@ namespace zlpanel {
 
         PluginProcessor& p_ref_;
         zlgui::UIBase& base_;
+        juce::Image backdrop_image_;
+        juce::Image graph_material_image_;
+        juce::Image refraction_image_;
+        struct NodeLightState {
+            juce::Rectangle<int> bounds{};
+            juce::Colour colour{};
+            bool active{false};
+        };
+        std::array<NodeLightState, zlp::kBandNum> node_lights_{};
+        std::array<std::atomic<float>*, zlp::kBandNum> band_status_{};
+        bool node_lights_initialized_{false};
+        bool glass_dirty_{true};
+        bool refraction_dirty_{true};
+        void paintGlassBackdrop(juce::Graphics& g);
+        void paintRefractions(juce::Graphics& g, juce::Rectangle<int> graph, float font);
         multilingual::TooltipHelper tooltip_helper_;
 
         RefreshHandler refresh_handler_;
@@ -69,6 +87,7 @@ namespace zlpanel {
         double refresh_rate_{-1.0};
 
         CurvePanel curve_panel_;
+        BandHubPanel band_hub_panel_;
         GlobalScrim overlay_scrim_;
         ControlPanel control_panel_;
         ExtraDynamicPanel extra_dynamic_panel_;

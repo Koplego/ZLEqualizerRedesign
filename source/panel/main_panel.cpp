@@ -5,12 +5,111 @@
 #include "../gui/glass_tokens.hpp"
 #include "../zlp/sample_rate_helper.hpp"
 
+namespace {
+    // A lens bends the scene underneath it. Only the thin perimeter is displaced;
+    // the centre remains clear so text, curves, and controls stay readable.
+    void drawRefractedRim(juce::Graphics& g, const juce::Image& scene,
+                          juce::Rectangle<int> pane, float radius, float font,
+                          float strength) {
+        pane = pane.getIntersection(scene.getBounds());
+        if (pane.getWidth() < 12 || pane.getHeight() < 12) return;
+        const auto depth = juce::jlimit(4, 28, juce::roundToInt(
+            juce::jmin(font * 1.65f, pane.getHeight() * .24f)));
+        juce::Image::BitmapData source(scene, juce::Image::BitmapData::readOnly);
+        juce::Path glass;
+        glass.addRoundedRectangle(pane.toFloat(), radius);
+        juce::Graphics::ScopedSaveState clip(g);
+        g.reduceClipRegion(glass);
+
+        const auto renderStrip = [&](bool horizontal, bool beginning) {
+            const auto width = horizontal ? pane.getWidth() : depth;
+            const auto height = horizontal ? depth : pane.getHeight();
+            const auto x0 = horizontal ? pane.getX() :
+                (beginning ? pane.getX() : pane.getRight() - depth);
+            const auto y0 = horizontal ?
+                (beginning ? pane.getY() : pane.getBottom() - depth) : pane.getY();
+            juce::Image strip(juce::Image::ARGB, width, height, true);
+            juce::Image::BitmapData output(strip, juce::Image::BitmapData::writeOnly);
+
+            for (int y = 0; y < height; ++y) {
+                for (int x = 0; x < width; ++x) {
+                    const auto fromEdge = horizontal ?
+                        (beginning ? y : height - 1 - y) :
+                        (beginning ? x : width - 1 - x);
+                    const auto fresnel = 1.f - static_cast<float>(fromEdge) /
+                                               static_cast<float>(depth);
+                    const auto bend = fresnel * fresnel;
+                    const auto px = x0 + x;
+                    const auto py = y0 + y;
+                    const auto normalShift = static_cast<int>(std::round(
+                        (2.f + static_cast<float>(depth) * 1.4f) * bend));
+                    const auto tangent = horizontal ?
+                        (static_cast<float>(px - pane.getCentreX()) / pane.getWidth()) :
+                        (static_cast<float>(py - pane.getCentreY()) / pane.getHeight());
+                    const auto lateralShift = static_cast<int>(std::round(
+                        tangent * static_cast<float>(depth) * .85f * bend));
+                    const auto sx = juce::jlimit(0, source.width - 1,
+                        px + (horizontal ? lateralShift : (beginning ? normalShift : -normalShift)));
+                    const auto sy = juce::jlimit(0, source.height - 1,
+                        py + (horizontal ? (beginning ? normalShift : -normalShift) : lateralShift));
+                    auto transmitted = source.getPixelColour(sx, sy);
+                    const auto shine = (beginning ? .22f : .10f) * bend;
+                    transmitted = transmitted.interpolatedWith(juce::Colours::white, shine);
+                    if (!beginning)
+                        transmitted = transmitted.interpolatedWith(juce::Colours::black, .11f * bend);
+                    output.setPixelColour(x, y, transmitted.withAlpha(
+                        juce::jlimit(0.f, .86f, strength * (.12f * fresnel + .74f * bend))));
+                }
+            }
+            g.drawImageAt(strip, x0, y0);
+        };
+        renderStrip(true, true);
+        renderStrip(true, false);
+        renderStrip(false, true);
+        renderStrip(false, false);
+    }
+
+    void drawRefractedNode(juce::Graphics& g, const juce::Image& scene,
+                           juce::Rectangle<int> lens) {
+        lens = lens.getIntersection(scene.getBounds());
+        if (lens.getWidth() < 12 || lens.getHeight() < 12) return;
+        juce::Image::BitmapData source(scene, juce::Image::BitmapData::readOnly);
+        juce::Image refraction(juce::Image::ARGB, lens.getWidth(), lens.getHeight(), true);
+        juce::Image::BitmapData output(refraction, juce::Image::BitmapData::writeOnly);
+        const auto centre = lens.toFloat().getCentre();
+        const auto radius = juce::jmin(lens.getWidth(), lens.getHeight()) * .47f;
+        for (int y = 0; y < lens.getHeight(); ++y) {
+            for (int x = 0; x < lens.getWidth(); ++x) {
+                const auto px = static_cast<float>(lens.getX() + x);
+                const auto py = static_cast<float>(lens.getY() + y);
+                const auto dx = (px - centre.x) / radius;
+                const auto dy = (py - centre.y) / radius;
+                const auto distance = std::hypot(dx, dy);
+                if (distance <= .60f || distance >= 1.f) continue;
+                const auto edge = (distance - .60f) / .40f;
+                const auto shift = 2.f + radius * .35f * edge * edge;
+                const auto sx = juce::jlimit(0, source.width - 1,
+                    juce::roundToInt(px + dx / distance * shift));
+                const auto sy = juce::jlimit(0, source.height - 1,
+                    juce::roundToInt(py + dy / distance * shift));
+                auto light = source.getPixelColour(sx, sy);
+                const auto upperLight = juce::jlimit(0.f, 1.f, (-dx - dy) * .5f);
+                light = light.interpolatedWith(juce::Colours::white,
+                    upperLight * .15f * edge);
+                output.setPixelColour(x, y, light.withAlpha(.28f * edge));
+            }
+        }
+        g.drawImageAt(refraction, lens.getX(), lens.getY());
+    }
+}
+
 namespace zlpanel {
     MainPanel::MainPanel(PluginProcessor& p, zlgui::UIBase& base, const multilingual::TooltipLanguage language) :
         p_ref_(p), base_(base),
         tooltip_helper_(language),
         refresh_handler_(zlstate::PTargetRefreshSpeed::kRates[base_.getRefreshRateID()]),
         curve_panel_(p, base, tooltip_helper_),
+        band_hub_panel_(p, base, tooltip_helper_),
         control_panel_(p, base, curve_panel_.getMatchFFTPanel(), tooltip_helper_),
         extra_dynamic_panel_(p, base, tooltip_helper_),
         top_panel_(p, base, tooltip_helper_, [this]() { toggleSettingsSheet(); }),
@@ -20,6 +119,9 @@ namespace zlpanel {
         tooltip_laf_(base_) {
         juce::ignoreUnused(base_);
         setOpaque(false);
+        for (size_t band = 0; band < zlp::kBandNum; ++band)
+            band_status_[band] = p_ref_.parameters_.getRawParameterValue(
+                zlp::PFilterStatus::kID + std::to_string(band));
 
         top_panel_.setPresetNameProvider([this]() { return preset_browser_.getDisplayPresetName(); });
 
@@ -34,6 +136,8 @@ namespace zlpanel {
         startTimerHz(1);
 
         addAndMakeVisible(curve_panel_);
+        addAndMakeVisible(band_hub_panel_);
+        band_hub_panel_.updateBand();
         addChildComponent(overlay_scrim_);
         addChildComponent(control_panel_);
         control_panel_.setVisible(false);
@@ -53,6 +157,23 @@ namespace zlpanel {
     }
 
     void MainPanel::paint(juce::Graphics& g) {
+        const auto bounds = getLocalBounds();
+        if (bounds.isEmpty()) return;
+        if (!backdrop_image_.isValid() || backdrop_image_.getBounds() != bounds) {
+            backdrop_image_ = juce::Image(juce::Image::ARGB, bounds.getWidth(), bounds.getHeight(), true);
+            glass_dirty_ = true;
+        }
+        if (glass_dirty_) {
+            backdrop_image_.clear(bounds);
+            juce::Graphics underlay(backdrop_image_);
+            paintGlassBackdrop(underlay);
+            glass_dirty_ = false;
+            refraction_dirty_ = true;
+        }
+        g.drawImageAt(backdrop_image_, 0, 0);
+    }
+
+    void MainPanel::paintGlassBackdrop(juce::Graphics& g) {
         const auto shell = getLocalBounds().toFloat().reduced(3.f);
         const auto radius = zlgui::glass::shellRadius(base_.getFontSize());
         juce::Path clip_path;
@@ -65,108 +186,67 @@ namespace zlpanel {
             // The material itself is deliberately neutral. There is no baked-in amber,
             // cyan, blue or violet field here. Chroma enters the interface only through
             // active EQ nodes below, exactly as a coloured light would enter clear glass.
-            juce::ColourGradient material(juce::Colour(39, 52, 63), shell.getX(), shell.getCentreY(),
-                                          juce::Colour(25, 38, 53), shell.getRight(), shell.getCentreY(), false);
-            material.addColour(.38, juce::Colour(34, 49, 62));
-            material.addColour(.72, juce::Colour(29, 43, 58));
-            g.setGradientFill(material);
+            g.setColour(juce::Colour(40, 43, 47));
             g.fillRect(shell.expanded(2.f));
 
             // Neutral liquid-glass depth: pale reflected sky at the top, absorption at the bottom.
-            juce::ColourGradient vertical(juce::Colour(231, 242, 248).withAlpha(.085f),
+            juce::ColourGradient vertical(juce::Colour(245, 245, 245).withAlpha(.085f),
                                           shell.getCentreX(), shell.getY(),
-                                          juce::Colour(2, 10, 18).withAlpha(.34f),
+                                          juce::Colour(8, 9, 11).withAlpha(.34f),
                                           shell.getCentreX(), shell.getBottom(), false);
             vertical.addColour(.26, juce::Colours::transparentBlack);
-            vertical.addColour(.78, juce::Colour(5, 14, 24).withAlpha(.12f));
+            vertical.addColour(.78, juce::Colour(10, 11, 13).withAlpha(.12f));
             g.setGradientFill(vertical);
             g.fillRect(shell);
 
-            // Reconstruct the visible EQ-node positions from the same live parameters used by
-            // ResponsePanel. These are the ONLY coloured illumination sources for the shell.
+            // All chromatic transmission originates at visible lenses.
+            // Reading the component geometry avoids a second, subtly different EQ mapping.
             const auto font = base_.getFontSize();
-            const auto meter_width = juce::jmax(48, juce::roundToInt(font * 4.2f));
-            const auto meter_gap = juce::jmax(3, getPaddingSize(font) / 2);
-            const auto graph_w = juce::jmax(1.f, static_cast<float>(curve_panel_.getWidth() - meter_width - meter_gap));
-            const auto graph_h = juce::jmax(1.f, static_cast<float>(curve_panel_.getHeight()));
-            const auto sample_rate = juce::jmax(1.0, p_ref_.getAtomicSampleRate());
-            const auto fft_max = freq_helper::getFFTMax(sample_rate);
-            const auto freq_to_x = graph_w * kFFTSizeOverWidth / static_cast<float>(std::log(fft_max * .1));
-
-            float db_scale = 12.f;
-            if (const auto* eq_max_ref = p_ref_.parameters_NA_.getRawParameterValue(zlstate::PEQMaxDB::kID)) {
-                const auto idx = static_cast<size_t>(juce::jmax(0, static_cast<int>(std::round(
-                    eq_max_ref->load(std::memory_order_relaxed)))));
-                db_scale = base_.getCurveDBScale(idx);
-            }
-            const auto response_h = graph_h - static_cast<float>(getBottomAreaHeight(font));
-            const auto dragger_padding = font * kDraggerScale;
-            const auto zero_y = response_h * .5f;
-            const auto bottom_y = response_h - dragger_padding;
-            const auto db_to_y = (zero_y - bottom_y) / juce::jmax(1.f, db_scale);
-
-            const auto graph_origin = curve_panel_.getBounds().getPosition().toFloat();
-            const auto selected = base_.getSelectedBand();
-            const auto local_radius = juce::jmax(82.f, font * 7.1f);
-            const auto reflected_radius = juce::jmax(170.f, font * 13.2f);
-
             for (size_t band = 0; band < zlp::kBandNum; ++band) {
-                const auto suffix = std::to_string(band);
-                const auto* status_ref = p_ref_.parameters_.getRawParameterValue(zlp::PFilterStatus::kID + suffix);
-                const auto* freq_ref = p_ref_.parameters_.getRawParameterValue(zlp::PFreq::kID + suffix);
-                const auto* gain_ref = p_ref_.parameters_.getRawParameterValue(zlp::PGain::kID + suffix);
-                const auto* type_ref = p_ref_.parameters_.getRawParameterValue(zlp::PFilterType::kID + suffix);
-                if (status_ref == nullptr || freq_ref == nullptr || gain_ref == nullptr || type_ref == nullptr) continue;
+                const auto& light = node_lights_[band];
+                if (!light.active) continue;
+                const auto centre = light.bounds.toFloat().getCentre();
+                const auto colour = light.colour.withMultipliedSaturation(1.15f);
+                // Short-wavelength light spreads farther through this glass. This depends
+                // on the source colour, never its band index or a fixed spectrum position.
+                const auto spread = font * 24.f * (.8f + .6f * colour.getFloatBlue());
 
-                const auto status = static_cast<zlp::FilterStatus>(std::round(
-                    status_ref->load(std::memory_order_relaxed)));
-                if (status == zlp::FilterStatus::kOff) continue;
-
-                const auto freq = juce::jlimit(10.f, static_cast<float>(fft_max),
-                                               freq_ref->load(std::memory_order_relaxed));
-                const auto x = static_cast<float>(std::log(freq * .1f)) * freq_to_x;
-                if (!std::isfinite(x)) continue;
-
-                const auto type = static_cast<zldsp::filter::FilterType>(std::round(
-                    type_ref->load(std::memory_order_relaxed)));
-                auto button_gain = gain_ref->load(std::memory_order_relaxed);
-                if (type == zldsp::filter::kLowShelf || type == zldsp::filter::kHighShelf
-                    || type == zldsp::filter::kTiltShelf || type == zldsp::filter::kFlatTilt) {
-                    button_gain *= .5f;
-                } else if (type != zldsp::filter::kPeak && type != zldsp::filter::kFlatGain) {
-                    button_gain = 0.f;
-                }
-                const auto y = db_to_y * button_gain + zero_y;
-                const auto centre = graph_origin + juce::Point<float>(x, y);
-
-                const auto intensity = band == selected ? 1.f : .66f;
-                const auto colour = base_.getColourMap1(band);
-
-                // Wide, weak internal reflection: this is what reaches header/footer/control glass.
-                juce::ColourGradient reflected(colour.withAlpha(.060f * intensity), centre.x, centre.y,
-                                               colour.withAlpha(0.f), centre.x + reflected_radius,
-                                               centre.y, true);
-                reflected.addColour(.26, colour.withAlpha(.042f * intensity));
-                reflected.addColour(.58, colour.withAlpha(.016f * intensity));
-                reflected.addColour(.84, colour.withAlpha(.0035f * intensity));
-                g.setGradientFill(reflected);
-                g.fillEllipse(centre.x - reflected_radius, centre.y - reflected_radius,
-                              reflected_radius * 2.f, reflected_radius * 2.f);
-
-                // Tighter transmitted/reflected pool immediately around the actual source.
-                juce::ColourGradient local(
-                    colour.interpolatedWith(juce::Colours::white, .12f).withAlpha(.17f * intensity),
-                    centre.x, centre.y, colour.withAlpha(0.f), centre.x + local_radius, centre.y, true);
-                local.addColour(.22, colour.withAlpha(.12f * intensity));
-                local.addColour(.52, colour.withAlpha(.044f * intensity));
-                local.addColour(.80, colour.withAlpha(.006f * intensity));
-                g.setGradientFill(local);
-                g.fillEllipse(centre.x - local_radius, centre.y - local_radius,
-                              local_radius * 2.f, local_radius * 2.f);
+                // Broad transmission decays continuously in both axes. Selection does not
+                // change the energy of a source; it only changes its interaction affordance.
+                juce::ColourGradient transmitted(colour.withAlpha(.36f), centre.x, centre.y,
+                    colour.withAlpha(0.f), centre.x + spread, centre.y, true);
+                transmitted.addColour(.18, colour.withAlpha(.27f));
+                transmitted.addColour(.40, colour.withAlpha(.13f));
+                transmitted.addColour(.65, colour.withAlpha(.055f));
+                transmitted.addColour(.84, colour.withAlpha(.018f));
+                g.setGradientFill(transmitted);
+                g.fillRect(shell);
             }
+
+            // Real depth is most legible as occlusion *behind* the raised pane.
+            // These shadows are part of the neutral material and never add hue.
+            const auto castShadow = [&](juce::Rectangle<int> bounds, float radius, float alpha) {
+                if (bounds.isEmpty()) return;
+                juce::Path silhouette;
+                silhouette.addRoundedRectangle(bounds.toFloat(), radius);
+                const juce::DropShadow shadow(juce::Colours::black.withAlpha(alpha),
+                    juce::jmax(5, juce::roundToInt(font * .85f)),
+                    {0, juce::jmax(1, juce::roundToInt(font * .16f))});
+                shadow.drawForPath(g, silhouette);
+            };
+            castShadow(getLocalArea(&curve_panel_, curve_panel_.getGraphGlassBounds()),
+                zlgui::glass::surfaceRadius(font) * 1.25f, .18f);
+            castShadow(footer_panel_.getBounds(), footer_panel_.getHeight() * .43f, .17f);
+            castShadow(getLocalArea(&top_panel_, top_panel_.getPresetGlassBounds()),
+                top_panel_.getPresetGlassBounds().getHeight() * .5f, .14f);
         }
 
-        g.setColour(juce::Colour(245, 251, 255).withAlpha(.26f));
+        juce::ColourGradient shellEdge(juce::Colour(255, 255, 255).withAlpha(.34f),
+            shell.getX(), shell.getY(),
+            juce::Colour(255, 255, 255).withAlpha(.055f),
+            shell.getRight(), shell.getBottom(), false);
+        shellEdge.addColour(.55, juce::Colour(245, 250, 253).withAlpha(.13f));
+        g.setGradientFill(shellEdge);
         g.drawRoundedRectangle(shell, radius, .95f);
         g.setColour(juce::Colour(222, 241, 252).withAlpha(.085f));
         g.drawRoundedRectangle(shell.reduced(2.f), juce::jmax(1.f, radius - 2.f), .68f);
@@ -181,7 +261,71 @@ namespace zlpanel {
         g.fillRect(top_line);
     }
 
-    void MainPanel::paintOverChildren(juce::Graphics& g) { juce::ignoreUnused(g); }
+    void MainPanel::paintOverChildren(juce::Graphics& g) {
+        if (!backdrop_image_.isValid() || overlay_scrim_.isVisible()
+            || control_panel_.isVisible()) return;
+
+        const auto font = base_.getFontSize();
+        const auto graph = getLocalArea(&curve_panel_, curve_panel_.getGraphGlassBounds());
+        if (!graph_material_image_.isValid()
+            || graph_material_image_.getWidth() != graph.getWidth()
+            || graph_material_image_.getHeight() != graph.getHeight()) {
+            graph_material_image_ = curve_panel_.getGraphMaterialImage();
+            refraction_dirty_ = true;
+        }
+
+        if (!refraction_image_.isValid() || refraction_image_.getBounds() != getLocalBounds()) {
+            refraction_image_ = juce::Image(juce::Image::ARGB, getWidth(), getHeight(), true);
+            refraction_dirty_ = true;
+        }
+        if (refraction_dirty_) {
+            refraction_image_.clear(refraction_image_.getBounds());
+            juce::Graphics refracted(refraction_image_);
+            paintRefractions(refracted, graph, font);
+            refraction_dirty_ = false;
+        }
+        g.drawImageAt(refraction_image_, 0, 0);
+    }
+
+    void MainPanel::paintRefractions(juce::Graphics& g, juce::Rectangle<int> graph, float font) {
+
+        // A copy of the actual node-lit backdrop plus the graph's real grid is the
+        // optical input. Rim pixels are sampled from displaced positions in it.
+        auto scene = backdrop_image_.createCopy();
+        if (graph_material_image_.isValid()) {
+            juce::Graphics composite(scene);
+            composite.drawImageAt(graph_material_image_, graph.getX(), graph.getY());
+        }
+
+        const auto shell = getLocalBounds().reduced(4);
+        const auto footer = footer_panel_.getBounds().reduced(2);
+        const auto meter = getLocalArea(&curve_panel_, curve_panel_.getMeterGlassBounds())
+            .reduced(1);
+        const auto preset = getLocalArea(&top_panel_, top_panel_.getPresetGlassBounds())
+            .reduced(1);
+        const auto speed = getLocalArea(&footer_panel_, footer_panel_.getSpeedGlassBounds())
+            .reduced(1);
+        const auto phase = getLocalArea(&footer_panel_, footer_panel_.getPhaseGlassBounds())
+            .reduced(1);
+
+        drawRefractedRim(g, scene, shell, zlgui::glass::shellRadius(font), font, .60f);
+        drawRefractedRim(g, scene, graph.reduced(1),
+            zlgui::glass::surfaceRadius(font) * 1.25f, font, .82f);
+        drawRefractedRim(g, scene, footer, footer.getHeight() * .43f, font, .76f);
+        drawRefractedRim(g, scene, meter, juce::jmax(7.f, font * .56f), font, .66f);
+        drawRefractedRim(g, scene, preset, preset.getHeight() * .5f, font, .76f);
+        drawRefractedRim(g, scene, speed, speed.getHeight() * .5f, font, .66f);
+        drawRefractedRim(g, scene, phase, phase.getHeight() * .5f, font, .66f);
+
+        // Node lenses use the same live optical input as the larger panes. The narrow
+        // displaced annulus bends the graph and coloured transmission around each rim.
+        for (const auto& light : node_lights_) {
+            if (light.active)
+                drawRefractedNode(g, scene, light.bounds.withSizeKeepingCentre(
+                    juce::roundToInt(light.bounds.getWidth() * .81f),
+                    juce::roundToInt(light.bounds.getHeight() * .81f)));
+        }
+    }
 
     void MainPanel::resized() {
         auto full = getLocalBounds();
@@ -207,18 +351,22 @@ namespace zlpanel {
         bound.removeFromBottom(juce::jmax(5, outer_padding / 2));
         curve_panel_.setBounds(bound);
         overlay_scrim_.setBounds(curve_panel_.getBounds());
+        graph_material_image_ = {};
+        glass_dirty_ = true;
+        refraction_dirty_ = true;
+        node_lights_initialized_ = false;
 
         const auto padding = getPaddingSize(font_size);
         const auto match_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel)) > .5;
+        const auto graph = getLocalArea(&curve_panel_, curve_panel_.getGraphGlassBounds());
+        const auto hub_w = juce::jmax(0, juce::jmin(band_hub_panel_.getIdealWidth(), graph.getWidth() - 4 * padding));
+        const auto hub_h = juce::jmax(0, juce::jmin(band_hub_panel_.getIdealHeight(), graph.getHeight() - 3 * padding));
+        auto hub = juce::Rectangle<int>(0, 0, hub_w, hub_h);
+        hub.setCentre(graph.getCentreX(), graph.getBottom() - padding - hub_h / 2);
+        band_hub_panel_.setBounds(hub);
         if (match_open) {
-            const auto max_w = juce::jmax(0, curve_panel_.getWidth() - 4 * padding);
-            const auto max_h = juce::jmax(0, curve_panel_.getHeight() - 4 * padding);
-            const auto sheet_w = juce::jmin(control_panel_.getActiveIdealWidth(), max_w);
-            const auto sheet_h = juce::jmin(control_panel_.getActiveIdealHeight(), max_h);
-            auto sheet = juce::Rectangle<int>(0, 0, sheet_w, sheet_h);
-            sheet.setCentre(curve_panel_.getBounds().getCentreX(), curve_panel_.getY() + padding + sheet_h / 2);
-            control_panel_.setBounds(sheet);
-        } else control_panel_.setBounds({});
+            control_panel_.setBounds(hub);
+        } else if (!control_panel_.isVisible()) control_panel_.setBounds({});
 
         const auto setting_width = juce::jmax(0, juce::jmin(ui_setting_panel_.getIdealWidth(), main_bound.getWidth() - 4 * padding));
         const auto setting_height = juce::jmax(0, juce::jmin(ui_setting_panel_.getIdealHeight(), main_bound.getHeight() - 4 * padding));
@@ -257,13 +405,35 @@ namespace zlpanel {
         const auto match_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel)) > .5;
         const auto settings_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel)) > .5;
         const auto preset_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kPresetBrowser)) > .5;
+        const auto analyzer_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel)) > .5;
+        const auto output_open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kOutputPanel)) > .5;
+        band_hub_panel_.setSuppressed(match_open || settings_open || preset_open || analyzer_open || output_open);
         const auto scrim_visible = settings_open || preset_open;
 
-        overlay_scrim_.setVisible(scrim_visible);
-        control_panel_.setVisible(match_open);
-        ui_setting_panel_.setVisible(settings_open);
-        preset_browser_.setVisible(preset_open);
+        const auto animate = [](juce::Component& component, bool open, int duration) {
+            auto& animator = juce::Desktop::getInstance().getAnimator();
+            if (open && !component.isVisible()) {
+                animator.cancelAnimation(&component, false);
+                const auto destination = component.getBounds();
+                auto start = destination.withSizeKeepingCentre(
+                    juce::roundToInt(destination.getWidth() * .88f),
+                    juce::roundToInt(destination.getHeight() * .88f));
+                start.translate(0, juce::jmax(4, destination.getHeight() / 14));
+                component.setBounds(start);
+                component.setAlpha(0.f);
+                component.setVisible(true);
+                animator.animateComponent(&component, destination, 1.f, duration,
+                                          false, .12, 0.0);
+            } else if (!open && component.isVisible()) {
+                animator.fadeOut(&component, juce::jmax(100, duration - 50));
+            }
+        };
+        animate(overlay_scrim_, scrim_visible, 160);
+        animate(control_panel_, match_open, 220);
+        animate(ui_setting_panel_, settings_open, 240);
+        animate(preset_browser_, preset_open, 240);
         if (scrim_visible) overlay_scrim_.toFront(false);
+        if (band_hub_panel_.isVisible()) band_hub_panel_.toFront(false);
         if (control_panel_.isVisible()) control_panel_.toFront(false);
         if (settings_open) ui_setting_panel_.toFront(false);
         if (preset_open) preset_browser_.toFront(false);
@@ -282,14 +452,49 @@ namespace zlpanel {
             extra_dynamic_panel_.updateBand();
             control_panel_.updateBand();
             curve_panel_.updateBand();
+            band_hub_panel_.updateBand();
         }
         if (ui_setting_panel_.isVisible()) ui_setting_panel_.flushPendingScroll();
         if (preset_browser_.isVisible()) preset_browser_.flushPendingScroll();
 
-        // Node positions are light-source positions now, so the parent glass must refresh
-        // whenever the response refreshes instead of keeping a stale coloured reflection.
-        repaint();
         curve_panel_.repaintCallBack();
+        bool lights_changed = !node_lights_initialized_;
+        for (size_t band = 0; band < zlp::kBandNum; ++band) {
+            const auto* status = band_status_[band];
+            auto& lens = curve_panel_.getNodeLens(band);
+            const bool active = status != nullptr
+                && static_cast<zlp::FilterStatus>(std::lround(status->load(std::memory_order::relaxed)))
+                    == zlp::FilterStatus::kOn && lens.isShowing();
+            const auto bounds = active ? getLocalArea(&lens, lens.getLocalBounds()) : juce::Rectangle<int>{};
+            const auto colour = active ? base_.getColourMap1(band) : juce::Colour{};
+            auto& light = node_lights_[band];
+            if (light.active != active || light.bounds != bounds || light.colour != colour) {
+                light = {bounds, colour, active};
+                lights_changed = true;
+            }
+        }
+        node_lights_initialized_ = true;
+        if (lights_changed) {
+            glass_dirty_ = true;
+            refraction_dirty_ = true;
+            repaint();
+            if (band_hub_panel_.isVisible() || control_panel_.isVisible()) {
+                std::vector<BandHubPanel::NodeLight> hub_lights;
+                std::vector<MatchControlPanel::NodeLight> match_lights;
+                hub_lights.reserve(zlp::kBandNum);
+                match_lights.reserve(zlp::kBandNum);
+                for (const auto& light : node_lights_) {
+                    if (!light.active) continue;
+                    const auto centre = light.bounds.toFloat().getCentre();
+                    hub_lights.push_back({centre - band_hub_panel_.getPosition().toFloat(),
+                        light.colour, base_.getFontSize() * 22.f});
+                    match_lights.push_back({centre - control_panel_.getPosition().toFloat(),
+                        light.colour, base_.getFontSize() * 22.f});
+                }
+                band_hub_panel_.setAmbientSources(std::move(hub_lights));
+                control_panel_.setMatchNodeLights(std::move(match_lights));
+            }
+        }
         control_panel_.repaintCallBack();
         const auto c_refresh_rate = refresh_handler_.getActualRefreshRate();
         if (std::abs(c_refresh_rate - refresh_rate_) > 0.1) {
@@ -302,23 +507,23 @@ namespace zlpanel {
         if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kUISettingPanel, property)) {
             const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kUISettingPanel)) > .5;
             if (open) closeGlobalOverlaysExcept(zlgui::PanelSettingIdx::kUISettingPanel);
-            updateOverlayState(); resized();
+            resized();
         } else if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kPresetBrowser, property)) {
             const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kPresetBrowser)) > .5;
             if (open) closeGlobalOverlaysExcept(zlgui::PanelSettingIdx::kPresetBrowser);
-            updateOverlayState(); resized();
+            resized();
         } else if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kMatchPanel, property)) {
             const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel)) > .5;
             if (open) closeGlobalOverlaysExcept(zlgui::PanelSettingIdx::kMatchPanel);
-            updateOverlayState(); resized();
+            resized();
         } else if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kAnalyzerPanel, property)) {
             const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kAnalyzerPanel)) > .5;
             if (open) closeGlobalSheetsForUtility(zlgui::PanelSettingIdx::kAnalyzerPanel);
-            updateOverlayState(); resized();
+            resized();
         } else if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kOutputPanel, property)) {
             const auto open = static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kOutputPanel)) > .5;
             if (open) closeGlobalSheetsForUtility(zlgui::PanelSettingIdx::kOutputPanel);
-            updateOverlayState(); resized();
+            resized();
         }
     }
 
@@ -339,6 +544,7 @@ namespace zlpanel {
         extra_dynamic_panel_.repaintCallBackSlow();
         control_panel_.repaintCallBackSlow();
         curve_panel_.repaintCallBackSlow();
+        band_hub_panel_.repaintCallbackSlow();
         top_panel_.repaintCallbackSlow();
         footer_panel_.repaintCallbackSlow();
     }

@@ -176,10 +176,6 @@ include(SharedCodeDefaults)
 # If you want to appease the CMake gods and avoid globs, manually add files like so:
 # set(SourceFiles Source/PluginEditor.h Source/PluginProcessor.h Source/PluginProcessor.cpp)
 file(GLOB_RECURSE SourceFiles CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/source/*.hpp")
-# band_hub_panel.cpp is an unintegrated WIP source file on this design branch. It is not
-# referenced by MainPanel yet and currently contains incomplete prototype code, so keep it
-# out of production/CI builds until the Band Hub is wired into the active UI.
-list(FILTER SourceFiles EXCLUDE REGEX ".*/source/panel/band_hub_panel\\.cpp$")
 target_sources(SharedCode INTERFACE ${SourceFiles})
 
 # Adds a BinaryData target for embedding assets into the binary
@@ -264,6 +260,24 @@ target_link_options(SharedCode INTERFACE ${ZL_HWY_ARCH_FLAGS})
 
 # Link our SharedCode target
 target_link_libraries("${PROJECT_NAME}" PRIVATE SharedCode)
+
+option(GLASS_EQ_BUILD_PERFORMANCE_BENCH "Build the multi-instance audio benchmark" OFF)
+if (GLASS_EQ_BUILD_PERFORMANCE_BENCH)
+    add_executable(GlassEQPerformanceBench benchmarks/multi_instance.cpp)
+    target_include_directories(GlassEQPerformanceBench PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source")
+    target_compile_features(GlassEQPerformanceBench PRIVATE cxx_std_20)
+    target_compile_definitions(GlassEQPerformanceBench PRIVATE
+        $<TARGET_PROPERTY:${PROJECT_NAME},COMPILE_DEFINITIONS>)
+    target_link_libraries(GlassEQPerformanceBench PRIVATE "${PROJECT_NAME}"
+        juce_audio_utils juce_audio_processors hwy nlopt Assets)
+    add_executable(GlassEQUIBench benchmarks/editor_snapshot.cpp)
+    target_include_directories(GlassEQUIBench PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source")
+    target_compile_features(GlassEQUIBench PRIVATE cxx_std_20)
+    target_compile_definitions(GlassEQUIBench PRIVATE
+        $<TARGET_PROPERTY:${PROJECT_NAME},COMPILE_DEFINITIONS>)
+    target_link_libraries(GlassEQUIBench PRIVATE "${PROJECT_NAME}"
+        juce_audio_utils juce_audio_processors hwy nlopt Assets)
+endif ()
 
 # Pass some config to GA (like our PRODUCT_NAME)
 include(GitHubENV)

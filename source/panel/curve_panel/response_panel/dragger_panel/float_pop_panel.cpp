@@ -188,16 +188,17 @@ namespace zlpanel {
         auto card = getLocalBounds().toFloat().reduced(.5f);
         zlgui::glass::fillGlassSurface(g, card, juce::jmax(9.f, card.getHeight() * .20f), .085f, .135f, .15f);
 
-        if (const auto band = base_.getSelectedBand(); band < zlp::kBandNum) {
+        if (const auto band = base_.getSelectedBand(); band < zlp::kBandNum
+            && filter_status_ptr_ != nullptr
+            && static_cast<zlp::FilterStatus>(std::lround(filter_status_ptr_->load())) == zlp::FilterStatus::kOn) {
             const auto accent = base_.getColourMap1(band);
-            auto glint = card.reduced(base_.getFontSize() * .58f, 0.f);
-            glint.setHeight(1.f);
-            juce::ColourGradient grad(accent.withAlpha(.0f), glint.getX(), glint.getY(),
-                                      accent.interpolatedWith(juce::Colours::white, .30f).withAlpha(.36f),
-                                      glint.getCentreX(), glint.getY(), false);
-            grad.addColour(.86, accent.withAlpha(.08f));
-            g.setGradientFill(grad);
-            g.fillRoundedRectangle(glint, .5f);
+            const auto source = getLocalPoint(getParentComponent(), position_);
+            const auto reach = base_.getFontSize() * 8.f;
+            juce::ColourGradient reflection(accent.withAlpha(.36f), source.x, source.y,
+                accent.withAlpha(0.f), source.x + reach, source.y, true);
+            reflection.addColour(.45, accent.withAlpha(.15f));
+            g.setGradientFill(reflection);
+            g.drawRoundedRectangle(card, juce::jmax(9.f, card.getHeight() * .20f), 1.0f);
         }
 
         const auto type = ftype_box_.getBox().getSelectedItemIndex();
@@ -322,6 +323,7 @@ namespace zlpanel {
             current_filter_type_ = current_slope_ = -1;
             updateFilterCapabilities();
             transform_initialized_ = false;
+            setAlpha(0.f);
             setVisible(true);
             repaintCallBackSlow();
         } else {
@@ -331,7 +333,7 @@ namespace zlpanel {
             dynamic_button_.getButton().setToggleState(false, juce::dontSendNotification);
             solo_button_.getButton().setToggleState(false, juce::dontSendNotification);
             stopTimer();
-            setVisible(false);
+            juce::Desktop::getInstance().getAnimator().fadeOut(this, 130);
         }
     }
 
@@ -365,6 +367,8 @@ namespace zlpanel {
             slope_box_.getBox().setSelectedId(2, juce::sendNotificationSync);
         slope_box_.getBox().setItemEnabled(1, slope6);
         slope_box_.setEditable(slope_supported_);
+        // setEditable restores alpha; this widget is only a hit target beneath our chip.
+        slope_box_.setAlpha(0.f);
         slope_box_.setVisible(slope_supported_);
 
         const auto gainEnabled = type == static_cast<int>(zldsp::filter::kPeak)
@@ -386,11 +390,12 @@ namespace zlpanel {
     }
 
     int FloatPopPanel::getIdealHeight() const {
-        return juce::jmax(58, juce::roundToInt(base_.getFontSize() * 4.05f));
+        return juce::jmax(58, juce::roundToInt(base_.getFontSize() * 3.65f));
     }
 
     void FloatPopPanel::updatePosition(const juce::Point<float> position, const juce::Point<float> target_position) {
         position_ = position;
+        repaint();
         target_position_ = target_position;
         updateTransformationTarget();
     }
@@ -430,9 +435,11 @@ namespace zlpanel {
 
         if (!transform_initialized_) {
             current_x_ = target_x_;
-            current_y_ = target_y_;
+            current_y_ = target_y_ + juce::jmax(5.f, base_.getFontSize() * .55f);
             transform_initialized_ = true;
             applyCurrentTransform();
+            juce::Desktop::getInstance().getAnimator().fadeIn(this, 180);
+            startTimerHz(60);
             return;
         }
         if (std::abs(current_x_ - target_x_) > .25f || std::abs(current_y_ - target_y_) > .25f)
@@ -453,5 +460,6 @@ namespace zlpanel {
 
     void FloatPopPanel::applyCurrentTransform() {
         setTransform(juce::AffineTransform::translation(current_x_, current_y_));
+        repaint();
     }
 }

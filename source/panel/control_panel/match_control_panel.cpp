@@ -70,7 +70,7 @@ namespace zlpanel {
                                          const multilingual::TooltipHelper& tooltip_helper) :
         p_ref_(p), base_(base),
         match_fft_panel_(match_fft_panel),
-        control_background_(base),
+        close_button_(base, "v"),
         save_drawable_(juce::Drawable::createFromImageData(BinaryData::save_svg,
                                                            BinaryData::save_svgSize)),
         save_button_(base, save_drawable_.get(), nullptr,
@@ -106,8 +106,18 @@ namespace zlpanel {
         juce::ignoreUnused(p_ref_);
         setOpaque(false);
 
-        control_background_.setBufferedToImage(true);
-        addAndMakeVisible(control_background_);
+        close_button_.getLAF().setFontScale(.66f);
+        close_button_.getLAF().setJustification(juce::Justification::centred);
+        close_button_.setBackgroundPainter([](juce::Graphics& g, juce::Button& b,
+                                               bool highlighted, bool down) {
+            const auto surface = b.getLocalBounds().toFloat().reduced(.5f);
+            zlgui::glass::fillGlassSurface(g, surface, surface.getHeight() * .5f,
+                highlighted || down ? .08f : .04f, .08f, .12f);
+        });
+        close_button_.getButton().onClick = [this]() {
+            base_.setPanelProperty(zlgui::PanelSettingIdx::kMatchPanel, 0.0);
+        };
+        addAndMakeVisible(close_button_);
 
         // Keep the existing buttons as hit targets but replace the legacy artwork with
         // the same restrained glyph language used throughout Glass EQ.
@@ -129,8 +139,8 @@ namespace zlpanel {
             }
             match_fft_panel_.setSideMode(mode);
         };
-        target_box_.getLAF().setFontScale(.76f);
-        target_box_.getLAF().setBoxAlpha(.56f);
+        target_box_.getLAF().setFontScale(.65f);
+        target_box_.getLAF().setBoxAlpha(.20f);
         target_box_.getLAF().setLabelJustification(juce::Justification::centred);
         target_box_.setBufferedToImage(true);
         addAndMakeVisible(target_box_);
@@ -153,7 +163,7 @@ namespace zlpanel {
             match_fft_panel_.setDiffSlope(static_cast<float>(slope_slider_.getSlider().getValue()));
         };
 
-        label_laf_.setFontScale(.78f);
+        label_laf_.setFontScale(.52f);
         for (auto& l : {&shift_label_, &scale_label_, &slope_label_}) {
             l->setLookAndFeel(&label_laf_);
             l->setJustificationType(juce::Justification::centredLeft);
@@ -163,7 +173,7 @@ namespace zlpanel {
         }
 
         for (auto& s : {&shift_slider_, &scale_slider_, &slope_slider_}) {
-            s->setFontScale(.80f);
+            s->setFontScale(.67f);
             s->getSlider().setSliderSnapsToMousePosition(false);
             s->setBufferedToImage(true);
             addAndMakeVisible(s);
@@ -175,8 +185,8 @@ namespace zlpanel {
                 std::max(limit_combobox_.getBox().getSelectedItemIndex(), 0));
             match_fft_panel_.setMatchLimit(kLimits[selected_index]);
         };
-        limit_combobox_.getLAF().setFontScale(.76f);
-        limit_combobox_.getLAF().setBoxAlpha(.56f);
+        limit_combobox_.getLAF().setFontScale(.65f);
+        limit_combobox_.getLAF().setBoxAlpha(.20f);
         limit_combobox_.getLAF().setLabelJustification(juce::Justification::centred);
         limit_combobox_.setBufferedToImage(true);
         addAndMakeVisible(limit_combobox_);
@@ -209,7 +219,7 @@ namespace zlpanel {
             match_fft_panel_.updateMatchNumBand(static_cast<size_t>(
                 std::round(num_band_slider_.getSlider().getValue())));
         };
-        num_band_slider_.setFontScale(.80f);
+        num_band_slider_.setFontScale(.67f);
         num_band_slider_.getSlider().setSliderSnapsToMousePosition(false);
         num_band_slider_.setBufferedToImage(true);
         addChildComponent(num_band_slider_);
@@ -222,106 +232,108 @@ namespace zlpanel {
     }
 
     int MatchControlPanel::getIdealHeight() const {
-        return juce::roundToInt(base_.getFontSize() * 16.2f);
+        return juce::jmax(72, juce::roundToInt(base_.getFontSize() * 4.85f));
     }
 
     int MatchControlPanel::getIdealWidth() const {
-        return juce::roundToInt(base_.getFontSize() * 35.0f);
+        return juce::roundToInt(base_.getFontSize() * 31.5f);
+    }
+
+    void MatchControlPanel::paint(juce::Graphics& g) {
+        const auto surface = getLocalBounds().toFloat().reduced(.5f);
+        const auto radius = juce::jmax(10.f, base_.getFontSize() * .76f);
+        zlgui::glass::fillGlassSurface(g, surface, radius, .072f, .12f, .14f);
+        juce::Path lens;
+        lens.addRoundedRectangle(surface, radius);
+        {
+            juce::Graphics::ScopedSaveState state(g);
+            g.reduceClipRegion(lens);
+            for (const auto& light : node_lights_) {
+                juce::ColourGradient field(light.colour.withAlpha(.065f),
+                    light.point.x, light.point.y, light.colour.withAlpha(0.f),
+                    light.point.x + light.radius, light.point.y, true);
+                field.addColour(.45, light.colour.withAlpha(.027f));
+                g.setGradientFill(field);
+                g.fillRect(surface);
+            }
+        }
+        g.setColour(juce::Colours::white.withAlpha(.18f));
+        g.drawRoundedRectangle(surface.reduced(.6f), radius, .8f);
+    }
+
+    void MatchControlPanel::setNodeLights(std::vector<NodeLight> lights) {
+        node_lights_ = std::move(lights);
+        repaint();
     }
 
     void MatchControlPanel::resized() {
         const auto font = base_.getFontSize();
-        const auto padding = juce::jmax(6, juce::roundToInt(font * .72f));
-        const auto button = juce::jmax(26, juce::roundToInt(font * 2.05f));
-        const auto row = juce::jmax(28, juce::roundToInt(font * 2.15f));
-        const auto label_h = juce::jmax(12, juce::roundToInt(font * .92f));
+        const auto pad = juce::jmax(4, juce::roundToInt(font * .34f));
+        const auto gap = juce::jmax(3, juce::roundToInt(font * .24f));
+        const auto row_height = juce::jmax(20, juce::roundToInt(font * 1.42f));
+        const auto label_height = juce::jmax(9, juce::roundToInt(font * .55f));
 
-        control_background_.setBounds(getLocalBounds());
-        auto content = getLocalBounds().reduced(padding + padding / 2, padding + padding / 2);
+        auto content = getLocalBounds().reduced(pad);
+        auto header = content.removeFromTop(row_height);
+        title_bound_ = header.removeFromLeft(juce::roundToInt(font * 5.35f));
+        header.removeFromLeft(gap);
+        close_button_.setBounds(header.removeFromRight(row_height));
+        header.removeFromRight(gap);
+        save_button_.setBounds(header.removeFromRight(row_height));
+        header.removeFromRight(gap);
+        draw_button_.setBounds(header.removeFromRight(row_height));
+        header.removeFromRight(gap);
+        target_label_bound_ = header.removeFromLeft(juce::roundToInt(font * 3.0f));
+        target_box_.setBounds(header.removeFromLeft(juce::jmin(header.getWidth(),
+            juce::roundToInt(font * 7.4f))));
+        subtitle_bound_ = header.reduced(gap, 0);
 
-        auto header = content.removeFromTop(juce::roundToInt(font * 2.6f));
-        title_bound_ = header.removeFromTop(juce::roundToInt(font * 1.32f));
-        subtitle_bound_ = header;
-        content.removeFromTop(padding / 3);
+        content.removeFromTop(gap);
+        const auto fit_width = juce::roundToInt(font * 4.8f);
+        const auto cell_width = juce::jmax(1,
+            (content.getWidth() - fit_width - 5 * gap) / 5);
+        auto take_cell = [&](juce::Rectangle<int>& remaining) {
+            auto cell = remaining.removeFromLeft(juce::jmin(cell_width, remaining.getWidth()));
+            remaining.removeFromLeft(juce::jmin(gap, remaining.getWidth()));
+            return cell;
+        };
+        auto shift = take_cell(content);
+        auto scale = take_cell(content);
+        auto slope = take_cell(content);
+        auto limit = take_cell(content);
+        auto bands = take_cell(content);
+        fit_start_button_.setBounds(content.withSizeKeepingCentre(
+            juce::jmin(fit_width, content.getWidth()),
+            juce::jmin(row_height + label_height, content.getHeight())));
 
-        // Target/source row.
-        target_surface_bound_ = content.removeFromTop(row + label_h + padding).reduced(0, 1);
-        auto target = target_surface_bound_.reduced(padding, padding / 2);
-        target_label_bound_ = target.removeFromTop(label_h);
-        auto target_controls = target;
-        const auto utility = juce::jmax(button, juce::roundToInt(font * 2.15f));
-        save_button_.setBounds(target_controls.removeFromRight(utility).withSizeKeepingCentre(utility, utility));
-        target_controls.removeFromRight(padding / 3);
-        draw_button_.setBounds(target_controls.removeFromRight(utility).withSizeKeepingCentre(utility, utility));
-        target_controls.removeFromRight(padding / 2);
-        target_box_.setBounds(target_controls);
-
-        content.removeFromTop(padding / 2);
-
-        // Difference shaping: three equal cells, matching the mockup's compact parameter grid.
-        difference_surface_bound_ = content.removeFromTop(label_h + row + padding * 2).reduced(0, 1);
-        auto diff = difference_surface_bound_.reduced(padding, padding / 2);
-        difference_title_bound_ = diff.removeFromTop(label_h);
-        diff.removeFromTop(padding / 4);
-        const auto gap = juce::jmax(4, padding / 2);
-        const auto cell_w = (diff.getWidth() - 2 * gap) / 3;
-        auto shift_cell = diff.removeFromLeft(cell_w);
-        diff.removeFromLeft(gap);
-        auto scale_cell = diff.removeFromLeft(cell_w);
-        diff.removeFromLeft(gap);
-        auto slope_cell = diff;
-        shift_label_.setBounds(shift_cell.removeFromTop(label_h));
-        scale_label_.setBounds(scale_cell.removeFromTop(label_h));
-        slope_label_.setBounds(slope_cell.removeFromTop(label_h));
-        shift_slider_.setBounds(shift_cell);
-        scale_slider_.setBounds(scale_cell);
-        slope_slider_.setBounds(slope_cell);
-        shift_slider_.getSlider().setMouseDragSensitivity(juce::jmax(80, cell_w));
-        scale_slider_.getSlider().setMouseDragSensitivity(juce::jmax(80, cell_w));
-        slope_slider_.getSlider().setMouseDragSensitivity(juce::jmax(80, cell_w));
-
-        content.removeFromTop(padding / 2);
-
-        // Fit controls: limit, optional fitted band count, then a clear primary Fit action.
-        fit_surface_bound_ = content.removeFromTop(label_h + row + padding * 2).reduced(0, 1);
-        auto fit = fit_surface_bound_.reduced(padding, padding / 2);
-        fit_title_bound_ = fit.removeFromTop(label_h);
-        fit.removeFromTop(padding / 4);
-
-        auto fit_action = fit.removeFromRight(juce::roundToInt(font * 5.0f));
-        fit_start_button_.setBounds(fit_action.reduced(1));
-        fit.removeFromRight(padding / 2);
-
-        const auto fit_cell_w = juce::jmax(72, fit.getWidth() / 2 - gap / 2);
-        auto limit_cell = fit.removeFromLeft(juce::jmin(fit_cell_w, fit.getWidth()));
-        if (fit.getWidth() > gap) fit.removeFromLeft(gap);
-        auto bands_cell = fit;
-
-        limit_label_bound_ = limit_cell.removeFromTop(label_h);
-        limit_combobox_.setBounds(limit_cell);
-        bands_label_bound_ = bands_cell.removeFromTop(label_h);
-        num_band_slider_.setBounds(bands_cell);
-        num_band_slider_.getSlider().setMouseDragSensitivity(juce::jmax(80, bands_cell.getWidth()));
-
-        control_background_.setSurfaceBounds({target_surface_bound_, difference_surface_bound_, fit_surface_bound_});
+        shift_label_.setBounds(shift.removeFromTop(label_height));
+        scale_label_.setBounds(scale.removeFromTop(label_height));
+        slope_label_.setBounds(slope.removeFromTop(label_height));
+        limit_label_bound_ = limit.removeFromTop(label_height);
+        bands_label_bound_ = bands.removeFromTop(label_height);
+        shift_slider_.setBounds(shift.removeFromTop(row_height));
+        scale_slider_.setBounds(scale.removeFromTop(row_height));
+        slope_slider_.setBounds(slope.removeFromTop(row_height));
+        limit_combobox_.setBounds(limit.removeFromTop(row_height));
+        num_band_slider_.setBounds(bands.removeFromTop(row_height));
+        for (auto* slider : {&shift_slider_, &scale_slider_, &slope_slider_, &num_band_slider_})
+            slider->getSlider().setMouseDragSensitivity(juce::jmax(80, cell_width));
     }
 
     void MatchControlPanel::paintOverChildren(juce::Graphics& g) {
         const auto font = base_.getFontSize();
         g.setColour(zlgui::glass::textPrimary().withAlpha(.94f));
-        g.setFont(juce::FontOptions(font * 1.10f));
+        g.setFont(juce::FontOptions(font * .67f));
         g.drawText("EQ Match", title_bound_, juce::Justification::centredLeft, false);
 
         g.setColour(zlgui::glass::textSecondary().withMultipliedAlpha(.86f));
-        g.setFont(juce::FontOptions(font * .63f));
-        g.drawText("Shape a reference curve, then fit it with real EQ bands.", subtitle_bound_,
+        g.setFont(juce::FontOptions(font * .51f));
+        g.drawText("Reference curve", subtitle_bound_,
                    juce::Justification::centredLeft, false);
 
         g.setColour(zlgui::glass::textSecondary().withMultipliedAlpha(.78f));
-        g.setFont(juce::FontOptions(font * .61f));
-        g.drawText("TARGET", target_label_bound_, juce::Justification::centredLeft, false);
-        g.drawText("DIFFERENCE", difference_title_bound_, juce::Justification::centredLeft, false);
-        g.drawText("FIT", fit_title_bound_, juce::Justification::centredLeft, false);
+        g.setFont(juce::FontOptions(font * .49f));
+        g.drawText("TARGET", target_label_bound_, juce::Justification::centred, false);
         g.drawText("LIMIT", limit_label_bound_, juce::Justification::centredLeft, false);
         if (num_band_slider_.isVisible())
             g.drawText("BANDS", bands_label_bound_, juce::Justification::centredLeft, false);
@@ -364,8 +376,6 @@ namespace zlpanel {
         {
             const auto r = fit_start_button_.getBounds().toFloat().reduced(.75f);
             zlgui::glass::fillGlassSurface(g, r, r.getHeight() * .5f, .13f, .22f, .22f);
-            g.setColour(juce::Colour(126, 186, 245).withAlpha(.11f));
-            g.fillRoundedRectangle(r.reduced(r.getHeight() * .10f), r.getHeight() * .42f);
             g.setColour(zlgui::glass::textPrimary().withAlpha(.94f));
             g.setFont(juce::FontOptions(font * .72f));
             g.drawText("Fit EQ", fit_start_button_.getBounds(), juce::Justification::centred, false);

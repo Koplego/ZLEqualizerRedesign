@@ -8,6 +8,7 @@
 // You should have received a copy of the GNU Affero General Public License along with ZLEqualizer. If not, see <https://www.gnu.org/licenses/>.
 
 #include "response_panel.hpp"
+#include "../../../gui/glass_tokens.hpp"
 
 namespace zlpanel {
     ResponsePanel::ResponsePanel(PluginProcessor& p,

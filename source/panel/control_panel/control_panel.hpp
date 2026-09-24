@@ -35,6 +35,7 @@ namespace zlpanel {
         void repaintCallBackSlow();
         void updateBand();
         void updateSampleRate(double sample_rate);
+        void setMatchNodeLights(std::vector<MatchControlPanel::NodeLight> lights);
 
     private:
         PluginProcessor& p_ref_;

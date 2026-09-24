@@ -57,6 +57,10 @@ namespace zlp {
 
         void prepare(double sample_rate, size_t max_num_samples);
 
+        // Called on the audio thread before copying the host sidechain buffer.
+        // Static stereo EQ never reads that buffer while its editor is closed.
+        bool needsSideInputForBlock();
+
         template <bool bypass = false>
         void process(std::array<double*, 2> main_pointers,
                      std::array<double*, 2> side_pointers,
@@ -165,6 +169,8 @@ namespace zlp {
             to_update_ui_.signal();
             to_update_.signal();
         }
+
+        bool isEditorON() const { return editor_on_.load(std::memory_order::relaxed); }
 
         void setMatchBypassON(const bool is_on) {
             match_bypass_on_.store(is_on, std::memory_order::relaxed);

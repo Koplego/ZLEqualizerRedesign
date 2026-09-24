@@ -9,6 +9,10 @@
 
 #pragma once
 
+#include <memory>
+#include <mutex>
+#include <unordered_map>
+
 #include "../../vector/vector.hpp"
 #include "../iir_filter/tdf/tdf.hpp"
 #include "../ideal_filter/ideal.hpp"
@@ -22,12 +26,7 @@ namespace zldsp::filter {
         virtual ~CorrectionCalculator() = default;
 
         void prepare(const size_t num_bin) {
-            w_prototype_.resize(num_bin);
-            zldsp::filter::IdealBase<float>::calculateWs(w_prototype_);
-
-            w_biquad_real_.resize(num_bin);
-            w_biquad_imag_.resize(num_bin);
-            zldsp::filter::TDFBase<float>::calculateWs(w_biquad_real_, w_biquad_imag_);
+            frequency_grids_ = getSharedFrequencyGrids(num_bin);
 
             proto_real_.resize(num_bin);
             proto_imag_.resize(num_bin);
@@ -58,11 +57,13 @@ namespace zldsp::filter {
                 for (size_t idx = 0; idx < filter_num; ++idx) {
                     // update proto response
                     const auto proto_coeff = ideal.getCoeff()[idx];
-                    IdealBase<float>::updateResponse(proto_coeff, w_prototype_,
+                    IdealBase<float>::updateResponse(proto_coeff, frequency_grids_->prototype,
                                                      proto_real_, proto_imag_);
                     // update biquad response
                     const auto biquad_coeff = tdf.getCoeff()[idx];
-                    TDFBase<float>::updateResponse(biquad_coeff, w_biquad_real_, w_biquad_imag_,
+                    TDFBase<float>::updateResponse(biquad_coeff,
+                                                   frequency_grids_->biquad_real,
+                                                   frequency_grids_->biquad_imag,
                                                    biquad_real_, biquad_imag_);
                     // update correction
                     updateCorrection(i);
@@ -81,8 +82,28 @@ namespace zldsp::filter {
     protected:
         static constexpr float kMinMagnitude = 1e-8f, kMaxMagnitude = 1e8f;
         static constexpr float kMinMagSqr = 1e-16f, kMaxMagSqr = 1e16f;
-        vector::aligned_vector<float> w_prototype_;
-        vector::aligned_vector<float> w_biquad_real_, w_biquad_imag_;
+        struct FrequencyGrids {
+            vector::aligned_vector<float> prototype, biquad_real, biquad_imag;
+        };
+
+        static std::shared_ptr<const FrequencyGrids> getSharedFrequencyGrids(const size_t num_bin) {
+            static std::mutex cache_mutex;
+            static std::unordered_map<size_t, std::weak_ptr<const FrequencyGrids>> cache;
+            std::lock_guard guard(cache_mutex);
+            if (const auto found = cache.find(num_bin); found != cache.end()) {
+                if (auto existing = found->second.lock()) return existing;
+            }
+            auto grids = std::make_shared<FrequencyGrids>();
+            grids->prototype.resize(num_bin);
+            IdealBase<float>::calculateWs(grids->prototype);
+            grids->biquad_real.resize(num_bin);
+            grids->biquad_imag.resize(num_bin);
+            TDFBase<float>::calculateWs(grids->biquad_real, grids->biquad_imag);
+            cache[num_bin] = grids;
+            return grids;
+        }
+
+        std::shared_ptr<const FrequencyGrids> frequency_grids_;
 
         vector::aligned_vector<float> proto_real_, proto_imag_;
         vector::aligned_vector<float> biquad_real_, biquad_imag_;

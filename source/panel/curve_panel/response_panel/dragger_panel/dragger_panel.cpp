@@ -223,6 +223,8 @@ namespace zlpanel {
             float_pop_panel_.setTargetVisible(is_dynamic_on);
         }
         is_dynamic_on_[band] = is_dynamic_on;
+        draggers_[band].getLAF().setColour(filter_status == zlp::FilterStatus::kOn
+            ? base_.getColourMap1(band) : juce::Colour(150, 156, 162));
         draggers_[band].setAlpha(filter_status == zlp::FilterStatus::kBypass ? kBypassAlphaMultiplier : 1.f);
         draggers_[band].getLAF().setAlpha(is_same_stereo ? 1.f : kDiffStereoAlphaMultiplier);
         if (lr_mode == 0) {

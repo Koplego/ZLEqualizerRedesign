@@ -141,6 +141,10 @@ namespace zlpanel {
         right_control_panel_.updateFreqMax(freq_max);
     }
 
+    void ControlPanel::setMatchNodeLights(std::vector<MatchControlPanel::NodeLight> lights) {
+        match_control_panel_.setNodeLights(std::move(lights));
+    }
+
     void ControlPanel::changeLeftRightBound(const bool dynamic_on) {
         mouse_event_eater_.setBounds(dynamic_on ? mouse_full_bound_ : mouse_center_bound_);
         left_control_panel_.setBounds(dynamic_on ? left_bound_ : center_bound_);
@@ -152,9 +156,9 @@ namespace zlpanel {
 
     void ControlPanel::valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier& property) {
         if (base_.isPanelIdentifier(zlgui::PanelSettingIdx::kMatchPanel, property)) {
-            base_.setSelectedBand(zlp::kBandNum);
             const auto f = static_cast<int>(std::round(
                 static_cast<double>(base_.getPanelProperty(zlgui::PanelSettingIdx::kMatchPanel))));
+            if (f > 0) base_.setSelectedBand(zlp::kBandNum);
             match_control_panel_.setVisible(f > 0);
             resized();
         }

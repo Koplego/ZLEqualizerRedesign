@@ -98,7 +98,7 @@ namespace zlpanel {
                                           orb_size, orb_size);
         juce::ColourGradient orb_gradient(juce::Colour(247, 252, 255).withAlpha(.48f),
                                           orb.getX(), orb.getY(),
-                                          juce::Colour(83, 139, 184).withAlpha(.22f),
+                                          juce::Colour(143, 148, 153).withAlpha(.22f),
                                           orb.getRight(), orb.getBottom(), false);
         g.setGradientFill(orb_gradient);
         g.fillEllipse(orb);
@@ -130,7 +130,7 @@ namespace zlpanel {
 
         if (!preset_pill_bound_.isEmpty()) {
             auto pill = preset_pill_bound_.toFloat().reduced(.5f);
-            zlgui::glass::fillGlassSurface(g, pill, pill.getHeight() * .5f, .095f, .145f, .17f);
+            zlgui::glass::fillGlassSurface(g, pill, pill.getHeight() * .5f, .065f, .10f, .17f);
             g.setColour(zlgui::glass::textPrimary().withAlpha(.82f));
             g.setFont(juce::FontOptions(font * .76f));
             auto text_bound = preset_pill_bound_.reduced(20, 0);

@@ -24,6 +24,8 @@ namespace zlpanel {
 
         juce::Path panel_clip;
         panel_clip.addRoundedRectangle(panel, radius);
+        g.setColour(juce::Colour(0, 0, 0).withAlpha(.075f));
+        g.drawRoundedRectangle(panel.reduced(3.f), juce::jmax(1.f, radius - 3.f), 2.7f);
         {
             juce::Graphics::ScopedSaveState clip(g);
             g.reduceClipRegion(panel_clip);
@@ -32,15 +34,15 @@ namespace zlpanel {
             // blue/violet colour field. Colour underneath this pane comes from the live EQ
             // nodes painted by MainPanel, and colour above it comes from SinglePanel's local
             // node transmission. This panel only provides density, depth and reflection.
-            g.setColour(juce::Colour(10, 23, 34).withAlpha(.24f));
+            g.setColour(juce::Colour(12, 15, 18).withAlpha(.10f));
             g.fillRect(panel.expanded(1.f));
 
-            juce::ColourGradient body(juce::Colour(174, 204, 220).withAlpha(.052f),
+            juce::ColourGradient body(juce::Colour(210, 214, 218).withAlpha(.052f),
                                       panel.getCentreX(), panel.getY(),
-                                      juce::Colour(8, 21, 34).withAlpha(.19f),
+                                      juce::Colour(10, 13, 16).withAlpha(.12f),
                                       panel.getCentreX(), panel.getBottom(), false);
-            body.addColour(.34, juce::Colour(91, 124, 145).withAlpha(.022f));
-            body.addColour(.72, juce::Colour(16, 34, 48).withAlpha(.075f));
+            body.addColour(.34, juce::Colour(120, 124, 128).withAlpha(.022f));
+            body.addColour(.72, juce::Colour(22, 25, 28).withAlpha(.075f));
             g.setGradientFill(body);
             g.fillRect(panel.expanded(1.f));
 
@@ -55,11 +57,20 @@ namespace zlpanel {
             g.fillRect(panel);
         }
 
-        g.setColour(juce::Colour(225, 241, 250).withAlpha(.13f));
+        juce::ColourGradient edge(juce::Colour(255, 255, 255).withAlpha(.21f),
+                                  panel.getX(), panel.getY(),
+                                  juce::Colour(230, 240, 248).withAlpha(.045f),
+                                  panel.getRight(), panel.getBottom(), false);
+        edge.addColour(.55, juce::Colour(238, 248, 253).withAlpha(.085f));
+        g.setGradientFill(edge);
         g.drawRoundedRectangle(panel, radius, .72f);
         g.setColour(juce::Colour(255, 255, 255).withAlpha(.055f));
         g.drawLine(panel.getX() + radius * .72f, panel.getY() + .6f,
                    panel.getRight() - radius * .72f, panel.getY() + .6f, .65f);
+        g.setColour(juce::Colour(255, 255, 255).withAlpha(.085f));
+        g.drawRoundedRectangle(panel.reduced(2.f), juce::jmax(1.f, radius - 2.f), .65f);
+        g.setColour(juce::Colour(3, 5, 7).withAlpha(.14f));
+        g.drawRoundedRectangle(panel.reduced(3.4f), juce::jmax(1.f, radius - 3.4f), .75f);
 
         if (freq_max_ <= 10.0) return;
         drawFreqs(g);
