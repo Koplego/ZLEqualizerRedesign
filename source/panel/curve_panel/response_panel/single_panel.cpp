@@ -83,7 +83,8 @@ namespace zlpanel {
         }
         base_stroke_alpha_[band] = multiplier;
 
-        const auto band_colour = base_.getColourMap1(band);
+        const auto band_colour = filter_status == zlp::FilterStatus::kOn
+            ? base_.getColourMap1(band) : juce::Colour(170, 174, 178);
         base_stroke_colour_[band] = band_colour.interpolatedWith(juce::Colours::white, is_selected ? .20f : .11f)
             .withAlpha(std::clamp(multiplier * (is_selected ? 1.f : .90f), .12f, 1.f));
         is_same_stereo_[band] = is_same_stereo;
@@ -164,12 +165,16 @@ namespace zlpanel {
 
     template <bool thick>
     void SinglePanel::drawBand(juce::Graphics& g, const size_t band) {
-        const auto colour = base_.getColourMap1(band);
+        const auto* status = p_ref_.parameters_.getRawParameterValue(
+            zlp::PFilterStatus::kID + std::to_string(band));
+        const bool emits_light = status != nullptr &&
+            static_cast<zlp::FilterStatus>(std::lround(status->load())) == zlp::FilterStatus::kOn;
+        const auto colour = emits_light ? base_.getColourMap1(band) : juce::Colour(170, 174, 178);
         const auto node_x = node_x_[band].load(std::memory_order_relaxed);
         const auto node_y = node_y_[band].load(std::memory_order_relaxed);
         const auto glow_radius = juce::jmax(base_.getFontSize() * (thick ? 6.35f : 5.85f), thick ? 72.f : 64.f);
 
-        if (base_fill_alpha_[band] > 0.01f) {
+        if (emits_light && base_fill_alpha_[band] > 0.01f) {
             base_fills_[band].pull();
             const auto& fill = base_fills_[band].getReader();
 

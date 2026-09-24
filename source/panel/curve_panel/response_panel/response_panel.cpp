@@ -8,6 +8,7 @@
 // You should have received a copy of the GNU Affero General Public License along with ZLEqualizer. If not, see <https://www.gnu.org/licenses/>.
 
 #include "response_panel.hpp"
+#include "../../../gui/glass_tokens.hpp"
 
 namespace zlpanel {
     ResponsePanel::ResponsePanel(PluginProcessor& p,
@@ -78,6 +79,26 @@ namespace zlpanel {
         sum_panel_.paintSameStereo(g);
         if (should_alpha) {
             g.endTransparencyLayer();
+        }
+        if (const auto band = base_.getSelectedBand(); band < zlp::kBandNum) {
+            const auto* status = p_ref_.parameters_.getRawParameterValue(zlp::PFilterStatus::kID + std::to_string(band));
+            const auto* type = p_ref_.parameters_.getRawParameterValue(zlp::PFilterType::kID + std::to_string(band));
+            if (status != nullptr && type != nullptr && status->load() > .5f) {
+                const auto font = base_.getFontSize();
+                const auto badge = juce::Rectangle<float>(getWidth() * .5f - font * 6.6f,
+                    getHeight() - font * 3.0f, font * 13.2f, font * 1.75f);
+                zlgui::glass::fillGlassSurface(g, badge, badge.getHeight() * .5f, .07f, .12f, .14f);
+                const auto index = juce::jlimit(0, zlp::PFilterType::kChoices.size() - 1,
+                    static_cast<int>(std::lround(type->load())));
+                auto name = zlp::PFilterType::kChoices[index];
+                if (index == 0) name = "Bell";
+                if (index == 2) name = "High Cut";
+                if (index == 4) name = "Low Cut";
+                g.setFont(juce::FontOptions(font * .66f));
+                g.setColour(zlgui::glass::textPrimary().withAlpha(.86f));
+                g.drawText("Band " + juce::String(static_cast<int>(band + 1)) + "  /  " + name,
+                    badge.toNearestInt(), juce::Justification::centred, false);
+            }
         }
     }
 

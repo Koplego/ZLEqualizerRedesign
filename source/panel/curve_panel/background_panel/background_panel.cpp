@@ -32,15 +32,15 @@ namespace zlpanel {
             // blue/violet colour field. Colour underneath this pane comes from the live EQ
             // nodes painted by MainPanel, and colour above it comes from SinglePanel's local
             // node transmission. This panel only provides density, depth and reflection.
-            g.setColour(juce::Colour(10, 23, 34).withAlpha(.24f));
+            g.setColour(juce::Colour(12, 15, 18).withAlpha(.10f));
             g.fillRect(panel.expanded(1.f));
 
-            juce::ColourGradient body(juce::Colour(174, 204, 220).withAlpha(.052f),
+            juce::ColourGradient body(juce::Colour(210, 214, 218).withAlpha(.052f),
                                       panel.getCentreX(), panel.getY(),
-                                      juce::Colour(8, 21, 34).withAlpha(.19f),
+                                      juce::Colour(10, 13, 16).withAlpha(.12f),
                                       panel.getCentreX(), panel.getBottom(), false);
-            body.addColour(.34, juce::Colour(91, 124, 145).withAlpha(.022f));
-            body.addColour(.72, juce::Colour(16, 34, 48).withAlpha(.075f));
+            body.addColour(.34, juce::Colour(120, 124, 128).withAlpha(.022f));
+            body.addColour(.72, juce::Colour(22, 25, 28).withAlpha(.075f));
             g.setGradientFill(body);
             g.fillRect(panel.expanded(1.f));
 

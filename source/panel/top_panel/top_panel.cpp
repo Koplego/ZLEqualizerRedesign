@@ -98,7 +98,7 @@ namespace zlpanel {
                                           orb_size, orb_size);
         juce::ColourGradient orb_gradient(juce::Colour(247, 252, 255).withAlpha(.48f),
                                           orb.getX(), orb.getY(),
-                                          juce::Colour(83, 139, 184).withAlpha(.22f),
+                                          juce::Colour(143, 148, 153).withAlpha(.22f),
                                           orb.getRight(), orb.getBottom(), false);
         g.setGradientFill(orb_gradient);
         g.fillEllipse(orb);

@@ -28,38 +28,8 @@ namespace zlpanel {
         auto bounds = getLocalBounds().toFloat().reduced(.5f);
         const auto radius = juce::jmax(7.f, base_.getFontSize() * .56f);
 
-        // The reference meter sits in its own blue-violet glass channel. Do not use the
-        // generic dark control material here; its enclosure is visibly lighter than the
-        // previous build and picks up the purple field from the right side of the shell.
-        juce::Path meter_clip;
-        meter_clip.addRoundedRectangle(bounds, radius);
-        {
-            juce::Graphics::ScopedSaveState state(g);
-            g.reduceClipRegion(meter_clip);
-            juce::ColourGradient housing(juce::Colour(64, 87, 136).withAlpha(.88f),
-                                         bounds.getX(), bounds.getY(),
-                                         juce::Colour(42, 54, 102).withAlpha(.94f),
-                                         bounds.getRight(), bounds.getBottom(), false);
-            housing.addColour(.46, juce::Colour(53, 73, 119).withAlpha(.92f));
-            g.setGradientFill(housing);
-            g.fillRect(bounds.expanded(1.f));
-
-            juce::ColourGradient violet(juce::Colour(170, 129, 239).withAlpha(.11f),
-                                        bounds.getRight() - bounds.getWidth() * .18f,
-                                        bounds.getY() + bounds.getHeight() * .24f,
-                                        juce::Colours::transparentBlack,
-                                        bounds.getX() + bounds.getWidth() * .30f,
-                                        bounds.getY() + bounds.getHeight() * .70f, true);
-            g.setGradientFill(violet);
-            g.fillRect(bounds);
-
-            juce::ColourGradient sheen(juce::Colour(232, 244, 252).withAlpha(.105f),
-                                       bounds.getCentreX(), bounds.getY(),
-                                       juce::Colours::transparentBlack,
-                                       bounds.getCentreX(), bounds.getBottom() * .55f, false);
-            g.setGradientFill(sheen);
-            g.fillRect(bounds);
-        }
+        // Clear housing transmits the same live node field as the surrounding shell.
+        zlgui::glass::fillGlassSurface(g, bounds, radius, .08f, .12f, .18f);
         g.setColour(juce::Colour(239, 248, 253).withAlpha(.18f));
         g.drawRoundedRectangle(bounds, radius, .80f);
 
@@ -85,7 +55,7 @@ namespace zlpanel {
         for (size_t channel = 0; channel < 2; ++channel) {
             auto track = juce::Rectangle<float>(meter_area.getX() + static_cast<float>(channel) * (bar_w + gap),
                                                  meter_area.getY(), bar_w, meter_area.getHeight());
-            g.setColour(juce::Colour(10, 27, 48).withAlpha(.74f));
+            g.setColour(juce::Colour(12, 15, 18).withAlpha(.74f));
             g.fillRoundedRectangle(track, bar_w * .42f);
             g.setColour(juce::Colour(226, 241, 250).withAlpha(.075f));
             g.drawRoundedRectangle(track, bar_w * .42f, .55f);

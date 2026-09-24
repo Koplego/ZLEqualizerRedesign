@@ -41,6 +41,12 @@ namespace zlpanel {
 
         void turnMatchON(bool match_on);
 
+        // Read on the message thread: use the displayed lens, including shelf scaling,
+        // sample-rate limits, resizing and host automation, as the optical source.
+        juce::Component& getNodeLens(size_t band) {
+            return dragger_panel_.getDragger(band).getButton();
+        }
+
     private:
         static constexpr std::array kIDs{
             zlp::PFilterStatus::kID, zlp::PLRMode::kID,

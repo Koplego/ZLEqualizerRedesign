@@ -62,15 +62,18 @@ namespace zlpanel {
         }
 
         if (is_on[0]) {
-            g.setColour(base_.getColourByIdx(zlgui::ColourIdx::kPreColour));
+            g.setColour(juce::Colour(225, 230, 235).withAlpha(.060f));
             g.fillPath(paths_[0].getReader());
         }
         if (is_on[1]) {
-            const auto thickness = base_.getFontSize() * .2f;
-            g.setColour(base_.getColourByIdx(zlgui::ColourIdx::kPostColour).withAlpha(1.f));
+            const auto thickness = juce::jmax(.55f, base_.getFontSize() * .045f);
+            g.setColour(juce::Colour(229, 237, 244).withAlpha(.44f));
             g.strokePath(paths_[1].getReader(),
                          {thickness, juce::PathStrokeType::curved, juce::PathStrokeType::rounded});
-            g.setColour(base_.getColourByIdx(zlgui::ColourIdx::kPostColour));
+            juce::ColourGradient spectrum(juce::Colour(224, 232, 239).withAlpha(.14f),
+                0.f, getHeight() * .30f, juce::Colour(224, 232, 239).withAlpha(.025f),
+                0.f, static_cast<float>(getHeight()), false);
+            g.setGradientFill(spectrum);
             g.fillPath(paths_[1].getReader());
         }
         if (is_on[2]) {

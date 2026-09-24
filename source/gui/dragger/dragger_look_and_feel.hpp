@@ -40,11 +40,11 @@ namespace zlgui::dragger {
 
             // Strong milky outer rim from the reference.
             g.setColour(juce::Colours::white.withAlpha((active ? .98f : hover ? .88f : .80f) * visibility));
-            g.strokePath(outline_path_, juce::PathStrokeType(juce::jmax(1.15f, base_.getFontSize() * .090f)));
+            g.strokePath(outline_path_, juce::PathStrokeType(juce::jmax(1.15f, base_.getFontSize() * .115f)));
 
             const auto innerBounds = inner_path_.getBounds();
             juce::ColourGradient lens(
-                colour_.interpolatedWith(juce::Colours::white, active ? .40f : .31f)
+                colour_.interpolatedWith(juce::Colours::white, active ? .48f : .43f)
                     .withAlpha((active ? .99f : .95f) * visibility),
                 innerBounds.getX() + innerBounds.getWidth() * .24f,
                 innerBounds.getY() + innerBounds.getHeight() * .13f,
@@ -56,7 +56,7 @@ namespace zlgui::dragger {
             g.setGradientFill(lens);
             g.fillPath(inner_path_);
 
-            g.setColour(juce::Colours::white.withAlpha((active ? .99f : hover ? .91f : .84f) * visibility));
+            g.setColour(juce::Colours::white.withAlpha((active ? .34f : hover ? .30f : .26f) * visibility));
             g.strokePath(inner_path_, juce::PathStrokeType(juce::jmax(.95f, base_.getFontSize() * .074f)));
 
             if (dragger_shape_ == kRound) {
@@ -105,7 +105,7 @@ namespace zlgui::dragger {
             // than the regressed build. Keep the hit target unchanged and let the lens occupy it.
             bound = bound.withSizeKeepingCentre(radius * .995f, radius * .995f);
             outline_path_.addEllipse(bound);
-            bound = bound.withSizeKeepingCentre(radius * .82f, radius * .82f);
+            bound = bound.withSizeKeepingCentre(radius * .93f, radius * .93f);
             inner_path_.addEllipse(bound);
         }
 

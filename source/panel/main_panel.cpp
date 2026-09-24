@@ -65,104 +65,94 @@ namespace zlpanel {
             // The material itself is deliberately neutral. There is no baked-in amber,
             // cyan, blue or violet field here. Chroma enters the interface only through
             // active EQ nodes below, exactly as a coloured light would enter clear glass.
-            juce::ColourGradient material(juce::Colour(39, 52, 63), shell.getX(), shell.getCentreY(),
-                                          juce::Colour(25, 38, 53), shell.getRight(), shell.getCentreY(), false);
-            material.addColour(.38, juce::Colour(34, 49, 62));
-            material.addColour(.72, juce::Colour(29, 43, 58));
-            g.setGradientFill(material);
+            g.setColour(juce::Colour(40, 43, 47));
             g.fillRect(shell.expanded(2.f));
 
             // Neutral liquid-glass depth: pale reflected sky at the top, absorption at the bottom.
-            juce::ColourGradient vertical(juce::Colour(231, 242, 248).withAlpha(.085f),
+            juce::ColourGradient vertical(juce::Colour(245, 245, 245).withAlpha(.085f),
                                           shell.getCentreX(), shell.getY(),
-                                          juce::Colour(2, 10, 18).withAlpha(.34f),
+                                          juce::Colour(8, 9, 11).withAlpha(.34f),
                                           shell.getCentreX(), shell.getBottom(), false);
             vertical.addColour(.26, juce::Colours::transparentBlack);
-            vertical.addColour(.78, juce::Colour(5, 14, 24).withAlpha(.12f));
+            vertical.addColour(.78, juce::Colour(10, 11, 13).withAlpha(.12f));
             g.setGradientFill(vertical);
             g.fillRect(shell);
 
-            // Reconstruct the visible EQ-node positions from the same live parameters used by
-            // ResponsePanel. These are the ONLY coloured illumination sources for the shell.
+            // All chromatic transmission and edge reflections originate at visible lenses.
+            // Reading the component geometry avoids a second, subtly different EQ mapping.
             const auto font = base_.getFontSize();
-            const auto meter_width = juce::jmax(48, juce::roundToInt(font * 4.2f));
-            const auto meter_gap = juce::jmax(3, getPaddingSize(font) / 2);
-            const auto graph_w = juce::jmax(1.f, static_cast<float>(curve_panel_.getWidth() - meter_width - meter_gap));
-            const auto graph_h = juce::jmax(1.f, static_cast<float>(curve_panel_.getHeight()));
-            const auto sample_rate = juce::jmax(1.0, p_ref_.getAtomicSampleRate());
-            const auto fft_max = freq_helper::getFFTMax(sample_rate);
-            const auto freq_to_x = graph_w * kFFTSizeOverWidth / static_cast<float>(std::log(fft_max * .1));
-
-            float db_scale = 12.f;
-            if (const auto* eq_max_ref = p_ref_.parameters_NA_.getRawParameterValue(zlstate::PEQMaxDB::kID)) {
-                const auto idx = static_cast<size_t>(juce::jmax(0, static_cast<int>(std::round(
-                    eq_max_ref->load(std::memory_order_relaxed)))));
-                db_scale = base_.getCurveDBScale(idx);
-            }
-            const auto response_h = graph_h - static_cast<float>(getBottomAreaHeight(font));
-            const auto dragger_padding = font * kDraggerScale;
-            const auto zero_y = response_h * .5f;
-            const auto bottom_y = response_h - dragger_padding;
-            const auto db_to_y = (zero_y - bottom_y) / juce::jmax(1.f, db_scale);
-
-            const auto graph_origin = curve_panel_.getBounds().getPosition().toFloat();
-            const auto selected = base_.getSelectedBand();
-            const auto local_radius = juce::jmax(82.f, font * 7.1f);
-            const auto reflected_radius = juce::jmax(170.f, font * 13.2f);
-
             for (size_t band = 0; band < zlp::kBandNum; ++band) {
-                const auto suffix = std::to_string(band);
-                const auto* status_ref = p_ref_.parameters_.getRawParameterValue(zlp::PFilterStatus::kID + suffix);
-                const auto* freq_ref = p_ref_.parameters_.getRawParameterValue(zlp::PFreq::kID + suffix);
-                const auto* gain_ref = p_ref_.parameters_.getRawParameterValue(zlp::PGain::kID + suffix);
-                const auto* type_ref = p_ref_.parameters_.getRawParameterValue(zlp::PFilterType::kID + suffix);
-                if (status_ref == nullptr || freq_ref == nullptr || gain_ref == nullptr || type_ref == nullptr) continue;
+                const auto* status = p_ref_.parameters_.getRawParameterValue(
+                    zlp::PFilterStatus::kID + std::to_string(band));
+                if (status == nullptr || static_cast<zlp::FilterStatus>(std::lround(status->load()))
+                    != zlp::FilterStatus::kOn) continue;
+                auto& lens = curve_panel_.getNodeLens(band);
+                if (!lens.isShowing()) continue;
+                const auto centre = getLocalPoint(&lens, lens.getLocalBounds().toFloat().getCentre());
+                const auto colour = base_.getColourMap1(band).withMultipliedSaturation(1.15f);
+                // Short-wavelength light spreads farther through this glass. This depends
+                // on the source colour, never its band index or a fixed spectrum position.
+                const auto spread = font * 24.f * (.8f + .6f * colour.getFloatBlue());
 
-                const auto status = static_cast<zlp::FilterStatus>(std::round(
-                    status_ref->load(std::memory_order_relaxed)));
-                if (status == zlp::FilterStatus::kOff) continue;
+                // Broad transmission decays continuously in both axes. Selection does not
+                // change the energy of a source; it only changes its interaction affordance.
+                juce::ColourGradient transmitted(colour.withAlpha(.36f), centre.x, centre.y,
+                    colour.withAlpha(0.f), centre.x + spread, centre.y, true);
+                transmitted.addColour(.18, colour.withAlpha(.27f));
+                transmitted.addColour(.40, colour.withAlpha(.13f));
+                transmitted.addColour(.65, colour.withAlpha(.055f));
+                transmitted.addColour(.84, colour.withAlpha(.018f));
+                g.setGradientFill(transmitted);
+                g.fillRect(shell);
 
-                const auto freq = juce::jlimit(10.f, static_cast<float>(fft_max),
-                                               freq_ref->load(std::memory_order_relaxed));
-                const auto x = static_cast<float>(std::log(freq * .1f)) * freq_to_x;
-                if (!std::isfinite(x)) continue;
+                // A grazing reflection is elongated along the edge, with irradiance
+                // controlled by the source-to-edge distance. Moving a node vertically
+                // transfers energy between the upper and lower glass boundaries.
+                const auto edgePool = [&](float y, float strength) {
+                    const auto distance = std::abs(centre.y - y) / (font * 15.f);
+                    const auto energy = strength / (1.f + distance * distance);
+                    juce::Graphics::ScopedSaveState poolState(g);
+                    g.addTransform(juce::AffineTransform::scale(font * 9.f, font * 3.0f)
+                        .translated(centre.x, y));
+                    juce::ColourGradient pool(colour.withAlpha(energy), 0.f, 0.f,
+                        colour.withAlpha(0.f), 1.f, 0.f, true);
+                    pool.addColour(.28, colour.withAlpha(energy * .64f));
+                    pool.addColour(.60, colour.withAlpha(energy * .20f));
+                    pool.addColour(.85, colour.withAlpha(energy * .025f));
+                    g.setGradientFill(pool);
+                    g.fillEllipse(-1.f, -1.f, 2.f, 2.f);
+                };
+                edgePool(shell.getY(), .24f);
+                edgePool(shell.getBottom(), .34f);
 
-                const auto type = static_cast<zldsp::filter::FilterType>(std::round(
-                    type_ref->load(std::memory_order_relaxed)));
-                auto button_gain = gain_ref->load(std::memory_order_relaxed);
-                if (type == zldsp::filter::kLowShelf || type == zldsp::filter::kHighShelf
-                    || type == zldsp::filter::kTiltShelf || type == zldsp::filter::kFlatTilt) {
-                    button_gain *= .5f;
-                } else if (type != zldsp::filter::kPeak && type != zldsp::filter::kFlatGain) {
-                    button_gain = 0.f;
-                }
-                const auto y = db_to_y * button_gain + zero_y;
-                const auto centre = graph_origin + juce::Point<float>(x, y);
-
-                const auto intensity = band == selected ? 1.f : .66f;
-                const auto colour = base_.getColourMap1(band);
-
-                // Wide, weak internal reflection: this is what reaches header/footer/control glass.
-                juce::ColourGradient reflected(colour.withAlpha(.060f * intensity), centre.x, centre.y,
-                                               colour.withAlpha(0.f), centre.x + reflected_radius,
-                                               centre.y, true);
-                reflected.addColour(.26, colour.withAlpha(.042f * intensity));
-                reflected.addColour(.58, colour.withAlpha(.016f * intensity));
-                reflected.addColour(.84, colour.withAlpha(.0035f * intensity));
-                g.setGradientFill(reflected);
-                g.fillEllipse(centre.x - reflected_radius, centre.y - reflected_radius,
-                              reflected_radius * 2.f, reflected_radius * 2.f);
-
-                // Tighter transmitted/reflected pool immediately around the actual source.
-                juce::ColourGradient local(
-                    colour.interpolatedWith(juce::Colours::white, .12f).withAlpha(.17f * intensity),
-                    centre.x, centre.y, colour.withAlpha(0.f), centre.x + local_radius, centre.y, true);
-                local.addColour(.22, colour.withAlpha(.12f * intensity));
-                local.addColour(.52, colour.withAlpha(.044f * intensity));
-                local.addColour(.80, colour.withAlpha(.006f * intensity));
-                g.setGradientFill(local);
-                g.fillEllipse(centre.x - local_radius, centre.y - local_radius,
-                              local_radius * 2.f, local_radius * 2.f);
+                // Light is concentrated where it meets a glass boundary. The projected
+                // reflection moves with the lens and loses energy with source distance.
+                const auto reflectEdge = [&](juce::Rectangle<float> pane, float edgeRadius) {
+                    juce::Path edge;
+                    edge.addRoundedRectangle(pane, edgeRadius);
+                    juce::Graphics::ScopedSaveState edgeState(g);
+                    juce::Path edgeBand;
+                    edgeBand.setUsingNonZeroWinding(false);
+                    edgeBand.addRoundedRectangle(pane, edgeRadius);
+                    edgeBand.addRoundedRectangle(pane.reduced(font * .55f),
+                        juce::jmax(1.f, edgeRadius - font * .55f));
+                    g.reduceClipRegion(edgeBand);
+                    const auto strokeReflection = [&](float width, float energy) {
+                        juce::ColourGradient caustic(colour.withAlpha(.46f * energy), centre.x, centre.y,
+                            colour.withAlpha(0.f), centre.x + spread * 1.12f, centre.y, true);
+                        caustic.addColour(.35, colour.withAlpha(.22f * energy));
+                        caustic.addColour(.70, colour.withAlpha(.055f * energy));
+                        g.setGradientFill(caustic);
+                        g.strokePath(edge, juce::PathStrokeType(width));
+                    };
+                    strokeReflection(font * .80f, .07f);
+                    strokeReflection(font * .42f, .13f);
+                    strokeReflection(font * .18f, .24f);
+                    strokeReflection(1.25f, .85f);
+                };
+                reflectEdge(shell.reduced(1.4f), radius);
+                reflectEdge(footer_panel_.getBounds().toFloat().reduced(1.f),
+                    footer_panel_.getHeight() * .43f);
             }
         }
 

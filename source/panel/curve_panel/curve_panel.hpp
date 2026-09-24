@@ -65,6 +65,8 @@ namespace zlpanel {
 
         void stopThreads();
 
+        juce::Component& getNodeLens(size_t band) { return response_panel_.getNodeLens(band); }
+
         auto& getFFTPanel() {
             return fft_panel_;
         }

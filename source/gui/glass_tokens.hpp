@@ -6,11 +6,11 @@ namespace zlgui::glass {
     // The glass itself is neutral. Colour belongs to light sources (the EQ nodes), not to
     // the material. A very slight cool bias keeps the transparent surfaces readable without
     // turning the interface into an inherently blue or rainbow object.
-    inline juce::Colour canvasTop() { return juce::Colour(48, 57, 64); }
-    inline juce::Colour canvasMid() { return juce::Colour(31, 41, 50); }
-    inline juce::Colour canvasBottom() { return juce::Colour(19, 29, 39); }
-    inline juce::Colour shellTop() { return juce::Colour(52, 61, 68); }
-    inline juce::Colour shellBottom() { return juce::Colour(20, 30, 40); }
+    inline juce::Colour canvasTop() { return juce::Colour(57, 59, 62); }
+    inline juce::Colour canvasMid() { return juce::Colour(38, 40, 43); }
+    inline juce::Colour canvasBottom() { return juce::Colour(24, 26, 29); }
+    inline juce::Colour shellTop() { return juce::Colour(58, 60, 63); }
+    inline juce::Colour shellBottom() { return juce::Colour(25, 27, 30); }
     inline juce::Colour textPrimary() { return juce::Colour(246, 250, 254); }
     inline juce::Colour textSecondary() { return textPrimary().withAlpha(.66f); }
     inline juce::Colour textTertiary() { return textPrimary().withAlpha(.42f); }
@@ -21,10 +21,10 @@ namespace zlgui::glass {
     inline juce::Colour neutralResponse() { return juce::Colour(232, 241, 247); }
 
     inline juce::Colour surfaceTop(const float alpha = .11f) {
-        return juce::Colour(222, 234, 241).withAlpha(alpha);
+        return juce::Colour(235, 236, 238).withAlpha(alpha);
     }
     inline juce::Colour surfaceBottom(const float alpha = .19f) {
-        return juce::Colour(28, 38, 48).withAlpha(alpha);
+        return juce::Colour(32, 34, 37).withAlpha(alpha);
     }
 
     inline float shellRadius(const float font) { return juce::jmax(18.f, font * 1.45f); }
@@ -40,12 +40,12 @@ namespace zlgui::glass {
             g.reduceClipRegion(clip);
 
             // Smoked neutral body. It adds density but does not invent hue.
-            g.setColour(juce::Colour(10, 18, 25).withAlpha(bottomAlpha * .58f));
+            g.setColour(juce::Colour(15, 17, 20).withAlpha(bottomAlpha * .58f));
             g.fillRect(bounds.expanded(1.f));
 
             juce::ColourGradient fill(surfaceTop(topAlpha), bounds.getCentreX(), bounds.getY(),
                                       surfaceBottom(bottomAlpha), bounds.getCentreX(), bounds.getBottom(), false);
-            fill.addColour(.46, juce::Colour(112, 128, 138)
+            fill.addColour(.46, juce::Colour(124, 126, 129)
                                       .withAlpha((topAlpha + bottomAlpha) * .16f));
             g.setGradientFill(fill);
             g.fillRect(bounds.expanded(1.f));
@@ -60,7 +60,7 @@ namespace zlgui::glass {
                 bounds.getX() + bounds.getWidth() * .68f,
                 bounds.getY() + bounds.getHeight() * .82f,
                 true);
-            transmitted.addColour(.34, juce::Colour(207, 222, 230).withAlpha(topAlpha * .060f));
+            transmitted.addColour(.34, juce::Colour(220, 222, 225).withAlpha(topAlpha * .060f));
             g.setGradientFill(transmitted);
             g.fillRect(bounds.expanded(radius * .12f));
         }
